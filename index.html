@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Spelling Empires" />
+    <meta name="description" content="Spelling Empires: explore a fantasy village, mine materials by spelling words, and craft magical objects. An RPG spelling adventure for young learners." />
+    <title>Spelling Empires</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-screen="menu">
+    <div class="app">
+      <header class="topbar">
+        <button class="brand" id="brand-btn" type="button">
+          <span class="brand-icon">SE</span>
+          <span class="brand-name">Spelling Empires</span>
+        </button>
+        <div class="topbar-right">
+          <span class="star-pill" aria-label="Total stars">
+            <span class="star-icon" aria-hidden="true"></span>
+            <span id="total-stars">0</span>
+          </span>
+          <button class="lang-btn" id="lang-btn" type="button" aria-label="English">🇬🇧</button>
+        </div>
+      </header>
+
+      <main class="main">
+        <!-- MENU SCREEN -->
+        <section class="screen" id="screen-menu" aria-label="Main menu">
+          <div class="hero">
+            <h1 data-i18n="title">Spelling Empires</h1>
+            <p class="lede" data-i18n="lede">Explore a fantasy village, mine materials by spelling words, and craft magical objects!</p>
+          </div>
+          <div class="menu-actions">
+            <button class="btn btn-primary btn-large" id="new-game-btn" type="button" data-i18n="startGame">Start Game</button>
+            <button class="btn btn-ghost" id="trophy-btn" type="button" data-i18n="trophyRoom">My Trophy Room</button>
+            <button class="btn btn-ghost" id="help-btn" type="button" data-i18n="howToPlay">How to Play</button>
+          </div>
+          <div class="difficulty-select" id="difficulty-select">
+            <p class="label" data-i18n="chooseLevel">Choose your spelling level</p>
+            <div class="difficulty-cards" id="difficulty-cards"></div>
+          </div>
+        </section>
+
+        <!-- GAME SCREEN -->
+        <section class="screen" id="screen-game" aria-label="RPG Village">
+          <div class="game-topbar">
+            <button class="btn btn-ghost btn-small" id="quit-btn" type="button" data-i18n="menu">Menu</button>
+            <div class="streak-display is-hidden" id="streak-display"></div>
+            <div class="materials-display" id="materials-display"></div>
+          </div>
+
+          <div class="map-instruction" id="map-instruction" data-i18n="exploreVillage">
+            Walk around the village and find glowing spots to mine materials!
+          </div>
+
+          <div class="map-container">
+            <div id="canvas-container" class="canvas-container"></div>
+          </div>
+
+          <!-- Interaction hint -->
+          <div class="interact-hint" id="interact-hint"></div>
+
+          <!-- Touch controls -->
+          <div class="touch-controls">
+            <div class="joystick" id="joystick">
+              <div class="joystick-knob" id="joystick-knob"></div>
+            </div>
+            <button class="interact-btn" id="interact-btn" type="button" aria-label="Interact">
+              <span class="interact-icon">⛏️</span>
+            </button>
+          </div>
+
+          <!-- Crafting menu -->
+          <div class="craft-panel" id="craft-panel">
+            <h3 data-i18n="craftMenu">Crafting</h3>
+            <div class="craft-list" id="craft-list"></div>
+          </div>
+
+          <!-- SPELLING MODAL -->
+          <div class="modal-overlay" id="spell-modal" hidden>
+            <div class="modal card spell-modal-card">
+              <div class="spell-emoji" id="spell-emoji" hidden></div>
+              <h2 id="spell-title">Mine!</h2>
+              <p class="spell-instruction" id="spell-instruction">Listen and type the word to mine this material.</p>
+              <div class="spell-word-display">
+                <div class="tiles" id="spell-tiles" aria-hidden="true"></div>
+                <input
+                  id="spell-input"
+                  class="spell-input"
+                  type="text"
+                  maxlength="20"
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  aria-label="Type the spelling"
+                />
+              </div>
+              <div class="spell-hint-row">
+                <button class="btn btn-secondary btn-small" id="spell-listen-btn" type="button" data-i18n="listen">Listen</button>
+                <button class="btn btn-ghost btn-small" id="spell-slow-btn" type="button" data-i18n="slow">Slow</button>
+                <span class="spell-attempts" id="spell-attempts"></span>
+              </div>
+              <p class="note" id="speech-note" hidden data-i18n="speechNote">Your browser cannot read words aloud.</p>
+              <div class="reveal" id="spell-reveal" hidden>
+                <p class="label" data-i18n="correctSpelling">The correct spelling</p>
+                <div class="tiles" id="reveal-tiles"></div>
+              </div>
+              <div class="spell-result" id="spell-result" hidden></div>
+              <div class="spell-actions">
+                <button class="btn btn-primary btn-wide" id="spell-check-btn" type="button" data-i18n="checkSpelling">Check Spelling</button>
+                <button class="btn btn-accent btn-wide" id="spell-continue-btn" type="button" hidden data-i18n="continue">Continue</button>
+              </div>
+              <div class="keyboard" id="spell-keyboard" aria-label="On-screen keyboard"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RESULTS SCREEN -->
+        <section class="screen" id="screen-results" aria-label="Game results">
+          <div class="card results-card">
+            <h1 id="results-title">Victory!</h1>
+            <p class="results-subtitle" id="results-subtitle"></p>
+            <div class="stat-grid stat-grid-4">
+              <div class="stat">
+                <span class="stat-value" id="res-stars">0</span>
+                <span class="stat-label" data-i18n="starsEarned">stars earned</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value" id="res-words">0</span>
+                <span class="stat-label" data-i18n="wordsSpelled">words spelled</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value" id="res-moves">0</span>
+                <span class="stat-label" data-i18n="objectsCrafted">objects crafted</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value" id="res-streak">0</span>
+                <span class="stat-label" data-i18n="bestStreak">best streak</span>
+              </div>
+            </div>
+            <div class="results-actions">
+              <button class="btn btn-primary" id="again-btn" type="button" data-i18n="playAgain">Play Again</button>
+              <button class="btn btn-ghost" id="res-menu-btn" type="button" data-i18n="mainMenu">Main Menu</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- TROPHY SCREEN -->
+        <section class="screen" id="screen-trophy" aria-label="My Trophy Room">
+          <div class="trophy-head">
+            <h1 data-i18n="trophyRoom">My Trophy Room</h1>
+            <button class="btn btn-ghost btn-small" id="trophy-back-btn" type="button" data-i18n="menu">Menu</button>
+          </div>
+          <div class="stat-grid stat-grid-3">
+            <div class="stat">
+              <span class="stat-value" id="trophy-stars">0</span>
+              <span class="stat-label" data-i18n="totalStars">total stars</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value" id="trophy-victories">0</span>
+              <span class="stat-label" data-i18n="victories">victories</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value" id="trophy-mastered">0</span>
+              <span class="stat-label" data-i18n="wordsMastered">words mastered</span>
+            </div>
+          </div>
+          <section class="card section">
+            <h2 data-i18n="badges">Badges</h2>
+            <div class="badges" id="badges"></div>
+          </section>
+          <section class="card section">
+            <h2 data-i18n="wordsToPractise">Words to Practise</h2>
+            <div class="chips" id="trophy-difficult"></div>
+          </section>
+          <button class="btn btn-ghost btn-danger" id="reset-btn" type="button" data-i18n="resetProgress">Reset my progress</button>
+        </section>
+
+        <!-- HELP SCREEN -->
+        <section class="screen" id="screen-help" aria-label="How to play">
+          <div class="card help-card">
+            <div class="help-head">
+              <h1 data-i18n="howToPlay">How to Play</h1>
+              <button class="btn btn-ghost btn-small" id="help-back-btn" type="button" data-i18n="back">Back</button>
+            </div>
+            <div class="help-content" id="help-content"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./game.js"></script>
+  </body>
+</html>
