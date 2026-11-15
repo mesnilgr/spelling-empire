@@ -582,7 +582,7 @@ export function furnishTavern(kit, room, { w, d, wallH, wallT }, api) {
   for (let i = 0; i < 3; i++) kit.barrel(room, rackX - 0.6 + i * 0.6, 0.2, inB + 0.55, { r: 0.28, h: 0.7, lying: true, ry: Math.PI / 2 });
   kit.barrel(room, rackX - 0.3, 0.76, inB + 0.55, { r: 0.26, h: 0.66, lying: true, ry: Math.PI / 2 });
   api.collider(rackX, inB + 0.6, 0.9);
-  api.character(0xc0392b, barX + 0.4, inB + 0.6, 0); // barkeep behind the counter
+  api.character('barkeep', barX + 0.4, inB + 0.6, 0); // barkeep behind the counter
   const barLight = new THREE.PointLight(0xffa64d, 6, 7, 1.5);
   barLight.position.set(barX, 2.1, barZ + 0.4);
   room.add(barLight);
@@ -596,7 +596,7 @@ export function furnishTavern(kit, room, { w, d, wallH, wallT }, api) {
   api.collider(-3.6, 3.1, 0.75);
   kit.roundTable(room, hw - 1.5, -1.3, { r: 0.55, stools: 3, seed: 9 });
   api.collider(hw - 1.5, -1.3, 0.7);
-  api.character(0x7b4fa0, -2.55, 3.55, -2.4); // patron at the round table
+  api.character('patron', -2.55, 3.55, -2.4); // patron at the round table
 
   // Chandelier over the middle of the room.
   kit.chandelier(room, 1.4, 0.2, { y: wallH - 0.5, top: wallH + 0.4 });

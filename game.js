@@ -14,6 +14,11 @@ const ENEMY_TAUNTS = {
 
 const CRAFTABLES = [
   {
+    id: 'pickaxe', emoji: '⛏️',
+    en: { name: 'Pickaxe', parts: ['iron', 'wood', 'stone'] },
+    fr: { name: 'Pioche', parts: ['fer', 'bois', 'pierre'] },
+  },
+  {
     id: 'sword', emoji: '⚔️',
     en: { name: 'Sword', parts: ['iron', 'wood', 'fire'] },
     fr: { name: 'Épée', parts: ['fer', 'bois', 'feu'] },
@@ -43,7 +48,14 @@ const CRAFTABLES = [
     en: { name: 'Torch', parts: ['wood', 'fire', 'iron'] },
     fr: { name: 'Torche', parts: ['bois', 'feu', 'fer'] },
   },
+  {
+    id: 'wand', emoji: '🪄',
+    en: { name: 'Magic wand', parts: ['wood', 'crystal', 'flower'] },
+    fr: { name: 'Baguette magique', parts: ['bois', 'cristal', 'fleur'] },
+  },
 ];
+// Crafted objects the hero can carry and use with the action button.
+const HOLDABLE_IDS = ['pickaxe', 'sword', 'torch', 'wand', 'potion', 'bread'];
 
 const MATERIAL_EMOJI = {
   iron: '⛓️', wood: '🪵', fire: '🔥', stone: '🪨', wheat: '🌾',
@@ -78,6 +90,7 @@ const screens = {
   results: $('#screen-results'),
   trophy: $('#screen-trophy'),
   help: $('#screen-help'),
+  parents: $('#screen-parents'),
 };
 const spellInput = $('#spell-input');
 const spellTilesEl = $('#spell-tiles');
@@ -99,7 +112,7 @@ let streak = 0;
 let scene3D = null;
 
 function defaultProgress() {
-  return { stars: 0, victories: 0, mastered: {}, difficult: {}, keyboard: true, lang: 'en', inventory: {}, crafted: [] };
+  return { stars: 0, victories: 0, mastered: {}, difficult: {}, keyboard: true, lang: 'en', inventory: {}, crafted: [], wordStats: {}, daily: {} };
 }
 
 function loadProgress() {
@@ -109,6 +122,30 @@ function loadProgress() {
   } catch {
     return defaultProgress();
   }
+}
+
+/* ===== WORD STATISTICS (parents' dashboard) =====
+   progress.wordStats["fr:vélo"] = { lang, word, level, seen, correct, wrong, firstTry, lastSeen, misspellings[] }
+   progress.daily["2026-11-15"] = { attempts, correct } */
+function wordStat(w) {
+  progress.wordStats ??= {};
+  const key = `${lang}:${w.word}`;
+  progress.wordStats[key] ??= { lang, word: w.word, level: w.level, seen: 0, correct: 0, wrong: 0, firstTry: 0, lastSeen: 0, misspellings: [] };
+  return progress.wordStats[key];
+}
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function recordAttempt(w, guess, ok, tries) {
+  const s = wordStat(w);
+  if (ok) { s.correct += 1; if (tries === 1) s.firstTry += 1; }
+  else { s.wrong += 1; s.misspellings = [guess, ...s.misspellings].slice(0, 5); }
+  s.lastSeen = Date.now();
+  progress.daily ??= {};
+  const day = (progress.daily[todayKey()] ??= { attempts: 0, correct: 0 });
+  day.attempts += 1;
+  if (ok) day.correct += 1;
 }
 
 function saveProgress() {
@@ -264,6 +301,7 @@ function setLanguage(newLang) {
   lang = newLang; t = UI[lang] ?? UI.en;
   document.documentElement.lang = lang === 'fr' ? 'fr' : 'en-GB';
   chooseVoice(); applyUIText(); saveProgress();
+  if (document.body.dataset.screen === 'parents') renderDashboard();
 }
 
 function applyUIText() {
@@ -301,6 +339,7 @@ function showScreen(name) {
   }
   if (name === 'menu') renderMenu();
   if (name === 'trophy') renderTrophy();
+  if (name === 'parents') renderDashboard();
   window.scrollTo(0, 0);
 }
 
@@ -326,6 +365,7 @@ function newGame(levelId) {
   };
   wordQueue = [];
   streak = 0;
+  scene3D?.setHeldItem(null);
   updateStreakDisplay();
   showScreen('game');
   if (!scene3D) init3DScene();
@@ -335,11 +375,12 @@ function newGame(levelId) {
 }
 
 function updateGameUI() {
+  renderEquipBar();
   $('#total-stars').textContent = progress.stars;
   const matContainer = $('#materials-display');
   if (matContainer) {
     matContainer.replaceChildren(...Object.entries(game.materials).map(([mat, count]) => {
-      const chip = el('span', 'material-chip', `${MATERIAL_EMOJI[mat] ?? ''} ${count}`);
+      const chip = el('span', 'material-chip', `${MATERIAL_EMOJI[mat] ?? ''} ${mat} ×${count}`);
       chip.title = mat;
       return chip;
     }));
@@ -364,6 +405,10 @@ function beginMine(mineObj) {
   const material = pickMaterial(mineObj.houseType);
   const emoji = MATERIAL_EMOJI[material] ?? '⛏️';
   spellContext = { type: 'mine', mineObj, word, tries: 0, material };
+  const stat = wordStat(word);
+  stat.seen += 1;
+  stat.lastSeen = Date.now();
+  saveProgress();
   $('#spell-title').textContent = `${emoji} ${t.mineTitle}`;
   $('#spell-instruction').textContent = t.mineInstruction;
   $('#spell-emoji').textContent = emoji;
@@ -425,6 +470,8 @@ function finishCrafting() {
     if (game.materials[part] === 0) delete game.materials[part];
   }
   game.crafted.push(item.id);
+  if (HOLDABLE_IDS.includes(item.id)) equipItem(item.id);
+  else scene3D?.spawnTrophy(item.id);
   progress.victories += 1;
   const earned = 10;
   progress.stars += earned;
@@ -503,6 +550,7 @@ function checkSpelling() {
   setSpellLocked(true);
   spellTilesEl.replaceChildren(...scoredTiles(guess, target));
   updateSpellAttempts();
+  recordAttempt(spellContext.word, guess, guess === target, spellContext.tries);
   if (guess === target) handleSpellSuccess();
   else handleSpellFailure(target);
   saveProgress();
@@ -811,6 +859,9 @@ function bindEvents() {
   $('#trophy-btn').addEventListener('click', () => showScreen('trophy'));
   $('#trophy-back-btn').addEventListener('click', () => showScreen('menu'));
   $('#help-btn').addEventListener('click', () => showScreen('help'));
+  $('#parents-btn').addEventListener('click', () => showScreen('parents'));
+  $('#parents-back-btn').addEventListener('click', () => showScreen('menu'));
+  initDashboard();
   $('#help-back-btn').addEventListener('click', () => showScreen('menu'));
   $('#lang-btn').addEventListener('click', toggleLanguage);
   $('#quit-btn').addEventListener('click', () => showScreen('menu'));
@@ -868,6 +919,11 @@ function updateInteractHint() {
 }
 
 function init() {
+  // On touch screens the built-in on-screen keyboard is used; stop the iPad keyboard from popping up.
+  if (window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window) {
+    spellInput.readOnly = true;
+    spellInput.setAttribute('inputmode', 'none');
+  }
   // Lift the touch controls out of the animated screen so position:fixed pins them to the viewport.
   const touch = document.querySelector(".touch-controls");
   if (touch) document.body.appendChild(touch);
@@ -883,3 +939,229 @@ function init() {
 }
 
 init();
+
+
+/* ===== PARENTS' DASHBOARD ===== */
+
+let dashResetArmed = false;
+
+function dashMessage(text) {
+  const msg = $('#dash-msg');
+  msg.textContent = text;
+  msg.hidden = !text;
+}
+
+function renderDashboard() {
+  const stats = Object.values(progress.wordStats ?? {});
+  const seen = stats.filter((s) => s.seen > 0 || s.correct + s.wrong > 0);
+  const attempts = stats.reduce((n, s) => n + s.correct + s.wrong, 0);
+  const correct = stats.reduce((n, s) => n + s.correct, 0);
+  const firstTry = stats.reduce((n, s) => n + s.firstTry, 0);
+  const pct = (a, b) => (b ? `${Math.round((a / b) * 100)} %` : '—');
+  const tile = (value, label) => {
+    const d = el('div', 'stat');
+    d.append(el('span', 'stat-value', String(value)), el('span', 'stat-label', label));
+    return d;
+  };
+  $('#dash-summary').replaceChildren(
+    tile(seen.length, t.statWordsSeen),
+    tile(attempts, t.statAttempts),
+    tile(pct(correct, attempts), t.statSuccess),
+    tile(firstTry, t.statFirstTry),
+  );
+
+  // Activity bars for the last 14 days.
+  const days = [];
+  for (let i = 13; i >= 0; i -= 1) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    days.push({ d, ...(progress.daily?.[key] ?? { attempts: 0, correct: 0 }) });
+  }
+  const max = Math.max(1, ...days.map((d) => d.attempts));
+  $('#dash-activity').replaceChildren(...days.map((day) => {
+    const col = el('div', 'dash-day');
+    const bar = el('div', 'dash-bar');
+    bar.style.height = `${(day.attempts / max) * 100}%`;
+    const ok = el('div', 'dash-bar-ok');
+    ok.style.height = day.attempts ? `${(day.correct / day.attempts) * 100}%` : '0';
+    bar.append(ok);
+    bar.title = `${day.correct}/${day.attempts}`;
+    const num = el('span', 'dash-day-num', day.attempts ? String(day.attempts) : '');
+    const label = el('span', 'dash-day-label', day.d.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { weekday: 'narrow', day: 'numeric' }));
+    col.append(num, bar, label);
+    return col;
+  }));
+
+  renderDashboardTable();
+}
+
+function renderDashboardTable() {
+  const level = $('#dash-level').value || 'all';
+  const sort = $('#dash-sort').value || 'hardest';
+  const showUnseen = $('#dash-unseen').checked;
+  const rows = [];
+  for (const w of WORDS[lang]) {
+    if (level !== 'all' && w.level !== level) continue;
+    const s = progress.wordStats?.[`${lang}:${w.word}`];
+    const met = s && (s.seen > 0 || s.correct + s.wrong > 0);
+    if (!met && !showUnseen) continue;
+    rows.push({ w, s: s ?? { seen: 0, correct: 0, wrong: 0, misspellings: [], lastSeen: 0 }, met });
+  }
+  const rate = (r) => (r.s.correct + r.s.wrong ? r.s.correct / (r.s.correct + r.s.wrong) : 2);
+  if (sort === 'hardest') rows.sort((a, b) => rate(a) - rate(b) || b.s.wrong - a.s.wrong);
+  else if (sort === 'recent') rows.sort((a, b) => (b.s.lastSeen || 0) - (a.s.lastSeen || 0));
+  else rows.sort((a, b) => a.w.word.localeCompare(b.w.word, lang));
+
+  const table = $('#dash-table');
+  if (!rows.length) {
+    const tr = el('tr');
+    const td = el('td', 'dash-empty', t.noData);
+    td.colSpan = 8;
+    tr.append(td);
+    table.replaceChildren(tr);
+    return;
+  }
+  const head = el('tr');
+  for (const k of ['colWord', 'colLevel', 'colSeen', 'colRight', 'colWrong', 'colRate', 'colMistakes', 'colLast']) head.append(el('th', '', t[k]));
+  const thead = el('thead'); thead.append(head);
+  const tbody = el('tbody');
+  const fmtDate = (ms) => (ms ? new Date(ms).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'short' }) : '—');
+  for (const { w, s, met } of rows) {
+    const tr = el('tr', met ? '' : 'dash-unseen-row');
+    const attempts = s.correct + s.wrong;
+    const r = attempts ? Math.round((s.correct / attempts) * 100) : null;
+    const rateCell = el('td', `dash-rate ${r === null ? '' : r >= 80 ? 'good' : r >= 50 ? 'mid' : 'bad'}`, r === null ? '—' : `${r} %`);
+    tr.append(
+      el('td', 'dash-word', w.word),
+      el('td', '', t.levelNames?.[w.level] ?? w.level),
+      el('td', 'num', met ? String(s.seen) : t.notSeenYet),
+      el('td', 'num ok', String(s.correct)),
+      el('td', 'num ko', String(s.wrong)),
+      rateCell,
+      el('td', 'dash-mistakes', s.misspellings.join(', ')),
+      el('td', '', fmtDate(s.lastSeen)),
+    );
+    tbody.append(tr);
+  }
+  table.replaceChildren(thead, tbody);
+}
+
+function backupJson() {
+  return JSON.stringify({ app: 'spelling-empires', version: 1, exportedAt: new Date().toISOString(), progress }, null, 2);
+}
+
+function initDashboard() {
+  const levelSel = $('#dash-level');
+  const sortSel = $('#dash-sort');
+  const fillSelects = () => {
+    const lv = levelSel.value || 'all';
+    const so = sortSel.value || 'hardest';
+    levelSel.replaceChildren(...[['all', t.filterAll], ...['easy', 'medium', 'challenge'].map((l) => [l, t.levelNames?.[l] ?? l])].map(([v, label]) => {
+      const o = el('option', '', label); o.value = v; return o;
+    }));
+    sortSel.replaceChildren(...[['hardest', t.sortHardest], ['recent', t.sortRecent], ['alpha', t.sortAlpha]].map(([v, label]) => {
+      const o = el('option', '', label); o.value = v; return o;
+    }));
+    levelSel.value = lv; sortSel.value = so;
+  };
+  fillSelects();
+  $('#parents-btn').addEventListener('click', fillSelects);
+  levelSel.addEventListener('change', renderDashboardTable);
+  sortSel.addEventListener('change', renderDashboardTable);
+  $('#dash-unseen').addEventListener('change', renderDashboardTable);
+
+  $('#dash-export').addEventListener('click', () => {
+    const blob = new Blob([backupJson()], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `spelling-empires-${todayKey()}.json`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  });
+  $('#dash-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(backupJson()); dashMessage(t.copied); } catch { dashMessage(''); }
+  });
+  $('#dash-import').addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (data?.app !== 'spelling-empires' || !data.progress) throw new Error('bad');
+      progress = { ...defaultProgress(), ...data.progress };
+      saveProgress();
+      renderDashboard();
+      dashMessage(t.imported);
+    } catch { dashMessage(t.importError); }
+    event.target.value = '';
+  });
+  $('#dash-reset').addEventListener('click', () => {
+    const btn = $('#dash-reset');
+    if (!dashResetArmed) {
+      dashResetArmed = true;
+      btn.textContent = t.resetConfirm;
+      btn.classList.add('is-armed');
+      setTimeout(() => { dashResetArmed = false; btn.textContent = t.resetStats; btn.classList.remove('is-armed'); }, 4000);
+      return;
+    }
+    progress.wordStats = {};
+    progress.daily = {};
+    progress.mastered = {};
+    progress.difficult = {};
+    saveProgress();
+    dashResetArmed = false;
+    btn.textContent = t.resetStats;
+    btn.classList.remove('is-armed');
+    renderDashboard();
+  });
+}
+
+
+/* ===== EQUIPMENT: carry crafted objects and use them ===== */
+
+function equipItem(id) {
+  if (!game) return;
+  game.equipped = game.equipped === id ? null : id;
+  scene3D?.setHeldItem(game.equipped);
+  renderEquipBar();
+}
+
+function useEquipped() {
+  if (!game?.equipped || !scene3D) return;
+  if (!$('#spell-modal').hidden) return;
+  initAudio();
+  if (scene3D.useItem(game.equipped)) {
+    sfxMine();
+    // Swinging the pickaxe at a glowing spot starts mining there.
+    if (game.equipped === 'pickaxe') setTimeout(() => { if (scene3D.getNearbyInteractable()) tryInteract(); }, 450);
+  }
+}
+
+function renderEquipBar() {
+  const bar = $('#equip-bar');
+  const useBtn = $('#use-btn');
+  if (!bar || !game) return;
+  const owned = HOLDABLE_IDS.filter((id) => game.crafted.includes(id));
+  bar.hidden = owned.length === 0;
+  bar.replaceChildren(...owned.map((id) => {
+    const item = CRAFTABLES.find((c) => c.id === id);
+    const b = el('button', `equip-slot${game.equipped === id ? ' is-equipped' : ''}`);
+    b.type = 'button';
+    b.append(el('span', 'equip-emoji', item.emoji), el('span', 'equip-name', item[lang].name));
+    b.addEventListener('click', () => equipItem(id));
+    return b;
+  }));
+  if (useBtn) {
+    const item = CRAFTABLES.find((c) => c.id === game.equipped);
+    useBtn.hidden = !item;
+    if (item) {
+      useBtn.querySelector('.use-icon').textContent = item.emoji;
+      useBtn.setAttribute('aria-label', `${t.useItem ?? 'Use'} ${item[lang].name}`);
+    }
+  }
+}
+
+document.addEventListener('keydown', (event) => {
+  if (!game || document.body.dataset.screen !== 'game' || !$('#spell-modal').hidden) return;
+  if (event.key === 'f' || event.key === 'F' || event.key === 'e' || event.key === 'E') useEquipped();
+});
+$('#use-btn')?.addEventListener('click', useEquipped);

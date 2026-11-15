@@ -4,6 +4,9 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { PropKit, PALETTE, furnishTavern, seededRandom } from './interiors.js';
+import { createBlockyCharacter, animateCharacter, playAction } from './characters.js';
+import { buildItem, HOLDABLE, buildBoat, buildCabin } from './items.js';
+import { VillageBuilder, skyTexture } from './village.js';
 
 const TILE = 2;
 const PLAYER_SPEED = 4.5;
@@ -96,8 +99,8 @@ export class GameScene {
 
   _initScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x9fc7d8);
-    this.scene.fog = new THREE.Fog(0x9fc7d8, 42, 78);
+    this.scene.background = skyTexture();
+    this.scene.fog = new THREE.Fog(0xcfe0e4, 40, 85);
   }
 
   _initCamera() {
@@ -136,11 +139,6 @@ export class GameScene {
   // ===== WORLD BUILDING =====
 
   _initWorld() {
-    this._buildGround();
-    this._buildPaths();
-    this._buildPond();
-    this._buildFountain();
-
     // Buildings — placed around the village, doors face +Z (toward camera)
     this._buildHouse(-10, -6, 0, 'blacksmith', 7, 5, 5, COLORS.roof, 'forge');
     this._buildHouse(8, -8, 0, 'shop', 7, 5, 5, COLORS.roofBlue, 'shop');
@@ -153,159 +151,18 @@ export class GameScene {
     this._buildHouse(0, 14, 0, 'cottage', 6, 4, 4, COLORS.roof, 'cottage');
     this._buildHouse(-2, -14, 0, 'guild', 8, 5, 5, 0x6a4a2a, 'guild');
 
-    this._buildTrees();
-    this._buildFlowers();
+    // Exterior: ground, paths, fountain, pond, field, trees, lamps, grass.
+    this.village = new VillageBuilder(this.scene, this.kit, {
+      houses: this.houses,
+      collidables: this.collidables,
+      waterMats: this.waterMats,
+      insideAnyHouse: (x, z, m) => this._insideAnyHouse(x, z, m),
+    });
+    this.village.build();
   }
 
   _insideAnyHouse(x, z, margin = 0.6) {
     return this.houses.some((h) => Math.abs(x - h.center.x) < h.w / 2 + margin && Math.abs(z - h.center.z) < h.d / 2 + margin);
-  }
-
-  _buildGround() {
-    const geo = new THREE.PlaneGeometry(60, 60);
-    const mat = new THREE.MeshStandardMaterial({ color: COLORS.ground, roughness: 0.9 });
-    const ground = new THREE.Mesh(geo, mat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
-
-    // Decorative darker patches
-    for (let i = 0; i < 20; i++) {
-      const patchGeo = new THREE.CircleGeometry(0.8 + Math.random() * 1.2, 8);
-      const patchMat = new THREE.MeshStandardMaterial({ color: 0x3a6a2a, roughness: 1 });
-      const patch = new THREE.Mesh(patchGeo, patchMat);
-      patch.rotation.x = -Math.PI / 2;
-      patch.position.set((Math.random() - 0.5) * 50, 0.01, (Math.random() - 0.5) * 50);
-      patch.receiveShadow = true;
-      this.scene.add(patch);
-    }
-  }
-
-  _buildPaths() {
-    const pathMat = new THREE.MeshStandardMaterial({ color: COLORS.path, roughness: 0.95 });
-    const pathPositions = [
-      { x: 0, z: 0, w: 2.5, l: 30 }, // main vertical
-      { x: 0, z: 0, w: 30, l: 2.5 }, // main horizontal
-    ];
-    for (const p of pathPositions) {
-      const geo = new THREE.PlaneGeometry(p.w, p.l);
-      const mesh = new THREE.Mesh(geo, pathMat);
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.set(p.x, 0.02, p.z);
-      mesh.receiveShadow = true;
-      this.scene.add(mesh);
-    }
-    // Diagonal path to tower
-    const diagGeo = new THREE.PlaneGeometry(2, 14);
-    const diag = new THREE.Mesh(diagGeo, pathMat);
-    diag.rotation.x = -Math.PI / 2;
-    diag.rotation.z = -Math.PI / 6;
-    diag.position.set(6, 0.02, 3);
-    diag.receiveShadow = true;
-    this.scene.add(diag);
-  }
-
-  _buildTrees() {
-    const treePositions = [
-      [-18, -10], [-24, 3], [-22, -2], [18, -12], [20, 8], [22, -4],
-      [-8, 14], [-15, 16], [10, 16], [16, 14], [-24, 12], [24, -16],
-      [-4, -20], [4, -20], [-10, -22], [10, -22],
-    ];
-    for (const [x, z] of treePositions) {
-      const trunkGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.2, 8);
-      const trunkMat = new THREE.MeshStandardMaterial({ color: COLORS.trunk, roughness: 0.9 });
-      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-      trunk.position.set(x, 0.6, z);
-      trunk.castShadow = true;
-      this.scene.add(trunk);
-
-      const leafGeo = new THREE.SphereGeometry(0.9, 12, 10);
-      const leafMat = new THREE.MeshStandardMaterial({ color: COLORS.tree, roughness: 0.8 });
-      const leaves = new THREE.Mesh(leafGeo, leafMat);
-      leaves.position.set(x, 1.8, z);
-      leaves.castShadow = true;
-      this.scene.add(leaves);
-    }
-  }
-
-  _buildFlowers() {
-    const flowerColors = [COLORS.flower, 0xffdd44, 0xff6644, 0xddaaff, 0xffffff];
-    for (let i = 0; i < 60; i++) {
-      const x = (Math.random() - 0.5) * 50;
-      const z = (Math.random() - 0.5) * 50;
-      if (Math.abs(x) < 3 && Math.abs(z) < 14) continue;
-      if (Math.abs(z) < 3 && Math.abs(x) < 14) continue;
-      if (this._insideAnyHouse(x, z)) continue;
-      const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
-      const geo = new THREE.SphereGeometry(0.08, 6, 5);
-      const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.1 });
-      const flower = new THREE.Mesh(geo, mat);
-      flower.position.set(x, 0.15, z);
-      this.scene.add(flower);
-      const stemGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.15, 4);
-      const stemMat = new THREE.MeshStandardMaterial({ color: 0x2d6a3e });
-      const stem = new THREE.Mesh(stemGeo, stemMat);
-      stem.position.set(x, 0.07, z);
-      this.scene.add(stem);
-    }
-  }
-
-  _buildPond() {
-    const geo = new THREE.CircleGeometry(3, 24);
-    const mat = new THREE.MeshStandardMaterial({
-      color: COLORS.water, roughness: 0.1, metalness: 0.5,
-      transparent: true, opacity: 0.8,
-    });
-    this.waterMats.push(mat);
-    const pond = new THREE.Mesh(geo, mat);
-    pond.rotation.x = -Math.PI / 2;
-    pond.position.set(-16, 0.03, -16);
-    this.scene.add(pond);
-
-    // Rocks around pond
-    for (let i = 0; i < 8; i++) {
-      const angle = (Math.PI * 2 * i) / 8;
-      const rockGeo = new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.2);
-      const rockMat = new THREE.MeshStandardMaterial({ color: COLORS.stone, roughness: 0.9 });
-      const rock = new THREE.Mesh(rockGeo, rockMat);
-      rock.position.set(-16 + Math.cos(angle) * 3.2, 0.2, -16 + Math.sin(angle) * 3.2);
-      rock.castShadow = true;
-      this.scene.add(rock);
-    }
-  }
-
-  _buildFountain() {
-    const group = new THREE.Group();
-    group.position.set(0, 0, 0);
-
-    const baseGeo = new THREE.CylinderGeometry(1.2, 1.4, 0.4, 16);
-    const baseMat = new THREE.MeshStandardMaterial({ color: COLORS.stone, roughness: 0.7 });
-    const base = new THREE.Mesh(baseGeo, baseMat);
-    base.position.y = 0.2;
-    base.castShadow = true;
-    base.receiveShadow = true;
-    group.add(base);
-
-    const waterGeo = new THREE.CylinderGeometry(1.0, 1.0, 0.3, 16);
-    const waterMat = new THREE.MeshStandardMaterial({ color: COLORS.water, transparent: true, opacity: 0.7, roughness: 0.1 });
-    this.waterMats.push(waterMat);
-    const water = new THREE.Mesh(waterGeo, waterMat);
-    water.position.y = 0.35;
-    group.add(water);
-
-    const pillarGeo = new THREE.CylinderGeometry(0.2, 0.3, 0.8, 8);
-    const pillar = new THREE.Mesh(pillarGeo, baseMat);
-    pillar.position.y = 0.8;
-    pillar.castShadow = true;
-    group.add(pillar);
-
-    const topGeo = new THREE.SphereGeometry(0.3, 8, 6);
-    const top = new THREE.Mesh(topGeo, baseMat);
-    top.position.y = 1.3;
-    group.add(top);
-
-    this.scene.add(group);
-    this.collidables.push({ x: 0, z: 0, r: 1.6 });
   }
 
   _buildHouse(x, z, rotation, name, w, h, d, roofColor, type, opts = {}) {
@@ -407,8 +264,8 @@ export class GameScene {
     if (type === 'tavern') {
       furnishTavern(kit, group, { w, d, wallH, wallT }, {
         collider: (lx, lz, r) => this._addLocalCollider(group, lx, lz, r),
-        character: (color, lx, lz, ry) => {
-          const npc = this._createCharacter(color);
+        character: (specName, lx, lz, ry) => {
+          const npc = this._createCharacter(specName);
           npc.position.set(lx, 0.1, lz);
           npc.rotation.y = ry;
           group.add(npc);
@@ -545,16 +402,11 @@ export class GameScene {
     this._addLocalCollider(group, -3.4, halfD + 1.0, 0.6);
     kit.plant(group, -1.25, halfD + 0.55);
     kit.plant(group, 1.25, halfD + 0.55);
-    const lamp = kit.group(group, 2.6, halfD + 1.4);
+    const lamp = kit.group(group, 2.4, halfD + 0.5);
     kit.box(lamp, 0.12, 2.4, 0.12, kit.mat(0x2b2523, { metalness: 0.4 }), 0, 1.2, 0);
     kit.box(lamp, 0.5, 0.07, 0.07, kit.mat(0x2b2523, { metalness: 0.4 }), 0.22, 2.35, 0);
     kit.box(lamp, 0.2, 0.28, 0.2, kit.glow(0xffc46a, 2.2), 0.42, 2.12, 0);
-    this._addLocalCollider(group, 2.6, halfD + 1.4, 0.25);
-    // Stepping stones from the door.
-    const rnd = seededRandom(11);
-    for (let i = 0; i < 4; i++) {
-      kit.box(group, 0.7 + rnd() * 0.3, 0.05, 0.5, kit.mat(0x9a948c, { roughness: 1 }), (rnd() - 0.5) * 0.4, 0.03, halfD + 0.6 + i * 0.75, { ry: rnd() * 0.4, cast: false });
-    }
+    this._addLocalCollider(group, 2.4, halfD + 0.5, 0.25);
   }
 
   _addFurniture(group, type, w, d, halfW, halfD) {
@@ -695,13 +547,13 @@ export class GameScene {
   // ===== PLAYER =====
 
   _initPlayer() {
-    this.player = this._createCharacter(COLORS.player);
+    this.player = this._createCharacter('hero');
     this.player.position.set(0, 0, 4);
     this.scene.add(this.player);
 
     this.companions = [
-      { mesh: this._createCharacter(COLORS.player2), offset: new THREE.Vector3(-1.2, 0, 0.8), target: new THREE.Vector3() },
-      { mesh: this._createCharacter(COLORS.player3), offset: new THREE.Vector3(1.2, 0, 0.8), target: new THREE.Vector3() },
+      { mesh: this._createCharacter('dwarf'), offset: new THREE.Vector3(-1.2, 0, 0.8), target: new THREE.Vector3() },
+      { mesh: this._createCharacter('elf'), offset: new THREE.Vector3(1.2, 0, 0.8), target: new THREE.Vector3() },
     ];
     for (const c of this.companions) {
       c.mesh.position.copy(this.player.position).add(c.offset);
@@ -710,48 +562,119 @@ export class GameScene {
 
     // NPCs
     const npcConfigs = [
-      { pos: [3, 0, 2], color: COLORS.npc, name: 'mage' },
-      { pos: [-4, 0, -3], color: COLORS.npc2, name: 'merchant' },
-      { pos: [0, 0, 8], color: COLORS.npc3, name: 'guard' },
+      { pos: [3, 0, 2], name: 'mage' },
+      { pos: [-4, 0, -3], name: 'merchant' },
+      { pos: [0, 0, 8], name: 'guard' },
     ];
     for (const cfg of npcConfigs) {
-      const npc = this._createCharacter(cfg.color);
+      const npc = this._createCharacter(cfg.name);
       npc.position.set(...cfg.pos);
-      npc.userData = { isNPC: true, name: cfg.name };
+      npc.rotation.y = Math.atan2(-cfg.pos[0], -cfg.pos[2]) + 0.6;
+      Object.assign(npc.userData, { isNPC: true, name: cfg.name });
       this.scene.add(npc);
       this.npcs.push(npc);
       this.collidables.push({ x: cfg.pos[0], z: cfg.pos[2], r: 0.4 });
     }
   }
 
-  _createCharacter(color) {
-    const group = new THREE.Group();
+  _createCharacter(specName) {
+    const ch = createBlockyCharacter(specName);
+    this.characters ??= [];
+    this.characters.push(ch);
+    return ch;
+  }
 
-    // Body
-    const bodyGeo = new THREE.CapsuleGeometry(0.25, 0.5, 4, 8);
-    const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.6 });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 0.5;
-    body.castShadow = true;
-    group.add(body);
+  // ===== HELD ITEMS =====
 
-    // Head
-    const headGeo = new THREE.SphereGeometry(0.2, 12, 10);
-    const headMat = new THREE.MeshStandardMaterial({ color: 0xf0c8a0, roughness: 0.7 });
-    const head = new THREE.Mesh(headGeo, headMat);
-    head.position.y = 1.05;
-    head.castShadow = true;
-    group.add(head);
+  setHeldItem(id) {
+    const hand = this.player.userData.parts.rightArm.userData.hand;
+    if (this.heldItem) {
+      hand.remove(this.heldItem);
+      this.heldFlames = [];
+    }
+    this.heldItem = id ? buildItem(id) : null;
+    this.player.userData.held = id || null;
+    if (this.heldItem) {
+      hand.add(this.heldItem);
+      this.heldFlames = this.heldItem.userData.flames;
+    }
+  }
 
-    // Hat
-    const hatGeo = new THREE.ConeGeometry(0.22, 0.3, 8);
-    const hatMat = new THREE.MeshStandardMaterial({ color, roughness: 0.5 });
-    const hat = new THREE.Mesh(hatGeo, hatMat);
-    hat.position.y = 1.3;
-    group.add(hat);
+  // Plays the item's animation and effect. Returns true if the item was used.
+  useItem(id) {
+    const spec = HOLDABLE[id];
+    if (!spec || this.player.userData.action) return false;
+    playAction(this.player, spec.action, spec.duration);
+    const front = () => {
+      const p = this.player.position.clone();
+      const a = this.player.rotation.y;
+      p.x += Math.sin(a) * 0.9;
+      p.z += Math.cos(a) * 0.9;
+      p.y = 0.8;
+      return p;
+    };
+    const at = (ms, fn) => setTimeout(fn, ms);
+    if (id === 'sword') {
+      at(180, () => { this.particleBurst(front(), '#e8f2ff', 22); this.screenShake(0.08); });
+    } else if (id === 'pickaxe') {
+      at(200, () => {
+        this.particleBurst(front(), '#c8c0b0', 18);
+        this.particleBurst(front(), '#ffd36a', 8);
+        this.screenShake(0.12);
+      });
+    } else if (id === 'torch') {
+      const light = this.heldItem?.userData.light;
+      if (light) { light.userData.boost = 2.5; at(1100, () => { light.userData.boost = 1; }); }
+      at(300, () => { const p = this.player.position.clone(); p.y = 2; this.particleBurst(p, '#ffb340', 26); });
+    } else if (id === 'wand') {
+      at(250, () => {
+        const p = this.player.position.clone(); p.y = 1.8;
+        for (const c of ['#ff7ad9', '#7ad9ff', '#ffe27a', '#9aff7a']) this.particleBurst(p, c, 10);
+        this._spawnFlowersAround(this.player.position, 6);
+      });
+    } else if (id === 'potion') {
+      this.speedBoostUntil = this.clock.elapsedTime + 8;
+      at(500, () => { const p = this.player.position.clone(); p.y = 1.4; this.particleBurst(p, '#c06aff', 24); });
+    } else if (id === 'bread') {
+      at(500, () => { const p = this.player.position.clone(); p.y = 1.6; this.particleBurst(p, '#ff5a7a', 16); });
+    }
+    return true;
+  }
 
-    group.userData = { walkPhase: 0, isMoving: false };
-    return group;
+  _spawnFlowersAround(pos, n) {
+    const colors = [0xff6b9d, 0xffd93d, 0xb07aff, 0xffffff, 0xff8a3d];
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 0.8 + Math.random() * 1.2;
+      const x = pos.x + Math.cos(a) * r;
+      const z = pos.z + Math.sin(a) * r;
+      const f = new THREE.Group();
+      const stem = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.28, 0.04), this.kit.mat(0x3f8a3a));
+      stem.position.y = 0.14;
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.14), this.kit.mat(colors[i % colors.length], { emissive: colors[i % colors.length], emissiveIntensity: 0.25 }));
+      head.position.y = 0.32;
+      f.add(stem, head);
+      f.position.set(x, 0.02, z);
+      f.scale.setScalar(0.01);
+      this.scene.add(f);
+      this.growing ??= [];
+      this.growing.push(f);
+    }
+  }
+
+  // Objects that can't be held appear in the world instead.
+  spawnTrophy(id) {
+    if (id === 'boat' && !this.boat) {
+      this.boat = buildBoat();
+      this.boat.position.set(-16, 0.05, -16);
+      this.scene.add(this.boat);
+    } else if (id === 'house' && !this.cabin) {
+      this.cabin = buildCabin();
+      this.cabin.position.set(6.5, 0, -2.8);
+      this.cabin.rotation.y = -0.4;
+      this.scene.add(this.cabin);
+      this.collidables.push({ x: 6.5, z: -2.8, r: 1.2 });
+    }
   }
 
   // ===== POST-PROCESSING =====
@@ -854,8 +777,9 @@ export class GameScene {
       const wx = mx * cy + mz * sy;
       const wz = -mx * sy + mz * cy;
       mx = wx; mz = wz;
-      const nx = this.player.position.x + mx * PLAYER_SPEED * dt;
-      const nz = this.player.position.z + mz * PLAYER_SPEED * dt;
+      const speed = PLAYER_SPEED * (this.speedBoostUntil > this.clock.elapsedTime ? 1.6 : 1);
+      const nx = this.player.position.x + mx * speed * dt;
+      const nz = this.player.position.z + mz * speed * dt;
       if (!this._checkCollision(nx, this.player.position.z)) this.player.position.x = nx;
       if (!this._checkCollision(this.player.position.x, nz)) this.player.position.z = nz;
 
@@ -868,16 +792,25 @@ export class GameScene {
       this.player.userData.isMoving = false;
     }
 
-    // Bob animation
-    const bob = this.player.userData.isMoving ? Math.sin(this.player.userData.walkPhase) * 0.05 : 0;
-    this.player.position.y = bob;
 
     // Companions follow
     for (const c of this.companions) {
       c.target.copy(this.player.position).add(c.offset);
       const dx = c.target.x - c.mesh.position.x;
       const dz = c.target.z - c.mesh.position.z;
-      const dist = Math.hypot(dx, dz);
+      let dist = Math.hypot(dx, dz);
+      // A companion stuck behind a wall catches up by appearing next to the hero.
+      if (dist > 5) {
+        const p = this.player.position;
+        const back = new THREE.Vector3(Math.sin(this.player.rotation.y), 0, Math.cos(this.player.rotation.y)).multiplyScalar(-0.9);
+        const side = c.offset.x > 0 ? 0.6 : -0.6;
+        const tx = p.x + back.x + side * Math.cos(this.player.rotation.y);
+        const tz = p.z + back.z - side * Math.sin(this.player.rotation.y);
+        if (!this._checkCollision(tx, tz)) { c.mesh.position.set(tx, 0, tz); }
+        else { c.mesh.position.set(p.x + back.x * 0.5, 0, p.z + back.z * 0.5); }
+        this.particleBurst(new THREE.Vector3(c.mesh.position.x, 0.8, c.mesh.position.z), '#ffffff', 8);
+        dist = 0;
+      }
       if (dist > 1.0) {
         const speed = COMPANION_SPEED * dt;
         const nx = c.mesh.position.x + (dx / dist) * speed;
@@ -890,8 +823,6 @@ export class GameScene {
       } else {
         c.mesh.userData.isMoving = false;
       }
-      const cBob = c.mesh.userData.isMoving ? Math.sin(c.mesh.userData.walkPhase) * 0.04 : 0;
-      c.mesh.position.y = cBob;
     }
   }
 
@@ -911,7 +842,7 @@ export class GameScene {
     // Inside a house the camera moves closer and frames the room rather than the player.
     const tx = h ? lerp(p.x, h.center.x, 0.55 * f) : p.x;
     const tz = h ? lerp(p.z, h.center.z, 0.55 * f) : p.z;
-    const dist = lerp(27, h ? Math.max(h.w, h.d) * 1.32 + 2 : 20, f);
+    const dist = lerp(19, h ? Math.max(h.w, h.d) * 1.15 + 1.5 : 16, f);
     const elev = lerp(0.92, 0.98, f);
     const k = 1 - Math.pow(0.001, dt);
     this.camTarget.x += (tx - this.camTarget.x) * k;
@@ -1069,8 +1000,24 @@ export class GameScene {
     this._updateInteractables();
 
     // NPC idle bob
-    for (const npc of this.npcs) {
-      npc.position.y = Math.sin(elapsed * 1.5 + npc.position.x) * 0.03;
+    this.village?.update(elapsed);
+    // Character limbs (walk cycle, idle, item actions).
+    for (const ch of this.characters ?? []) animateCharacter(ch, dt, elapsed);
+    for (const fl of this.heldFlames ?? []) {
+      if (fl.spin) { fl.mesh.rotation.y += dt * 3; continue; }
+      const n = Math.sin(elapsed * fl.speed + fl.phase);
+      fl.mesh.scale.y = fl.base.y * (1 + n * 0.2);
+    }
+    const torchLight = this.heldItem?.userData.light;
+    if (torchLight) torchLight.intensity = 4 * (torchLight.userData.boost ?? 1) * (1 + Math.sin(elapsed * 13) * 0.12);
+    if (this.growing?.length) {
+      for (const f of this.growing) f.scale.setScalar(Math.min(1, f.scale.x + dt * 2.5));
+      this.growing = this.growing.filter((f) => f.scale.x < 1);
+    }
+    if (this.boat) {
+      this.boat.position.y = 0.05 + Math.sin(elapsed * 1.6) * 0.05;
+      this.boat.rotation.z = Math.sin(elapsed * 1.2) * 0.05;
+      this.boat.rotation.y = elapsed * 0.15;
     }
 
     // Update particles
