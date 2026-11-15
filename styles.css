@@ -1603,3 +1603,19 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .age-btn.is-on { border-color: #f2b632; background: #fff6dc; box-shadow: 0 4px 0 #e0a21a; }
 .age-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--ink-100); }
 .age-buttons-small .age-btn { font-size: 1.6rem; padding: 10px 0 8px; }
+
+/* ===== Spellbook ===== */
+.grimoire-card { max-width: 720px; width: min(94vw, 720px); max-height: 86vh; overflow: auto; background: linear-gradient(180deg, #fbf4e4, #f3e6c8); border: 3px solid #b48a4a; }
+.grimoire-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.grimoire-head h2 { margin: 0; }
+.grimoire-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+.spell-card { font: inherit; text-align: center; border: 2px solid #c8a46a; border-radius: 14px; background: #fffaf0; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+.spell-card .spell-emoji-big { font-size: 2rem; }
+.spell-card .spell-name { font-weight: 900; }
+.spell-card .spell-word { font-weight: 900; letter-spacing: 0.12em; font-size: 1.25rem; color: #5a3cc8; text-transform: uppercase; }
+.spell-card .spell-effect { font-size: 0.78rem; color: var(--ink-500, #556); }
+.spell-card .spell-state { font-size: 0.75rem; font-weight: 800; color: #8a6a2a; }
+.spell-card.is-locked { opacity: 0.55; filter: grayscale(0.6); }
+.spell-card.is-cast { border-color: #7a5cff; box-shadow: 0 0 0 2px #d8c8ff inset; }
+.grimoire-head .hud-btn { color: #5a3a1a; background: #f0e2c0; border: 2px solid #c8a46a; }
+.grimoire-card .lede { margin-left: 0; text-align: left; }

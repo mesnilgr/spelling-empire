@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.2.0 — La magie des mots
+
+- **Grimoire 🔮** : 8 sorts. Le mot à écrire dépend de l'âge : la première lettre à 5 ans (« P comme pont »), un mot simple à 6 ans (« lune » pour Lumière), le mot entier à 7 et 8 ans.
+- **Cercles magiques violets** dans le village : on les touche, on écrit le mot, le sort se lance.
+  - 🌉 **Pont** : un pont au-dessus de la mare, qu'on peut traverser, avec une île et un coffre au trésor.
+  - 🌸 **Fleur** et 🌳 **Arbre** : des fleurs et un arbre magique à ramasser sans outil.
+  - 🌧️ **Pluie** : le blé repousse tout de suite.
+  - ✨ **Lumière** : une boule de lumière suit le héros et éclaire la nuit.
+  - 🔥 **Feu** : les braseros de la place s'allument et donnent du feu.
+  - 🌬️ Vent et 🪨 Pierre arriveront avec les nouvelles régions.
+- **Puissance du sort** : pleine si le mot est juste du premier coup, « un peu de travers » après une erreur, petite si on a recopié. On n'est jamais bloqué.
+- Certains sorts se débloquent avec les étoiles. Le pont et les braseros restent après une sauvegarde.
+- Près du pont, le héros est guidé sur son axe, pour traverser facilement au joystick.
+
 ## v1.1.0 — Les âges
 
 - **Choix de l'âge (5, 6, 7 ou 8 ans)** au premier lancement, modifiable dans l'espace parents.

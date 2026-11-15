@@ -143,6 +143,12 @@ export function buildMaterialIcon(id) {
       box(g, 0.08, 0.2, 0.08, mat(0x5ad86a, { emissive: 0x2a9a3a, emissiveIntensity: 1 }), -0.08, -0.04, 0).rotation.z = 0.7;
       box(g, 0.08, 0.36, 0.08, mat(0x5ad86a, { emissive: 0x2a9a3a, emissiveIntensity: 1 }), 0.07, 0.03, 0).rotation.z = -0.6;
       break;
+    case 'spell': {
+      const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.2), mat(0xb08aff, { emissive: 0x8a5cff, emissiveIntensity: 1.6 }));
+      g.add(star);
+      for (let i = 0; i < 4; i++) box(g, 0.06, 0.06, 0.06, mat(0xfff0ff, { emissive: 0xffd0ff, emissiveIntensity: 1.5 }), Math.cos(i * 1.57) * 0.3, Math.sin(i * 2.3) * 0.08, Math.sin(i * 1.57) * 0.3);
+      break;
+    }
     default:
       box(g, 0.3, 0.3, 0.3, mat(0xffaa00, { emissive: 0xff8800, emissiveIntensity: 1 }));
   }

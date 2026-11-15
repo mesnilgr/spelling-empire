@@ -3,6 +3,7 @@ import { GameScene } from './scene.js';
 import { NPC_INFO, QUESTS, rollLoot, WORD_EMOJI } from './content.js';
 import { COSTUMES } from './characters.js';
 import { loadModel, recognize, inkBox } from './handwriting.js';
+import { SPELLS, spellById, spellWord } from './magic.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -487,6 +488,7 @@ function refreshSpots() {
     let id = obj.material;
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
+    else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -518,6 +520,7 @@ function saveGame() {
     quests: game.quests ?? {},
     chests: game.chests ?? 0,
     fish: game.fish ?? 0,
+    spells: game.spells ?? {},
     savedAt: Date.now(),
   };
   saveProgress();
@@ -535,7 +538,14 @@ function continueGame() {
     quests: { ...(s.quests ?? {}) },
     chests: s.chests ?? 0,
     fish: s.fish ?? 0,
+    spells: { ...(s.spells ?? {}) },
   });
+  // Lasting spells come back: the bridge, the lit braziers.
+  for (const id of ['pont', 'feu']) {
+    if (!game.spells[id]) continue;
+    const circle = scene3D?.interactables.find((o) => o.kind === 'circle' && o.spellId === id);
+    scene3D?.castSpell(id, circle, game.spells[id], { silent: true });
+  }
   for (const id of game.crafted) if (!HOLDABLE_IDS.includes(id.split('_')[0])) scene3D?.spawnTrophy(id);
   game.equipped = null;
   if (s.equipped && game.crafted.includes(s.equipped)) equipItem(s.equipped);
@@ -601,6 +611,7 @@ function interactWith(obj) {
   if (!$('#quest-modal').hidden || fishing) return;
   if (obj.kind === 'npc') { openQuest(obj); return; }
   if (obj.kind === 'bed') { goToSleep(); return; }
+  if (obj.kind === 'circle') { beginSpellCast(obj); return; }
   if (obj.nodeType === 'fish' && ownsTool('rod')) {
     if (game.equipped !== bestVersion('rod')) equipItem(bestVersion('rod'));
     startFishing(obj);
@@ -631,13 +642,20 @@ function beginMine(mineObj) {
   const material = mineObj.material ?? pickMaterial(mineObj.houseType);
   const emoji = MATERIAL_EMOJI[material] ?? '⛏️';
   spellContext = { type: 'mine', mineObj, word, tries: 0, material };
+  const instruction = word.level === 'letters' ? t.mineInstructionLetter : word.level === 'syllables' ? t.mineInstructionSyllable : t.mineInstruction;
+  openSpellModal(`${emoji} ${t.mineTitle}`, instruction, emoji);
+}
+
+// The spelling window, for whatever spellContext holds (mining, a spell…).
+function openSpellModal(title, instruction, emoji) {
+  const word = spellContext.word;
   const stat = wordStat(word);
   stat.seen += 1;
   stat.lastSeen = Date.now();
   saveProgress();
-  $('#spell-title').textContent = `${emoji} ${t.mineTitle}`;
+  $('#spell-title').textContent = title;
   setTimeout(() => { hw.strokes = []; hw.current = null; hw.misses = 0; hw.forceGuide = false; hwFeedback(); $('#hw-alts')?.replaceChildren(); setInputMode(progress.inputMode ?? 'keys'); }, 0);
-  $('#spell-instruction').textContent = word.level === 'letters' ? t.mineInstructionLetter : word.level === 'syllables' ? t.mineInstructionSyllable : t.mineInstruction;
+  $('#spell-instruction').textContent = instruction;
   $('#spell-emoji').textContent = emoji;
   $('#spell-emoji').hidden = false;
   spellInput.value = '';
@@ -650,6 +668,43 @@ function beginMine(mineObj) {
   $('#spell-modal').hidden = false;
   setSpellLocked(false);
   speak(word.say ?? word.word, 0.9);
+}
+
+/* ===== WORD MAGIC ===== */
+function refreshCircle(obj) {
+  const sp = spellById(obj.spellId);
+  scene3D.setSpotMaterial(obj, 'spell', spellUnlocked(sp) ? `${sp.emoji} ${spellName(sp)}` : `🔒 ${spellName(sp)}`);
+}
+function refreshCircles() { for (const o of scene3D?.interactables ?? []) if (o.kind === 'circle') refreshCircle(o); }
+function spellUnlocked(sp) { return !!sp && sp.unlock !== null && (progress.stars ?? 0) >= sp.unlock; }
+function spellName(sp) { return sp.name[lang] ?? sp.name.fr; }
+function beginSpellCast(circle) {
+  initAudio();
+  const sp = spellById(circle.spellId);
+  if (!spellUnlocked(sp)) { toast(sp.unlock === null ? t.spellSoon : t.spellLocked(spellName(sp), sp.unlock)); return; }
+  if (scene3D.spellObjects?.[sp.id]?.node?.active) { toast(t.spellAlready); return; }
+  const word = spellWord(sp, progress.age ?? 6, lang);
+  spellContext = { type: 'spell', spell: sp, circle, word, tries: 0 };
+  openSpellModal(`${sp.emoji} ${t.spellTitle} : ${spellName(sp)}`, t.spellInstruction, sp.emoji);
+}
+function renderGrimoire() {
+  const age = progress.age ?? 6;
+  $('#grimoire-grid').replaceChildren(...SPELLS.map((sp) => {
+    const open = spellUnlocked(sp);
+    const cast = !!game?.spells?.[sp.id];
+    const card = el('button', `spell-card${open ? '' : ' is-locked'}${cast ? ' is-cast' : ''}`);
+    card.type = 'button';
+    const w = spellWord(sp, age, lang);
+    card.append(
+      el('span', 'spell-emoji-big', sp.emoji),
+      el('span', 'spell-name', spellName(sp)),
+      el('span', 'spell-word', open ? w.word : '• • •'),
+      el('span', 'spell-effect', sp.effect[lang] ?? sp.effect.fr),
+      el('span', 'spell-state', sp.unlock === null ? (sp.soon?.[lang] ?? t.spellSoon) : !open ? `🔒 ${sp.unlock} ★` : cast ? `✓ ${t.spellUsed}` : t.spellReady),
+    );
+    if (open) card.addEventListener('click', () => speak(w.say ?? w.word, 0.85));
+    return card;
+  }));
 }
 
 /* ===== CRAFTING ===== */
@@ -893,6 +948,25 @@ function handleSpellSuccess() {
     if (streak >= 2) spellResultEl.appendChild(el('p', 'spell-streak-badge', `${streak}x ${t.streakLabel}! +${streakBonus} ${t.bonusStars}`));
     spellResultEl.hidden = false;
     speak(sentence, 0.9);
+  } else if (type === 'spell') {
+    const sp = spellContext.spell;
+    const power = copied ? 'weak' : firstTry ? 'strong' : 'wobbly';
+    scene3D?.castSpell(sp.id, spellContext.circle, power);
+    game.spells ??= {};
+    game.spells[sp.id] = power;
+    let extra = '';
+    if (sp.id === 'pluie') { game.materials.wheat = (game.materials.wheat ?? 0) + 1; extra = `${MATERIAL_EMOJI.wheat} ${t.gotMaterial}: ${materialName('wheat')}`; }
+    sfxCraft();
+    saveGame();
+    const line = power === 'strong' ? t.powerStrong : power === 'wobbly' ? t.powerWobbly : t.powerWeak;
+    spellResultEl.replaceChildren(
+      el('p', 'spell-success', `${sp.emoji} ${t.spellCast(spellName(sp))}`),
+      el('p', 'spell-sentence', sp.effect[lang] ?? sp.effect.fr),
+      el('p', 'spell-stars', `${line}${copied ? '' : `  +${earned} ${earned === 1 ? t.star : t.stars}`}`),
+      ...(extra ? [el('p', 'spell-material', extra)] : []),
+    );
+    spellResultEl.hidden = false;
+    speak(`${t.spellCast(spellName(sp))} ${line}`, 0.9);
   } else if (type === 'craft') {
     spellContext.partResults.push({ part: spellContext.currentPart, success: true });
     spellResultEl.replaceChildren(
@@ -905,6 +979,7 @@ function handleSpellSuccess() {
   updateStreakDisplay();
   updateGameUI();
   renderCraftMenu();
+  refreshCircles();
 }
 
 function handleSpellFailure(target) {
@@ -1192,6 +1267,9 @@ function bindEvents() {
     if (!progress.age) askAge(() => newGame()); else newGame();
   });
   $('#reset-pos-btn')?.addEventListener('click', () => scene3D?.resetPosition());
+  $('#grimoire-btn')?.addEventListener('click', () => { renderGrimoire(); $('#grimoire-modal').hidden = false; });
+  $('#grimoire-close')?.addEventListener('click', () => { $('#grimoire-modal').hidden = true; });
+  $('#grimoire-modal')?.addEventListener('click', (e) => { if (e.target.id === 'grimoire-modal') $('#grimoire-modal').hidden = true; });
   $('#craft-open-btn')?.addEventListener('click', () => { renderCraftMenu(); $('#craft-drawer').hidden = false; });
   $('#craft-close-btn')?.addEventListener('click', () => { $('#craft-drawer').hidden = true; });
   $('#craft-drawer')?.addEventListener('click', (e) => { if (e.target.id === 'craft-drawer') $('#craft-drawer').hidden = true; });

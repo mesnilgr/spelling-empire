@@ -76,6 +76,7 @@
               <button class="hud-btn" id="reset-pos-btn" type="button" aria-label="Back to the village">🏠</button>
               <button class="hud-btn" id="album-btn" type="button" aria-label="Album">📖</button>
               <button class="hud-btn" id="wardrobe-btn" type="button" aria-label="Wardrobe">👕</button>
+              <button class="hud-btn" id="grimoire-btn" type="button" aria-label="Spellbook">🔮</button>
               <span class="hud-time" id="hud-time" aria-hidden="true">☀️</span>
             </div>
             <div class="streak-display is-hidden" id="streak-display"></div>
@@ -124,6 +125,13 @@
           </div>
 
           <!-- Talking to a villager -->
+          <div class="modal-overlay" id="grimoire-modal" hidden>
+            <div class="modal card grimoire-card">
+              <div class="grimoire-head"><h2 data-i18n="grimoireTitle">Spellbook</h2><button class="hud-btn" id="grimoire-close" type="button" aria-label="Close">✕</button></div>
+              <p class="lede" data-i18n="grimoireLede"></p>
+              <div class="grimoire-grid" id="grimoire-grid"></div>
+            </div>
+          </div>
           <div class="modal-overlay" id="quest-modal" hidden>
             <div class="modal card quest-card">
               <div class="quest-head"><span class="quest-portrait" id="quest-portrait">🧙</span><h2 id="quest-name">…</h2></div>

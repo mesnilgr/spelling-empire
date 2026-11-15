@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -199,6 +200,7 @@ export class GameScene {
     });
     this.village.build();
     this._buildResourceNodes();
+    this._buildMagic();
   }
 
   _insideAnyHouse(x, z, margin = 0.6) {
@@ -519,6 +521,144 @@ export class GameScene {
 
     // Pond: draw water at its edge.
     this._addInteractable({ kind: 'node', nodeType: 'water', material: 'water', worldPos: new THREE.Vector3(-13.4, 0, -13.9), iconY: 1.1, reach: 1.4 });
+  }
+
+  /* ===== WORD MAGIC ===== */
+  _buildMagic() {
+    const h = (x, z) => this.terrain.heightAt(x, z);
+    this.spellObjects = {};
+    for (const c of CIRCLES) {
+      const y = h(c.x, c.z);
+      const ring = buildCircle();
+      ring.position.set(c.x, y, c.z);
+      ring.userData.dynamic = true;
+      this.scene.add(ring);
+      (this.spinners ??= []).push(ring);
+      this._addInteractable({
+        kind: 'circle', spellId: c.spell, material: 'spell', block: ring,
+        worldPos: new THREE.Vector3(c.x, y, c.z), iconY: 1.5, reach: 1.7, hitRadius: 1.0,
+      });
+    }
+    this.braziers = BRAZIERS.map(([x, z]) => {
+      const b = buildBrazier();
+      b.position.set(x, h(x, z), z);
+      b.userData.dynamic = true;
+      this.scene.add(b);
+      this.collidables.push({ x, z, r: 0.45 });
+      return b;
+    });
+  }
+
+  // Cast a spell at a circle. power: 'strong' | 'wobbly' | 'weak'. Returns what appeared.
+  castSpell(id, circle, power = 'strong', { silent = false } = {}) {
+    const grow = (obj) => { obj.scale.setScalar(0.01); (this.growing ??= []).push(obj); };
+    const at = circle?.worldPos ?? new THREE.Vector3();
+    if (!silent && circle) this.particleBurst(at.clone().add(new THREE.Vector3(0, 0.6, 0)), '#b08aff', 34);
+    if (id === 'pont') {
+      if (this.spellObjects.pont) return null;
+      const br = buildBridge(power);
+      br.userData.dynamic = true;
+      this.scene.add(br);
+      this.spellObjects.pont = br;
+      const len = BRIDGE.x1 - BRIDGE.x0, mid = BRIDGE.x0 + len / 2;
+      const arch = power === 'weak' ? 0 : 0.28;
+      this.walkways = [
+        { x0: BRIDGE.x0 - 0.2, x1: BRIDGE.x1 + 0.2, z: BRIDGE.z, hw: power === 'weak' ? 0.45 : 0.55, y: (x) => { const t = (x - mid) / (len / 2); return 0.2 + arch * Math.max(0, 1 - t * t); } },
+        { circle: true, x: BRIDGE.island.x, z: BRIDGE.island.z, r: BRIDGE.island.r, y: () => 0.27 },
+      ];
+      // A treasure chest waits on the island.
+      if (!this.islandChest) {
+        const I = BRIDGE.island;
+        const chest = buildChest();
+        chest.position.set(I.x, 0.27, I.z + 0.75);
+        chest.rotation.y = Math.PI;
+        chest.userData.dynamic = true;
+        this.scene.add(chest);
+        this.collidables.push({ x: I.x, z: I.z + 0.75, r: 0.45 });
+        this.islandChest = this._addInteractable({
+          kind: 'node', nodeType: 'chest', material: 'chest', block: chest, chest,
+          burst: '#f2c84b', worldPos: new THREE.Vector3(I.x, 0.27, I.z + 0.75), iconY: 1.6, reach: 1.5, respawn: 300,
+        });
+      }
+      if (circle) { circle.active = false; circle.block.visible = false; circle.iconHolder.visible = false; if (circle.labelEl) circle.labelEl.style.display = 'none'; }
+      if (!silent) { grow(br); this.screenShake(0.08); }
+      return br;
+    }
+    if (id === 'fleur' || id === 'arbre') {
+      // Grows next to the circle and can be gathered (no tool needed for magic plants).
+      const off = new THREE.Vector3(1.9, 0, 0.6);
+      const p = at.clone().add(off);
+      p.y = this.terrain.heightAt(p.x, p.z);
+      const old = this.spellObjects[id];
+      if (old?.node?.active) return null;
+      if (old) { this.scene.remove(old.group); this.interactables = this.interactables.filter((o) => o !== old.node); old.node.iconHolder.removeFromParent(); old.node.hit.removeFromParent(); old.node.labelEl?.remove(); }
+      const group = id === 'fleur' ? buildFlowerBed(power) : buildMagicTree(power);
+      group.position.copy(p);
+      group.userData.dynamic = true;
+      this.scene.add(group);
+      if (id === 'arbre') this.collidables.push({ x: p.x, z: p.z, r: 0.35 });
+      const node = this._addInteractable({
+        kind: 'node', nodeType: id === 'fleur' ? 'flower' : 'tree', material: id === 'fleur' ? 'flower' : 'wood', magic: true,
+        block: group, burst: id === 'fleur' ? '#ff7ab0' : '#7ad86a', respawn: 1e9,
+        worldPos: p, iconY: id === 'fleur' ? 1.3 : 3.4, reach: 1.7, hitRadius: 1.1,
+      });
+      this.spellObjects[id] = { group, node };
+      if (!silent) grow(group);
+      return group;
+    }
+    if (id === 'pluie') {
+      // Rain over the field: the wheat grows back at once.
+      for (let i = 0; i < 70; i++) {
+        this.particleGeo ??= new THREE.BoxGeometry(0.12, 0.12, 0.12);
+        const m = new THREE.MeshBasicMaterial({ color: 0x8ac8ff, transparent: true, opacity: 1 });
+        const d = new THREE.Mesh(this.particleGeo, m);
+        d.scale.set(0.4, 1.6, 0.4);
+        d.position.set(5.5 + Math.random() * 5, 4 + Math.random() * 3, 12.4 + Math.random() * 3.4);
+        d.userData = { vx: 0, vy: -4 - Math.random() * 2, vz: 0, life: 1, decay: 0.55 + Math.random() * 0.3 };
+        this.scene.add(d);
+        this.particles.push(d);
+      }
+      for (const o of this.interactables) if (o.nodeType === 'wheat' && !o.active) o.respawnAt = this.clock.elapsedTime;
+      return true;
+    }
+    if (id === 'lumiere') {
+      if (!this.lightOrb) {
+        this.lightOrb = buildLightOrb();
+        this.lightOrb.userData.dynamic = true;
+        this.scene.add(this.lightOrb);
+      }
+      this.lightOrb.userData.until = this.clock.elapsedTime + (power === 'strong' ? 240 : power === 'wobbly' ? 150 : 80);
+      this.lightOrb.visible = true;
+      return this.lightOrb;
+    }
+    if (id === 'feu') {
+      for (const b of this.braziers) b.userData.flame.visible = true;
+      if (!this.fireNodes) {
+        this.fireNodes = this.braziers.map((b) => this._addInteractable({
+          kind: 'node', nodeType: 'fire', material: 'fire', magic: true, respawn: 90,
+          worldPos: b.position.clone(), iconY: 1.9, reach: 1.5, hitRadius: 0.8,
+        }));
+      } else for (const n of this.fireNodes) { n.active = true; n.iconHolder.visible = true; n.respawnAt = undefined; }
+      return true;
+    }
+    return null;
+  }
+
+  _tickMagic(dt, elapsed) {
+    for (const r of this.spinners ?? []) r.rotation.y += dt * 0.4;
+    const orb = this.lightOrb;
+    if (orb?.visible) {
+      const p = this.player.position;
+      const a = elapsed * 1.3;
+      orb.position.lerp(new THREE.Vector3(p.x + Math.cos(a) * 0.9, p.y + 2.1 + Math.sin(elapsed * 2.2) * 0.15, p.z + Math.sin(a) * 0.9), Math.min(1, dt * 4));
+      orb.rotation.y += dt * 2;
+      orb.userData.light.intensity = 1.2 + 4 * (this.night ?? 0);
+      if (elapsed > orb.userData.until) { orb.visible = false; orb.userData.light.intensity = 0; }
+    }
+    for (const b of this.braziers ?? []) {
+      const f = b.userData.flame;
+      if (f.visible) f.scale.y = 1 + Math.sin(elapsed * 9 + b.position.x) * 0.15;
+    }
   }
 
   _addLocalCollider(group, lx, lz, r) {
@@ -1166,7 +1306,9 @@ export class GameScene {
   // ===== MOVEMENT & COLLISION =====
 
   _checkCollision(x, z) {
+    const onWalk = this.walkways?.length && this._walkwayAt(x, z);
     for (const c of this.collidables) {
+      if (c.water && onWalk) continue;
       if (c.type === 'houseWall') {
         // Transform world position into the house's local space
         const cosR = Math.cos(-c.rotation);
@@ -1247,6 +1389,12 @@ export class GameScene {
       const before = p.clone();
       if (!this._blocked(nx, p.z, p.y)) p.x = nx;
       if (!this._blocked(p.x, nz, p.y)) p.z = nz;
+      // Near a magic bridge, gently pull the hero onto its axis (easy to cross with the joystick).
+      for (const w of this.walkways ?? []) {
+        if (w.circle || p.x < w.x0 - 1.4 || p.x > w.x1 + 1.4 || Math.abs(p.z - w.z) > 1.4) continue;
+        const nzw = p.z + (w.z - p.z) * Math.min(1, dt * 7);
+        if (!this._blocked(p.x, nzw, p.y)) p.z = nzw;
+      }
       // Stuck while auto-walking (wall in the way): give up.
       if (this.autoWalk && before.distanceToSquared(p) < 1e-6) this.autoWalk.stuck = (this.autoWalk.stuck ?? 0) + dt;
       if (this.autoWalk?.stuck > 0.6) this.autoWalk = null;
@@ -1272,7 +1420,7 @@ export class GameScene {
       const p = this.player.position;
       this.playerVY = (this.playerVY ?? 0) - 24 * dt;
       p.y += this.playerVY * dt;
-      const ground = this.terrain.heightAt(p.x, p.z);
+      const ground = this.groundAt(p.x, p.z);
       if (p.y <= ground) {
         p.y = ground;
         this.playerVY = 0;
@@ -1321,7 +1469,20 @@ export class GameScene {
   _blocked(x, z, y) {
     if (Math.hypot(x, z) > 42) return true; // edge of the world
     if (this._checkCollision(x, z)) return true;
-    return this.terrain.heightAt(x, z) - y > STEP_UP;
+    return this.groundAt(x, z) - y > STEP_UP;
+  }
+
+  // Bridges built by magic: walkable strips over the water, with their own height.
+  _walkwayAt(x, z) {
+    for (const w of this.walkways ?? []) {
+      if (w.circle ? Math.hypot(x - w.x, z - w.z) < w.r : x > w.x0 && x < w.x1 && Math.abs(z - w.z) < w.hw) return w;
+    }
+    return null;
+  }
+  groundAt(x, z) {
+    const w = this._walkwayAt(x, z);
+    const t = this.terrain.heightAt(x, z);
+    return w ? Math.max(t, w.y(x, z)) : t;
   }
 
   // Back to the fountain, with the companions.
@@ -1550,7 +1711,7 @@ export class GameScene {
     ctx.translate(-p.x, -p.z);
     ctx.drawImage(bg.canvas, -bg.half, -bg.half, bg.half * 2, bg.half * 2);
     // Things to mine (active ones only).
-    const colors = { iron: '#e8c49a', diamond: '#5af0e6', obsidian: '#9a6aff', wood: '#a0703a', wheat: '#f2d060', flower: '#ff7ab0', water: '#6ac0ff', crystal: '#c08aff', fire: '#ff8a3a', stone: '#c8c4be', cloth: '#ffffff' };
+    const colors = { spell: '#b08aff', iron: '#e8c49a', diamond: '#5af0e6', obsidian: '#9a6aff', wood: '#a0703a', wheat: '#f2d060', flower: '#ff7ab0', water: '#6ac0ff', crystal: '#c08aff', fire: '#ff8a3a', stone: '#c8c4be', cloth: '#ffffff' };
     for (const o of this.interactables) {
       if (!o.active) continue;
       ctx.fillStyle = colors[o.material] ?? '#ffd36a';
@@ -1689,6 +1850,7 @@ export class GameScene {
     const elapsed = this.clock.elapsedTime;
 
     this._updateDayNight(dt);
+    this._tickMagic(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

@@ -260,7 +260,7 @@ export class VillageBuilder {
       const z = cz + Math.sin(a) * 3.0;
       for (let k = 0; k < 3; k++) this.box(this.scene, 0.05, 0.6 + r() * 0.4, 0.05, this.mats.leavesDark, x + (r() - 0.5) * 0.3, 0.35, z + (r() - 0.5) * 0.3, { cast: false });
     }
-    this.ctx.collidables.push({ x: cx, z: cz, r: 3.2 });
+    this.ctx.collidables.push({ x: cx, z: cz, r: 3.2, water: true });
   }
 
   // Fenced wheat field next to the cottage.
