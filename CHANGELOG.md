@@ -27,5 +27,5 @@ Première version jouable d'**Empire des Mots / Spelling Empires**, un jeu d'ort
 
 ### Correctifs inclus
 - En écriture à la main, un « a » avec une petite queue ou une barre un peu longue était lu comme un « q » : réseau réentraîné, et entre deux lettres qui se ressemblent (a/q, i/l, n/h…) c'est le mot qui tranche.
-- Le point du « i » (ou un accent) posé un peu tard ne crée plus une lettre de trop : il corrige la lettre précédente.
+- En écriture à la main, une mauvaise lettre n'est plus écrite : l'enfant reste sur la même lettre jusqu'à ce qu'elle soit juste (« On dirait un X, essaie encore ! »). S'il manque juste le point ou l'accent, le dessin est gardé pour qu'il l'ajoute. Après 3 essais, le modèle grisé réapparaît et le jeu se montre plus tolérant.
 - Avec beaucoup d'objets dans l'inventaire, le bouton « Fabrication » sortait de l'écran : il reste maintenant toujours visible et l'inventaire passe sur plusieurs lignes.

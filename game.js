@@ -2,7 +2,7 @@ import { LANGUAGES, LEVELS, WORDS, UI, buildSentence } from './language-engine.j
 import { GameScene } from './scene.js';
 import { NPC_INFO, QUESTS, rollLoot, WORD_EMOJI } from './content.js';
 import { COSTUMES } from './characters.js';
-import { loadModel, recognize, lateMark, inkBox } from './handwriting.js';
+import { loadModel, recognize, inkBox } from './handwriting.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -584,7 +584,7 @@ function beginMine(mineObj) {
   stat.lastSeen = Date.now();
   saveProgress();
   $('#spell-title').textContent = `${emoji} ${t.mineTitle}`;
-  setTimeout(() => { hw.strokes = []; hw.current = null; $('#hw-alts')?.replaceChildren(); setInputMode(progress.inputMode ?? 'keys'); }, 0);
+  setTimeout(() => { hw.strokes = []; hw.current = null; hw.misses = 0; hw.forceGuide = false; hwFeedback(); $('#hw-alts')?.replaceChildren(); setInputMode(progress.inputMode ?? 'keys'); }, 0);
   $('#spell-instruction').textContent = t.mineInstruction;
   $('#spell-emoji').textContent = emoji;
   $('#spell-emoji').hidden = false;
@@ -751,7 +751,7 @@ function checkSpelling() {
   setSpellLocked(true);
   spellTilesEl.replaceChildren(...scoredTiles(guess, target));
   updateSpellAttempts();
-  recordAttempt(spellContext.word, guess, guess === target, spellContext.tries);
+  recordAttempt(spellContext.word, guess, guess === target, spellContext.tries + (spellContext.hwMissed ? 1 : 0));
   if (guess === target) handleSpellSuccess();
   else handleSpellFailure(target);
   saveProgress();
@@ -761,7 +761,7 @@ function handleSpellSuccess() {
   const { word, tries, type } = spellContext;
   spellContext.finished = true;
   const copied = !!spellContext.copyMode;
-  const firstTry = tries === 1 && !copied;
+  const firstTry = tries === 1 && !copied && !spellContext.hwMissed;
   const wordStr = word.word;
 
   if (copied) {
@@ -1681,7 +1681,7 @@ $('#fish-pull-btn')?.addEventListener('click', pullFish);
 
 /* ===== HANDWRITING MODE ===== */
 // Draw one letter at a time; the on-device neural network turns it into a typed letter.
-const hw = { strokes: [], current: null, timer: null, ready: false };
+const hw = { strokes: [], current: null, timer: null, ready: false, misses: 0, forceGuide: false };
 const hwCanvas = $('#hw-canvas');
 
 function setInputMode(mode) {
@@ -1718,7 +1718,7 @@ function redrawHw() {
   g.clearRect(0, 0, hwCanvas.width, hwCanvas.height);
   // Grey model letter to trace over (for younger children). It shows the next letter of the word.
   const expected = spellContext?.word?.word[spellInput.value.length];
-  if (expected && progress.traceGuide !== false && !isLocked) {
+  if (expected && (progress.traceGuide !== false || hw.forceGuide) && !isLocked) {
     const w = hwCanvas.width / dpr, h = hwCanvas.height / dpr;
     g.save();
     g.fillStyle = 'rgba(31, 42, 68, 0.2)';
@@ -1774,54 +1774,65 @@ const endStroke = () => {
 hwCanvas?.addEventListener('pointerup', endStroke);
 hwCanvas?.addEventListener('pointercancel', endStroke);
 
+// The letter is only written once it is the right one: a wrong letter is not typed, the child
+// tries again on the same letter. Letters that just miss a dot or an accent stay on the pad.
+function hwFeedback(text, kind = '') {
+  const label = $('#hw-label');
+  label.textContent = text ?? t.didYouMean;
+  label.classList.toggle('is-wrong', kind === 'wrong');
+  label.classList.toggle('is-close', kind === 'close');
+}
+function acceptHwLetter(letter) {
+  hw.strokes = [];
+  hw.misses = 0;
+  hw.forceGuide = false;
+  typeLetter(letter);
+  speakLetter(letter);
+  spellTilesEl.children[spellInput.value.length - 1]?.classList.add('tile-good');
+  hwFeedback();
+}
+// The drawing lacks only a mark the expected letter needs (e for é, a stick for i).
+function needsMark(got, expected) {
+  const base = expected.normalize('NFD')[0];
+  if (got === base && base !== expected) return true;
+  return (base === 'i' || base === 'j') && (got === 'l' || got === 'i');
+}
+
 async function recognizeDrawing() {
   if (!hw.strokes.length || isLocked) return;
   const strokes = hw.strokes;
-  hw.strokes = [];
-  // A dot or accent added after the letter was already read: fix that letter instead.
-  const prev = spellInput.value.slice(-1);
-  const fixed = Date.now() - hw.lastAt < 6000 ? lateMark(strokes, hw.lastBox, prev, lang) : null;
-  if (fixed) {
-    deleteLetter();
-    const exp = spellContext?.word?.word[spellInput.value.length];
-    typeLetter(fixed);
-    if (exp === fixed) { speakLetter(fixed); spellTilesEl.children[spellInput.value.length - 1]?.classList.add('tile-good'); }
-    hw.lastAt = 0;
-    $('#hw-alts').replaceChildren();
-    redrawHw();
-    return;
-  }
   const expected = spellContext?.word?.word[spellInput.value.length];
   const res = await recognize(strokes, lang, expected);
-  hw.lastBox = inkBox(strokes);
-  hw.lastAt = Date.now();
-  typeLetter(res.letter);
-  // Right letter: say its name and its sound, and make the tile glow.
-  if (expected && res.letter === expected) {
-    speakLetter(res.letter);
-    const tile = spellTilesEl.children[spellInput.value.length - 1];
-    tile?.classList.add('tile-good');
+  if (!expected) { hw.strokes = []; typeLetter(res.letter); redrawHw(); return; }
+  // After a few tries, a near miss of the network is enough (it may be reading a fine letter badly).
+  const lenient = hw.misses >= 3 && [res.letter, ...res.alternatives.slice(0, 2)].includes(expected);
+  if (res.letter === expected || lenient) {
+    acceptHwLetter(expected);
+  } else if (needsMark(res.letter, expected) && strokes.length <= 2) {
+    // Keep the ink: the dot or accent drawn next is added to it.
+    hwFeedback(t.hwAddMark, 'close');
+  } else {
+    hw.strokes = [];
+    hw.misses = (hw.misses ?? 0) + 1;
+    if (hw.misses >= 3) hw.forceGuide = true; // show the grey model even if it was turned off
+    if (spellContext && !spellContext.hwMissed) {
+      // Counted once per word in the parents' stats (as a misspelling, not a failed word).
+      spellContext.hwMissed = true;
+      const st = wordStat(spellContext.word);
+      st.misspellings = [`${spellInput.value}${res.letter}…`, ...st.misspellings].slice(0, 5);
+      saveProgress();
+    }
+    sfxError();
+    hwFeedback(t.hwTryAgain(res.letter.toUpperCase()), 'wrong');
+    const tile = spellTilesEl.children[spellInput.value.length];
+    if (tile) { tile.classList.remove('tile-shake'); void tile.offsetWidth; tile.classList.add('tile-shake'); }
   }
   redrawHw();
-  // One-tap corrections: replace the letter just written.
-  $('#hw-alts').replaceChildren(...res.alternatives.map((ch) => {
-    const b = el('button', 'key hw-alt', ch.toUpperCase());
-    b.type = 'button';
-    b.addEventListener('click', () => {
-      deleteLetter();
-      const exp = spellContext?.word?.word[spellInput.value.length];
-      typeLetter(ch);
-      if (exp === ch) speakLetter(ch);
-      $('#hw-alts').replaceChildren();
-      redrawHw();
-    });
-    return b;
-  }));
 }
 
 $('#hw-toggle')?.addEventListener('click', () => setInputMode(progress.inputMode === 'draw' ? 'keys' : 'draw'));
-$('#hw-clear')?.addEventListener('click', () => { hw.strokes = []; hw.current = null; clearTimeout(hw.timer); redrawHw(); });
-$('#hw-back')?.addEventListener('click', () => { hw.lastAt = 0; deleteLetter(); $('#hw-alts').replaceChildren(); redrawHw(); });
+$('#hw-clear')?.addEventListener('click', () => { hwFeedback(); hw.strokes = []; hw.current = null; clearTimeout(hw.timer); redrawHw(); });
+$('#hw-back')?.addEventListener('click', () => { hwFeedback(); deleteLetter(); $('#hw-alts').replaceChildren(); redrawHw(); });
 $('#hw-keyboard')?.addEventListener('click', () => setInputMode('keys'));
 $('#hw-guide')?.addEventListener('click', () => {
   progress.traceGuide = progress.traceGuide === false;
