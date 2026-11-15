@@ -2,6 +2,7 @@ import { LANGUAGES, LEVELS, WORDS, UI, buildSentence } from './language-engine.j
 import { GameScene } from './scene.js';
 import { NPC_INFO, QUESTS, rollLoot, WORD_EMOJI } from './content.js';
 import { COSTUMES } from './characters.js';
+import { loadModel, recognize } from './handwriting.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -580,6 +581,7 @@ function beginMine(mineObj) {
   stat.lastSeen = Date.now();
   saveProgress();
   $('#spell-title').textContent = `${emoji} ${t.mineTitle}`;
+  setTimeout(() => { hw.strokes = []; hw.current = null; $('#hw-alts')?.replaceChildren(); setInputMode(progress.inputMode ?? 'keys'); }, 0);
   $('#spell-instruction').textContent = t.mineInstruction;
   $('#spell-emoji').textContent = emoji;
   $('#spell-emoji').hidden = false;
@@ -1672,3 +1674,103 @@ $('#wardrobe-back-btn')?.addEventListener('click', () => showScreen(returnScreen
 $('#quest-give-btn')?.addEventListener('click', completeQuest);
 $('#quest-close-btn')?.addEventListener('click', () => { $('#quest-modal').hidden = true; });
 $('#fish-pull-btn')?.addEventListener('click', pullFish);
+
+
+/* ===== HANDWRITING MODE ===== */
+// Draw one letter at a time; the on-device neural network turns it into a typed letter.
+const hw = { strokes: [], current: null, timer: null, ready: false };
+const hwCanvas = $('#hw-canvas');
+
+function setInputMode(mode) {
+  progress.inputMode = mode;
+  saveProgress();
+  const drawing = mode === 'draw';
+  $('#hw-panel').hidden = !drawing;
+  $('#spell-keyboard').hidden = drawing;
+  $('#hw-toggle').textContent = drawing ? '⌨️' : '✏️';
+  if (drawing) {
+    sizeHwCanvas();
+    if (!hw.ready) {
+      $('#hw-hint').textContent = t.loadingModel;
+      loadModel().then(() => { hw.ready = true; $('#hw-hint').textContent = t.drawHint; });
+    }
+  }
+}
+
+function sizeHwCanvas() {
+  requestAnimationFrame(() => {
+    const r = hwCanvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    hwCanvas.width = Math.round(r.width * dpr);
+    hwCanvas.height = Math.round(r.height * dpr);
+    redrawHw();
+  });
+}
+
+function redrawHw() {
+  const g = hwCanvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, hwCanvas.width, hwCanvas.height);
+  g.strokeStyle = '#1f2a44'; g.lineWidth = 7; g.lineCap = 'round'; g.lineJoin = 'round';
+  for (const s of [...hw.strokes, ...(hw.current ? [hw.current] : [])]) {
+    g.beginPath();
+    g.moveTo(s[0][0], s[0][1]);
+    for (const [x, y] of s.slice(1)) g.lineTo(x, y);
+    if (s.length === 1) g.lineTo(s[0][0] + 0.5, s[0][1]);
+    g.stroke();
+  }
+  $('#hw-hint').hidden = hw.strokes.length > 0 || !!hw.current;
+}
+
+function hwPoint(e) {
+  const r = hwCanvas.getBoundingClientRect();
+  return [e.clientX - r.left, e.clientY - r.top];
+}
+
+hwCanvas?.addEventListener('pointerdown', (e) => {
+  if (isLocked || !hw.ready) return;
+  e.preventDefault();
+  hwCanvas.setPointerCapture(e.pointerId);
+  clearTimeout(hw.timer);
+  hw.current = [hwPoint(e)];
+  redrawHw();
+});
+hwCanvas?.addEventListener('pointermove', (e) => {
+  if (!hw.current) return;
+  e.preventDefault();
+  const p = hwPoint(e);
+  const last = hw.current[hw.current.length - 1];
+  if (Math.hypot(p[0] - last[0], p[1] - last[1]) > 1.5) { hw.current.push(p); redrawHw(); }
+});
+const endStroke = () => {
+  if (!hw.current) return;
+  hw.strokes.push(hw.current);
+  hw.current = null;
+  redrawHw();
+  // Recognise once the child pauses (time to add a dot or an accent first).
+  clearTimeout(hw.timer);
+  hw.timer = setTimeout(recognizeDrawing, 850);
+};
+hwCanvas?.addEventListener('pointerup', endStroke);
+hwCanvas?.addEventListener('pointercancel', endStroke);
+
+async function recognizeDrawing() {
+  if (!hw.strokes.length || isLocked) return;
+  const strokes = hw.strokes;
+  hw.strokes = [];
+  const res = await recognize(strokes, lang);
+  typeLetter(res.letter);
+  redrawHw();
+  // One-tap corrections: replace the letter just written.
+  $('#hw-alts').replaceChildren(...res.alternatives.map((ch) => {
+    const b = el('button', 'key hw-alt', ch.toUpperCase());
+    b.type = 'button';
+    b.addEventListener('click', () => { deleteLetter(); typeLetter(ch); $('#hw-alts').replaceChildren(); });
+    return b;
+  }));
+}
+
+$('#hw-toggle')?.addEventListener('click', () => setInputMode(progress.inputMode === 'draw' ? 'keys' : 'draw'));
+$('#hw-clear')?.addEventListener('click', () => { hw.strokes = []; hw.current = null; clearTimeout(hw.timer); redrawHw(); });
+$('#hw-back')?.addEventListener('click', () => { deleteLetter(); $('#hw-alts').replaceChildren(); });

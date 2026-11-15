@@ -166,6 +166,7 @@
               <div class="spell-hint-row">
                 <button class="btn btn-secondary btn-small" id="spell-listen-btn" type="button" data-i18n="listen">Listen</button>
                 <button class="btn btn-ghost btn-small" id="spell-slow-btn" type="button" data-i18n="slow">Slow</button>
+                <button class="btn btn-ghost btn-small hw-toggle" id="hw-toggle" type="button" aria-label="Write by hand">✏️</button>
                 <span class="spell-attempts" id="spell-attempts"></span>
               </div>
               <p class="note" id="speech-note" hidden data-i18n="speechNote">Your browser cannot read words aloud.</p>
@@ -179,6 +180,21 @@
                 <button class="btn btn-accent btn-wide" id="spell-continue-btn" type="button" hidden data-i18n="continue">Continue</button>
               </div>
               <div class="keyboard" id="spell-keyboard" aria-label="On-screen keyboard"></div>
+              <!-- Handwriting: draw one letter at a time -->
+              <div class="hw-panel" id="hw-panel" hidden>
+                <div class="hw-pad">
+                  <canvas id="hw-canvas" aria-label="Draw a letter"></canvas>
+                  <span class="hw-hint" id="hw-hint" data-i18n="drawHint">Write one letter here</span>
+                </div>
+                <div class="hw-side">
+                  <p class="hw-label" data-i18n="didYouMean">Not the right letter? Tap the right one:</p>
+                  <div class="hw-alts" id="hw-alts"></div>
+                  <div class="hw-buttons">
+                    <button class="btn btn-ghost btn-small" id="hw-clear" type="button" data-i18n="clearDrawing">Clear drawing</button>
+                    <button class="btn btn-ghost btn-small" id="hw-back" type="button">⌫</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>

@@ -75,6 +75,13 @@ export const QUESTS = {
 
 // What can be inside a treasure chest (weights).
 export const LOOT = [
+  // Basic materials (most common), so a chest always helps with the next recipe.
+  { w: 4, materials: { wood: 3 } },
+  { w: 3, materials: { stone: 2, iron: 1 } },
+  { w: 3, materials: { wheat: 2, water: 1 } },
+  { w: 3, materials: { fire: 2, wood: 1 } },
+  { w: 2, materials: { flower: 2, cloth: 1 } },
+  // Rare finds.
   { w: 3, materials: { diamond: 1 } },
   { w: 2, materials: { obsidian: 1 } },
   { w: 3, materials: { crystal: 2 } },
