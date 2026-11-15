@@ -55,13 +55,14 @@ const MATERIAL_FR = {
   water: 'eau', cloth: 'toile', flower: 'fleur', crystal: 'cristal', diamond: 'diamant', obsidian: 'obsidienne',
 };
 const TOOL_NAMES = { pickaxe: { en: 'a pickaxe', fr: 'une pioche' }, axe: { en: 'an axe', fr: 'une hache' }, scythe: { en: 'a scythe', fr: 'une faux' } };
+// Every house offers wood among its materials so the first tools are easy to make.
 const HOUSE_MATERIALS = {
-  forge: ['iron', 'fire', 'stone'],
-  shop: ['cloth', 'crystal', 'iron'],
-  tavern: ['wheat', 'water', 'fire'],
-  tower: ['crystal', 'flower', 'water'],
-  cottage: ['wood', 'flower', 'wheat'],
-  guild: ['stone', 'wood', 'cloth'],
+  forge: ['iron', 'fire', 'stone', 'wood'],
+  shop: ['cloth', 'crystal', 'iron', 'wood'],
+  tavern: ['wheat', 'water', 'fire', 'wood'],
+  tower: ['crystal', 'flower', 'water', 'wood'],
+  cottage: ['wood', 'flower', 'wheat', 'stone'],
+  guild: ['stone', 'wood', 'cloth', 'iron'],
 };
 const materialName = (id) => (lang === 'fr' ? MATERIAL_FR[id] : id);
 
@@ -179,8 +180,9 @@ function pickWord(levelId = 'easy') {
 }
 
 // Prefer a material that the remaining recipes still need, among those this building offers.
-function pickMaterial(houseType) {
-  const offered = HOUSE_MATERIALS[houseType] ?? ['wood', 'stone', 'iron'];
+function pickMaterial(houseType, exclude = []) {
+  const all = HOUSE_MATERIALS[houseType] ?? ['wood', 'stone', 'iron'];
+  const offered = all.filter((m) => !exclude.includes(m)).length ? all.filter((m) => !exclude.includes(m)) : all;
   const need = {};
   for (const item of CRAFTABLES) {
     if (game?.crafted.includes(item.id)) continue;
@@ -239,6 +241,40 @@ function sfxError() { playTone(200, 0.15, 'sawtooth', 0.08); playTone(150, 0.2, 
 function sfxStreak(n) { const b = 523 + n * 50; playTone(b, 0.08, 'triangle', 0.1); playTone(b * 1.25, 0.08, 'triangle', 0.1, 0.04); playTone(b * 1.5, 0.12, 'triangle', 0.1, 0.08); }
 function sfxVictory() { [523, 659, 784, 1047, 784, 1047, 1319].forEach((n, i) => playTone(n, 0.2, 'triangle', 0.15, i * 0.12)); }
 function sfxType() { playTone(800, 0.03, 'square', 0.04); }
+
+// Short filtered noise bursts: footsteps and blocks breaking (no background music).
+let noiseBuffer = null;
+function playNoise({ duration = 0.08, volume = 0.1, freq = 800, q = 1, type = 'bandpass', delay = 0 } = {}) {
+  if (!audioCtx) return;
+  if (!noiseBuffer) {
+    noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.5, audioCtx.sampleRate);
+    const d = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const src = audioCtx.createBufferSource();
+  src.buffer = noiseBuffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = type; filter.frequency.value = freq; filter.Q.value = q;
+  const gain = audioCtx.createGain();
+  const t0 = audioCtx.currentTime + delay;
+  gain.gain.setValueAtTime(volume, t0);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+  src.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+  src.start(t0, Math.random() * 0.3, duration + 0.02);
+}
+const STEP_SOUNDS = {
+  grass: { freq: 1400, q: 0.7, volume: 0.05, duration: 0.07 },
+  dirt: { freq: 700, q: 0.9, volume: 0.07, duration: 0.07 },
+  stone: { freq: 2200, q: 2.5, volume: 0.06, duration: 0.05 },
+  wood: { freq: 380, q: 3, volume: 0.1, duration: 0.09 },
+};
+function sfxStep(surface) { playNoise(STEP_SOUNDS[surface] ?? STEP_SOUNDS.grass); }
+function sfxBreak() {
+  playNoise({ freq: 500, q: 0.8, volume: 0.22, duration: 0.18 });
+  playNoise({ freq: 1600, q: 1.5, volume: 0.12, duration: 0.12, delay: 0.03 });
+  playTone(110, 0.15, 'triangle', 0.15);
+}
+function sfxJump() { playNoise({ freq: 900, q: 0.8, volume: 0.05, duration: 0.06 }); }
 
 /* ===== VISUAL EFFECTS ===== */
 
@@ -299,6 +335,25 @@ function setLanguage(newLang) {
   if (document.body.dataset.screen === 'parents') renderDashboard();
 }
 
+// The game's name drawn as falling grass blocks (the last word in gold).
+function renderTitleTiles() {
+  const h = $('.title-name');
+  if (!h) return;
+  let i = 0;
+  const words = t.title.split(' ');
+  h.setAttribute('aria-label', t.title);
+  h.replaceChildren(...words.map((w, wi) => {
+    const word = el('span', 'title-word');
+    for (const ch of w) {
+      const tile = el('span', `title-tile${wi === words.length - 1 ? ' is-gold' : ''}`, ch.toUpperCase());
+      tile.style.setProperty('--i', i++);
+      tile.setAttribute('aria-hidden', 'true');
+      word.append(tile);
+    }
+    return word;
+  }));
+}
+
 function applyUIText() {
   document.querySelectorAll('[data-i18n]').forEach((node) => {
     const key = node.dataset.i18n;
@@ -307,6 +362,7 @@ function applyUIText() {
   const langBtn = $('#lang-btn');
   if (langBtn) { langBtn.textContent = LANGUAGES[lang].flag; langBtn.setAttribute('aria-label', LANGUAGES[lang].label); }
   document.title = t.title;
+  renderTitleTiles();
   const brandName = $('.brand-name');
   if (brandName) brandName.textContent = t.title;
   const brandIcon = $('.brand-icon');
@@ -328,9 +384,15 @@ function showScreen(name) {
   for (const [key, node] of Object.entries(screens)) node.classList.toggle('is-active', key === name);
   document.body.dataset.screen = name;
   stopSpeaking();
+  if (scene3D) scene3D.mode = name === 'game' ? 'play' : name === 'menu' ? 'title' : 'paused';
   if (name === 'game') {
     if (!scene3D) init3DScene();
     requestAnimationFrame(() => scene3D?.resize());
+    // The hint fades after a few seconds so the world stays clear.
+    const hint = $('#map-instruction');
+    hint?.classList.remove('is-faded');
+    clearTimeout(showScreen.hintTimer);
+    showScreen.hintTimer = setTimeout(() => hint?.classList.add('is-faded'), 7000);
   }
   if (name === 'menu') renderMenu();
   if (name === 'trophy') renderTrophy();
@@ -344,13 +406,23 @@ function init3DScene() {
   scene3D = new GameScene(container);
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
+  scene3D.minimapCanvas = $('#minimap');
+  scene3D.onStep = (surface) => sfxStep(surface);
+  scene3D.onJump = () => sfxJump();
   refreshSpots();
 }
 
 // Each house spot shows (and gives) a material picked for the current recipes.
 function refreshSpots() {
+  const taken = {};
   for (const obj of scene3D?.interactables ?? []) {
-    const id = obj.kind === 'house' ? pickMaterial(obj.houseType) : obj.material;
+    let id = obj.material;
+    if (obj.kind === 'house') {
+      // Spots in the same house show different materials.
+      taken[obj.name] ??= [];
+      id = pickMaterial(obj.houseType, taken[obj.name]);
+      taken[obj.name].push(id);
+    }
     scene3D.setSpotMaterial(obj, id, spotLabel(obj, id));
   }
 }
@@ -425,6 +497,7 @@ function newGame(levelId = 'mixed', { keepSave = false } = {}) {
 function updateGameUI() {
   renderEquipBar();
   $('#total-stars').textContent = progress.stars;
+  if ($('#hud-stars')) $('#hud-stars').textContent = progress.stars;
   const matContainer = $('#materials-display');
   if (matContainer) {
     matContainer.replaceChildren(...Object.entries(game.materials).map(([mat, count]) => {
@@ -504,6 +577,10 @@ function hasParts(item) {
 function renderCraftMenu() {
   const container = $('#craft-list');
   if (!container) return;
+  const ready = CRAFTABLES.filter((item) => !game?.crafted.includes(item.id) && (item.requires ?? []).every((r) => game?.crafted.includes(r)) && hasParts(item)).length;
+  const badge = $('#craft-badge');
+  if (badge) { badge.hidden = ready === 0; badge.textContent = ready; }
+  $('#craft-open-btn')?.classList.toggle('has-ready', ready > 0);
   container.replaceChildren(...CRAFTABLES.map((item) => {
     const already = game?.crafted.includes(item.id);
     const reqOk = (item.requires ?? []).every((r) => game?.crafted.includes(r));
@@ -525,6 +602,7 @@ function renderCraftMenu() {
 
 function beginCraft(item) {
   initAudio();
+  $('#craft-drawer').hidden = true;
   // Materials were earned by spelling list words; crafting itself just builds the object.
   spellContext = { type: 'craft', item };
   finishCrafting();
@@ -647,6 +725,7 @@ function checkSpelling() {
 
 function handleSpellSuccess() {
   const { word, tries, type } = spellContext;
+  spellContext.finished = true;
   const copied = !!spellContext.copyMode;
   const firstTry = tries === 1 && !copied;
   const wordStr = word.word;
@@ -692,7 +771,12 @@ function handleSpellSuccess() {
     const amount = tool && tool.includes('_') ? 2 : 1;
     game.materials[material] = (game.materials[material] ?? 0) + amount;
     if (obj?.kind === 'node') scene3D?.depleteNode(obj);
-    else if (obj) { const next = pickMaterial(obj.houseType); scene3D?.setSpotMaterial(obj, next, spotLabel(obj, next)); }
+    else if (obj) {
+      const others = (scene3D?.interactables ?? []).filter((o) => o !== obj && o.name === obj.name).map((o) => o.material);
+      const next = pickMaterial(obj.houseType, others);
+      scene3D?.setSpotMaterial(obj, next, spotLabel(obj, next));
+    }
+    sfxBreak();
     saveGame();
     const sentence = buildSentence(wordStr, lang);
     spellResultEl.replaceChildren(
@@ -766,6 +850,7 @@ function handleSpellFailure(target) {
 
 function onSpellContinue() {
   const ctx = spellContext;
+  if (ctx && !ctx.finished) return;
   $('#spell-modal').hidden = true;
   spellResultEl.hidden = true;
   spellRevealEl.hidden = true;
@@ -831,6 +916,7 @@ function finishGame(won) {
 
 function renderMenu() {
   $('#total-stars').textContent = progress.stars;
+  if ($('#hud-stars')) $('#hud-stars').textContent = progress.stars;
   const newBtn = $('#new-game-btn');
   if (newBtn) {
     newBtn.textContent = progress.save ? t.newGame : t.play;
@@ -884,6 +970,7 @@ function renderHelp() {
 
 function renderTrophy() {
   $('#total-stars').textContent = progress.stars;
+  if ($('#hud-stars')) $('#hud-stars').textContent = progress.stars;
   $('#trophy-stars').textContent = progress.stars;
   $('#trophy-victories').textContent = progress.victories;
   $('#trophy-mastered').textContent = Object.keys(progress.mastered).length;
@@ -919,7 +1006,7 @@ function buildSpellKeyboard() {
   const rows = LANGUAGES[lang].keyRows.map((letters) => {
     const row = el('div', 'key-row');
     for (const letter of letters) {
-      const key = el('button', 'key', letter.toUpperCase());
+      const key = el('button', `key${/[aeiouyàâäéèêëîïôöùûü]/.test(letter) ? ' key-vowel' : ''}`, letter.toUpperCase());
       key.type = 'button'; key.setAttribute('aria-label', letter);
       key.addEventListener('click', () => typeLetter(letter));
       row.append(key);
@@ -1000,6 +1087,9 @@ function bindEvents() {
     newGame();
   });
   $('#reset-pos-btn')?.addEventListener('click', () => scene3D?.resetPosition());
+  $('#craft-open-btn')?.addEventListener('click', () => { renderCraftMenu(); $('#craft-drawer').hidden = false; });
+  $('#craft-close-btn')?.addEventListener('click', () => { $('#craft-drawer').hidden = true; });
+  $('#craft-drawer')?.addEventListener('click', (e) => { if (e.target.id === 'craft-drawer') $('#craft-drawer').hidden = true; });
   $('#trophy-btn').addEventListener('click', () => showScreen('trophy'));
   $('#trophy-back-btn').addEventListener('click', () => showScreen('menu'));
   $('#help-btn').addEventListener('click', () => showScreen('help'));
@@ -1028,7 +1118,8 @@ function bindEvents() {
     }
     if (event.key === 'Enter') {
       event.preventDefault();
-      if (isLocked) onSpellContinue(); else checkSpelling();
+      // Enter closes the window only once the word was spelled (or copied) correctly.
+      if (spellContext?.finished) onSpellContinue(); else if (!isLocked) checkSpelling();
       return;
     }
     if (!progress.keyboard || isLocked) return;
@@ -1078,8 +1169,14 @@ function init() {
   bindEvents();
   chooseVoice();
   applyUIText();
-  showScreen('menu');
   updateInteractHint();
+  // Show the loading screen first, then build the village (the heavy part) once it has painted.
+  $('#loading-text').textContent = t.loadingVillage;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    init3DScene();
+    showScreen('menu');
+    setTimeout(() => $('#loading').classList.add('is-done'), 250);
+  }));
 }
 
 init();
@@ -1311,4 +1408,4 @@ document.addEventListener('keydown', (event) => {
 });
 $('#use-btn')?.addEventListener('click', useEquipped);
 $('#jump-btn')?.addEventListener('pointerdown', (e) => { e.preventDefault(); scene3D?.jump(); });
-$('#continue-btn')?.addEventListener('click', continueGame);
+$('#continue-btn')?.addEventListener('click', () => { initAudio(); continueGame(); });

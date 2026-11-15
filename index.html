@@ -7,13 +7,29 @@
     <meta name="apple-mobile-web-app-title" content="Spelling Empires" />
     <meta name="description" content="Spelling Empires: explore a fantasy village, mine materials by spelling words, and craft magical objects. An RPG spelling adventure for young learners." />
     <title>Spelling Empires</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700;800&family=Alegreya:ital,wght@0,500;0,700;1,500&display=swap" />
     <link rel="stylesheet" href="./styles.css" />
     <!-- Lets the unbuilt source run directly on GitHub Pages (main / root): bare "three" imports resolve to vendor/three. Vite bundles its own copy. -->
     <script type="importmap">
       { "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/examples/jsm/" } }
     </script>
   </head>
-  <body data-screen="menu">
+  <body data-screen="loading">
+    <!-- The 3D world fills the screen behind every page. -->
+    <div id="canvas-container" class="world-layer"></div>
+    <div id="label-layer" class="label-layer" aria-hidden="true"></div>
+    <div class="title-vignette" aria-hidden="true"></div>
+
+    <!-- Loading screen, shown while the village is built. -->
+    <div id="loading" class="loading">
+      <div class="loading-inner">
+        <div class="loading-blocks" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <p class="loading-text" id="loading-text">Construction du village…</p>
+      </div>
+    </div>
+
     <div class="app">
       <header class="topbar">
         <button class="brand" id="brand-btn" type="button">
@@ -32,9 +48,10 @@
       <main class="main">
         <!-- MENU SCREEN -->
         <section class="screen" id="screen-menu" aria-label="Main menu">
-          <div class="hero">
-            <h1 data-i18n="title">Spelling Empires</h1>
-            <p class="lede" data-i18n="lede">Explore a fantasy village, mine materials by spelling words, and craft magical objects!</p>
+          <div class="title-card">
+            <p class="title-kicker" data-i18n="titleKicker">A tale of words and blocks</p>
+            <h1 class="title-name">Spelling Empires</h1>
+            <p class="title-story" data-i18n="titleStory">Every treasure in the village answers to a word.</p>
           </div>
           <div class="menu-actions">
             <button class="btn btn-accent btn-large" id="continue-btn" type="button" hidden>Continue</button>
@@ -48,18 +65,17 @@
 
         <!-- GAME SCREEN -->
         <section class="screen" id="screen-game" aria-label="RPG Village">
-          <div class="game-topbar">
-            <button class="btn btn-ghost btn-small" id="quit-btn" type="button" data-i18n="menu">Menu</button>
-            <button class="btn btn-ghost btn-small" id="reset-pos-btn" type="button">🏠 <span data-i18n="resetPosition">Back to the village</span></button>
+          <div class="hud-top">
+            <div class="hud-panel hud-left">
+              <button class="hud-btn" id="quit-btn" type="button" aria-label="Menu">☰</button>
+              <span class="hud-stars"><span class="star-icon" aria-hidden="true"></span><span id="hud-stars">0</span></span>
+              <button class="hud-btn" id="reset-pos-btn" type="button" aria-label="Back to the village">🏠</button>
+            </div>
             <div class="streak-display is-hidden" id="streak-display"></div>
-          </div>
-
-          <div class="map-instruction" id="map-instruction" data-i18n="exploreVillage">
-            Walk around the village and find glowing spots to mine materials!
-          </div>
-
-          <div class="map-container">
-            <div id="canvas-container" class="canvas-container"></div>
+            <div class="map-instruction" id="map-instruction" data-i18n="exploreVillage">
+              Walk around the village and find glowing spots to mine materials!
+            </div>
+            <canvas class="minimap" id="minimap" width="300" height="300" aria-label="Map"></canvas>
           </div>
 
           <!-- Interaction hint -->
@@ -81,17 +97,22 @@
             </div>
           </div>
 
-          <!-- Inventory: between the game and the crafting quests -->
-          <div class="inventory-panel" id="inventory-panel">
-            <h3 data-i18n="inventory">Inventory</h3>
+          <!-- Inventory bar along the bottom of the game screen -->
+          <div class="hud-panel inventory-bar" id="inventory-panel">
             <div class="materials-display" id="materials-display"></div>
             <div class="equip-bar" id="equip-bar" hidden></div>
+            <button class="craft-open-btn" id="craft-open-btn" type="button">⚒️ <span data-i18n="craftMenu">Crafting</span> <span class="craft-badge" id="craft-badge" hidden>0</span></button>
           </div>
 
-          <!-- Crafting menu -->
-          <div class="craft-panel" id="craft-panel">
-            <h3 data-i18n="craftMenu">Crafting</h3>
-            <div class="craft-list" id="craft-list"></div>
+          <!-- Crafting drawer -->
+          <div class="craft-drawer" id="craft-drawer" hidden>
+            <div class="craft-panel" id="craft-panel">
+              <div class="craft-head">
+                <h3 data-i18n="craftMenu">Crafting</h3>
+                <button class="hud-btn" id="craft-close-btn" type="button" aria-label="Close">✕</button>
+              </div>
+              <div class="craft-list" id="craft-list"></div>
+            </div>
           </div>
 
           <!-- SPELLING MODAL -->

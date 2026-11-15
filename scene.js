@@ -88,6 +88,9 @@ export class GameScene {
     this.interiorFactor = 0;
     this.activeHouse = null;
     this.camTarget = new THREE.Vector3(0, 0.6, 4);
+    // 'title' (camera slowly circles the village behind the title screen), 'play', or 'paused'.
+    this.mode = 'title';
+    this.labelLayer = document.getElementById('label-layer');
 
     this._initRenderer();
     this._initScene();
@@ -120,7 +123,7 @@ export class GameScene {
   _initScene() {
     this.scene = new THREE.Scene();
     this.scene.background = skyTexture();
-    this.scene.fog = new THREE.Fog(0xcfe0e4, 40, 85);
+    this.scene.fog = new THREE.Fog(0xcfe0e4, 48, 95);
   }
 
   _initCamera() {
@@ -166,6 +169,7 @@ export class GameScene {
     this._buildHouse(-13, 7, 0, 'tavern', 15, 5.8, 11, COLORS.roofGreen, 'tavern', {
       wallH: 3.0,
       windows: { back: [], left: [], right: [-2.2, 2.2], front: [-4.6, 4.6] },
+      spots: [[0, 0], [-1.6, 3.4], [4.4, -2.5]],
     });
     this._buildHouse(12, 6, 0, 'tower', 5, 8, 4, 0x5544aa, 'tower', { roof: 'pyramid', wallH: 4.6 });
     this._buildHouse(0, 14, 0, 'cottage', 6, 4, 4, COLORS.roof, 'cottage');
@@ -338,15 +342,20 @@ export class GameScene {
 
     // Mining spot in the middle of the room: a glowing rune on the floor with the
     // material it gives spinning above it (tap it to mine).
-    const spotMat = new THREE.MeshStandardMaterial({ color: 0xffd36a, emissive: 0xffaa33, emissiveIntensity: 0.8, transparent: true, opacity: 0.85 });
-    const spot = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 6, 24), spotMat);
-    spot.rotation.x = -Math.PI / 2;
-    spot.position.set(0, 0.16, 0);
-    group.add(spot);
-    this._addInteractable({
-      kind: 'house', name, houseType: type, mesh: spot, glow: spotMat,
-      worldPos: new THREE.Vector3(x, 0.18, z), iconY: 1.25, reach: 1.6,
-    });
+    // Several spots per house, each showing a different material.
+    const spots = opts.spots ?? [[0, 0], [-halfW * 0.5, -halfD * 0.35], [halfW * 0.5, halfD * 0.3]];
+    for (const [sx, sz] of spots) {
+      const spotMat = new THREE.MeshStandardMaterial({ color: 0xffd36a, emissive: 0xffaa33, emissiveIntensity: 0.8, transparent: true, opacity: 0.85 });
+      const spot = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.05, 6, 24), spotMat);
+      spot.rotation.x = -Math.PI / 2;
+      spot.position.set(sx, 0.16, sz);
+      group.add(spot);
+      const wp = new THREE.Vector3(sx, 0.18, sz).applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation).add(new THREE.Vector3(x, 0, z));
+      this._addInteractable({
+        kind: 'house', name, houseType: type, mesh: spot, glow: spotMat,
+        worldPos: wp, iconY: 1.25, reach: 1.4,
+      });
+    }
 
     // Collision: wall segments only, with a gap for the door.
     this.collidables.push({ type: 'houseWall', x, z, rotation, halfW, halfD, doorHalf: doorW / 2 });
@@ -378,12 +387,13 @@ export class GameScene {
     obj.iconHolder.clear();
     obj.iconHolder.add(buildMaterialIcon(materialId));
     if (label) {
-      obj.label?.material.map.dispose();
-      obj.label?.material.dispose();
-      if (obj.label) this.scene.remove(obj.label);
-      obj.label = makeLabelSprite(label);
-      obj.label.userData.dynamic = true;
-      this.scene.add(obj.label);
+      // Real HTML text positioned over the canvas: always sharp, any screen density.
+      if (!obj.labelEl) {
+        obj.labelEl = document.createElement('div');
+        obj.labelEl.className = 'spot-label';
+        this.labelLayer?.appendChild(obj.labelEl);
+      }
+      obj.labelEl.textContent = label;
     }
   }
 
@@ -1092,7 +1102,13 @@ export class GameScene {
       const targetAngle = Math.atan2(mx, mz);
       this.player.rotation.y = this._lerpAngle(this.player.rotation.y, targetAngle, 0.15);
       this.player.userData.isMoving = true;
+      const stepBefore = Math.floor(this.player.userData.walkPhase / Math.PI);
       this.player.userData.walkPhase += dt * 8;
+      if (Math.floor(this.player.userData.walkPhase / Math.PI) !== stepBefore && this.onGround) {
+        const inside = this.activeHouse && this.interiorFactor > 0.5;
+        const onPath = (this.village.paths ?? []).some((q) => Math.abs(this.player.position.x - q.x) < q.w / 2 && Math.abs(this.player.position.z - q.z) < q.d / 2);
+        this.onStep?.(inside ? 'wood' : this.player.position.y > 0.2 ? 'stone' : onPath ? 'dirt' : 'grass');
+      }
     } else {
       this.player.userData.isMoving = false;
     }
@@ -1169,6 +1185,7 @@ export class GameScene {
     if (!this.onGround) return false;
     this.playerVY = 8.2;
     this.onGround = false;
+    this.onJump?.();
     return true;
   }
 
@@ -1212,7 +1229,9 @@ export class GameScene {
     // Inside a house the camera moves closer and frames the room rather than the player.
     const tx = h ? lerp(p.x, h.center.x, 0.55 * f) : p.x;
     const tz = h ? lerp(p.z, h.center.z, 0.55 * f) : p.z;
-    const dist = lerp(19, h ? Math.max(h.w, h.d) * 1.15 + 1.5 : 16, f);
+    // Portrait screens see less width: step back a little.
+    const portrait = this.camera.aspect < 1 ? 1.3 : 1;
+    const dist = lerp(19, h ? Math.max(h.w, h.d) * 1.15 + 1.5 : 16, f) * portrait;
     const elev = lerp(0.92, 0.98, f);
     const k = 1 - Math.pow(0.001, dt);
     this.camTarget.x += (tx - this.camTarget.x) * k;
@@ -1307,7 +1326,7 @@ export class GameScene {
     const p = this.player.position;
     for (const obj of this.interactables) {
       if (!obj.active) {
-        if (obj.label) obj.label.visible = false;
+        if (obj.labelEl) obj.labelEl.style.display = 'none';
         if (t > obj.respawnAt) {
           obj.active = true;
           obj.iconHolder.visible = true;
@@ -1320,16 +1339,100 @@ export class GameScene {
       const holder = obj.iconHolder;
       holder.rotation.y = t * 1.6 + obj.worldPos.x;
       holder.position.y = obj.worldPos.y + obj.iconY + Math.sin(t * 2.2 + obj.worldPos.z) * 0.12;
-      if (obj.label) {
-        obj.label.visible = true;
-        obj.label.position.set(holder.position.x, holder.position.y - 0.95, holder.position.z);
-      }
+      if (obj.labelEl) this._placeLabel(obj, holder.position);
       const dist = Math.hypot(obj.worldPos.x - p.x, obj.worldPos.z - p.z);
       const near = dist < obj.reach;
       holder.scale.setScalar(holder.scale.x + ((near ? 1.3 : 1) - holder.scale.x) * 0.15);
       if (near && dist < minDist) { minDist = dist; this.nearbyInteractable = obj; }
+      if (obj.labelEl) obj.labelEl.classList.toggle('is-near', near);
       if (obj.glow) obj.glow.emissiveIntensity = 0.6 + Math.sin(t * 3) * 0.3;
     }
+  }
+
+  _placeLabel(obj, pos) {
+    const v = (this._tmpV ??= new THREE.Vector3()).set(pos.x, pos.y - 0.95, pos.z).project(this.camera);
+    const el = obj.labelEl;
+    const w = this.container.clientWidth;
+    const h = this.container.clientHeight;
+    if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1) { el.style.display = 'none'; return; }
+    // Far-away labels shrink and fade a little so the screen stays readable.
+    const d = Math.hypot(obj.worldPos.x - this.player.position.x, obj.worldPos.z - this.player.position.z);
+    const s = Math.max(0.7, Math.min(1.1, 1.2 - d / 40)) * (obj.labelEl.classList.contains('is-near') ? 1.15 : 1);
+    el.style.display = '';
+    el.style.opacity = d > 26 ? '0.75' : '1';
+    el.style.transform = `translate(${((v.x + 1) / 2) * w}px, ${((1 - v.y) / 2) * h}px) translate(-50%, -50%) scale(${s.toFixed(2)})`;
+  }
+
+  // Minimap: north turned to match the camera, centred on the hero.
+  drawMinimap(canvas) {
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const R = 34; // world units from centre to edge
+    if (!this._mapBg) this._mapBg = this._buildMinimapBackground();
+    const bg = this._mapBg;
+    const p = this.player.position;
+    ctx.save();
+    ctx.clearRect(0, 0, W, W);
+    ctx.beginPath(); ctx.arc(W / 2, W / 2, W / 2, 0, Math.PI * 2); ctx.clip();
+    ctx.translate(W / 2, W / 2);
+    ctx.rotate(CAM_YAW); // camera forward points up on the map
+    const k = (W / 2) / R;
+    ctx.scale(k, k);
+    ctx.translate(-p.x, -p.z);
+    ctx.drawImage(bg.canvas, -bg.half, -bg.half, bg.half * 2, bg.half * 2);
+    // Things to mine (active ones only).
+    const colors = { iron: '#e8c49a', diamond: '#5af0e6', obsidian: '#9a6aff', wood: '#a0703a', wheat: '#f2d060', flower: '#ff7ab0', water: '#6ac0ff', crystal: '#c08aff', fire: '#ff8a3a', stone: '#c8c4be', cloth: '#ffffff' };
+    for (const o of this.interactables) {
+      if (!o.active) continue;
+      ctx.fillStyle = colors[o.material] ?? '#ffd36a';
+      ctx.beginPath(); ctx.arc(o.worldPos.x, o.worldPos.z, o.kind === 'house' ? 0.9 : 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 0.3; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.stroke();
+    }
+    for (const c of this.companions) {
+      ctx.fillStyle = '#ffe9b0';
+      ctx.beginPath(); ctx.arc(c.mesh.position.x, c.mesh.position.z, 0.7, 0, Math.PI * 2); ctx.fill();
+    }
+    // Hero arrow.
+    ctx.translate(p.x, p.z);
+    ctx.rotate(-this.player.rotation.y);
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1f2a44'; ctx.lineWidth = 0.4;
+    ctx.beginPath(); ctx.moveTo(0, 2.2); ctx.lineTo(1.4, -1.4); ctx.lineTo(0, -0.6); ctx.lineTo(-1.4, -1.4); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
+  _buildMinimapBackground() {
+    const half = 46;
+    const px = 4; // pixels per world unit
+    const c = document.createElement('canvas');
+    c.width = c.height = half * 2 * px;
+    const g = c.getContext('2d');
+    g.scale(px, px);
+    g.translate(half, half);
+    // Terrain shading by height.
+    for (let x = -half; x < half; x++) {
+      for (let z = -half; z < half; z++) {
+        const h = this.terrain.heightAt(x + 0.5, z + 0.5);
+        const l = 34 + Math.min(18, h * 4);
+        g.fillStyle = Math.hypot(x - 22, z + 22) < 9 && h > 0.4 ? `hsl(30, 6%, ${l + 10}%)` : `hsl(100, 38%, ${l}%)`;
+        g.fillRect(x, z, 1, 1);
+      }
+    }
+    for (const pth of this.village.paths ?? []) {
+      g.fillStyle = '#b8945e';
+      g.fillRect(pth.x - pth.w / 2, pth.z - pth.d / 2, pth.w, pth.d);
+    }
+    g.fillStyle = '#4a9ad8';
+    g.beginPath(); g.arc(-16, -16, 3.2, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(0, 0, 1.6, 0, Math.PI * 2); g.fill();
+    const roofs = { tavern: '#3f7a44', forge: '#4a4e58', shop: '#3e5f98', tower: '#6a4aa8', cottage: '#c9a24a', guild: '#6a4428' };
+    for (const h of this.houses) {
+      g.fillStyle = roofs[h.type] ?? '#a8402e';
+      g.fillRect(h.center.x - h.w / 2, h.center.z - h.d / 2, h.w, h.d);
+      g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 0.3;
+      g.strokeRect(h.center.x - h.w / 2, h.center.z - h.d / 2, h.w, h.d);
+    }
+    return { canvas: c, half };
   }
 
   getNearbyInteractable() {
@@ -1382,11 +1485,23 @@ export class GameScene {
     this.animationId = requestAnimationFrame(() => this._animate());
     const rawDt = this.clock.getDelta();
     const dt = Math.min(rawDt, 0.05);
+    if (this.mode === 'paused') return; // a page covers the world: don't spend battery
     this.quality?.tick(rawDt);
     const elapsed = this.clock.elapsedTime;
 
-    this._updatePlayer(dt);
-    this._updateCamera(dt);
+    if (this.mode === 'play') {
+      this._updatePlayer(dt);
+      this._updateCamera(dt);
+    } else {
+      // Title screen: slow orbit around the village at dusk.
+      const a = elapsed * 0.05;
+      this.camera.position.set(Math.sin(a) * 27, 16, Math.cos(a) * 27);
+      this.camera.lookAt(0, 1.5, 0);
+    }
+    if (this.mode === 'play' && this.minimapCanvas && (this._mapT = (this._mapT ?? 0) + dt) > 0.12) {
+      this._mapT = 0;
+      this.drawMinimap(this.minimapCanvas);
+    }
     this._updateCutaway(dt);
     this._updateInteractables();
 
