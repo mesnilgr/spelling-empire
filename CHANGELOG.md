@@ -8,7 +8,7 @@ Première version jouable d'**Empire des Mots / Spelling Empires**, un jeu d'ort
 - Village en blocs avec 6 bâtiments à explorer (vue en coupe quand on entre), collines, carrière, mare et forêt.
 - Chaque point de minage montre le matériau qu'il donne ; on le touche, le héros y va, on écoute le mot et on l'écrit.
 - Difficulté intégrée au monde : maisons = niveau 1, dehors = niveau 2, diamant et obsidienne = niveau 3.
-- 18 objets à fabriquer (outils, torche, lanterne, canne à pêche, baguette, potion, pain, maison, bateau, outils en diamant et en obsidienne), utilisables avec un bouton.
+- 16 objets à fabriquer (outils, torche, lanterne, canne à pêche, baguette, potion, pain, maison, bateau, outils en diamant et en obsidienne), utilisables avec un bouton.
 - Coffres au trésor, cycle jour / nuit avec champignons lumineux, pêche, quêtes de 5 villageois, album des mots, garde-robe de 9 tenues.
 - Saut, retour au village, minicarte, sauvegarde automatique de la partie.
 
