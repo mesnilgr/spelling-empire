@@ -492,7 +492,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (obj.kind === 'sign' || obj.kind === 'mimot' || obj.kind === 'page' || obj.kind === 'travel') continue;
+    else if (obj.kind === 'sign' || obj.kind === 'mimot' || obj.kind === 'page' || obj.kind === 'travel' || obj.kind === 'book') continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -628,6 +628,14 @@ function interactWith(obj) {
     if (storyAt(id)) playScene(id, () => advanceStory(id)); else playScene(`${id}Idle`);
     return;
   }
+  if (obj.kind === 'book' || (obj.kind === 'npc' && obj.npcId === 'alaricTower')) {
+    if (storyAt('readBook')) playScene('readBook', () => advanceStory('readBook')); else toast(t.bookLocked);
+    return;
+  }
+  if (obj.kind === 'npc' && obj.npcId === 'alaricIsland') {
+    if (storyAt('finale')) playScene('finale', () => { advanceStory('finale'); showEnding(); });
+    return;
+  }
   if (obj.kind === 'npc') { openQuest(obj); return; }
   if (obj.kind === 'bed') { goToSleep(); return; }
   if (obj.kind === 'circle') {
@@ -749,8 +757,25 @@ function showDialogLine() {
     q.then?.();
     return;
   }
-  const [who, text] = line;
+  const [who, text, choices] = line;
   const sp = SPEAKERS[who] ?? SPEAKERS.narrator;
+  const box = $('#dialog-choices');
+  if (who === 'choice' && choices) {
+    box.replaceChildren(...choices.map((c) => {
+      const b = el('button', 'btn btn-primary', c.label[lang] ?? c.label.fr);
+      b.type = 'button';
+      b.addEventListener('click', () => {
+        box.hidden = true;
+        $('#dialog-next').hidden = false;
+        game.story.ending = c.scene;
+        q.lines = [...(SCENES[c.scene] ?? []), ...q.lines];
+        showDialogLine();
+      });
+      return b;
+    }));
+    box.hidden = false;
+    $('#dialog-next').hidden = true;
+  } else { box.hidden = true; $('#dialog-next').hidden = false; }
   $('#dialog-portrait').textContent = sp.emoji;
   $('#dialog-name').textContent = sp.name[lang] ?? sp.name.fr;
   $('#dialog-text').textContent = text;
@@ -777,6 +802,8 @@ function objectivePos() {
   return ({
     forestSign: () => travelAt('forest'), forestBridge: () => circleAt('pont-foret'), forester: () => npcAt('forester'), forestMimots: () => mimotIn('forest'),
     marshSign: () => travelAt('marsh'), marshFog: () => circleAt('vent-marais'), fisher: () => npcAt('fisher'), marshFire: () => circleAt('feu-marais'), marshMimots: () => mimotIn('marsh'),
+    mountainSign: () => travelAt('mountain'), mountainStairs: () => circleAt('pierre-montagne'), mountainMimots: () => mimotIn('mountain'), readBook: () => scene3D.bookObj?.worldPos,
+    coastSign: () => travelAt('coast'), lighthouse: () => circleAt('lumiere-phare'), islandBridge: () => circleAt('pont-ile'), bookMimots: () => mimotIn('book'), finale: () => npcAt('alaricIsland'),
   })[o.id]?.() ?? null;
 }
 function updateObjectiveUI() {
@@ -833,9 +860,26 @@ function applyStoryState() {
     setTravelSignText(o, fixed);
     scene3D.setSpotMaterial(o, fixed ? 'talk' : 'talk', fixed ? '🧭 ' + (t.placeNames[o.region] ?? o.region) : '🪧 ?');
   }
+  // Alaric: gone from the village once he is found out, at his tower, then on the paper island.
+  scene3D.setNpcVisible('mage', !storyPast('page3') || storyPast('finale'));
+  scene3D.setNpcVisible('alaricTower', storyAt('readBook'));
+  scene3D.setNpcVisible('alaricIsland', storyPast('islandBridge') && !storyPast('finale'));
+  if (scene3D.bookObj) { scene3D.setStoryActive(scene3D.bookObj, storyAt('readBook')); if (storyAt('readBook')) scene3D.setSpotMaterial(scene3D.bookObj, 'talk', '📖 ?'); }
+  for (const id of ['alaricTower', 'alaricIsland']) { const o = scene3D.interactables.find((i) => i.kind === 'npc' && i.npcId === id); if (o?.active) scene3D.setSpotMaterial(o, 'talk', NPC_INFO[id]?.name[lang] ?? 'Alaric'); }
   refreshCircles();
   updateObjectiveUI();
   updateMapPins();
+}
+
+function showEnding() {
+  const st = game.story;
+  playScene('ending', () => {
+    $('#end-title').textContent = t.theEnd;
+    $('#end-stats').textContent = t.endStats(Object.keys(progress.wordStats ?? {}).length, st.mimots.length, progress.stars);
+    $('#end-modal').hidden = false;
+    for (let i = 0; i < 6; i++) setTimeout(() => { const p = scene3D.player.position; scene3D.particleBurst({ x: p.x + (Math.random() - 0.5) * 6, y: p.y + 3 + Math.random() * 2, z: p.z + (Math.random() - 0.5) * 6 }, ['#ffd36a', '#b08aff', '#6ad0ff', '#ff7ab0'][i % 4], 30); }, i * 350);
+    sfxVictory();
+  });
 }
 
 function beginSign(obj) {
@@ -860,7 +904,7 @@ function setTravelSignText(o, fixed) {
 function travelWord(region) {
   const T = TRAVEL[region], age = progress.age ?? 6;
   const w = age <= 5 ? T.word[5] : age === 6 ? T.word[6] : T.word[7];
-  const names = { f: 'èfe', m: 'ème' };
+  const names = { f: 'èfe', m: 'ème', p: 'pé' };
   return w.length === 1 ? { word: w, level: 'story', say: `La lettre ${names[w] ?? w}… comme dans ${T.word[7]}.` } : { word: w, level: 'story', say: `${w}.` };
 }
 function useTravelSign(o) {
@@ -1229,7 +1273,7 @@ function handleSpellSuccess() {
     game.spells ??= {};
     const key = spellContext.circle?.cid ?? sp.id;
     game.spells[key] = power;
-    const hook = { 'pont-foret': 'forestBridge', 'vent-marais': 'marshFog', 'feu-marais': 'marshFire' }[key];
+    const hook = { 'pont-foret': 'forestBridge', 'vent-marais': 'marshFog', 'feu-marais': 'marshFire', 'pierre-montagne': 'mountainStairs', 'lumiere-phare': 'lighthouse', 'pont-ile': 'islandBridge' }[key];
     if (hook) spellContext.after = () => { if (storyAt(hook)) playScene(hook, () => advanceStory(hook)); };
     let extra = '';
     if (sp.id === 'pluie') { game.materials.wheat = (game.materials.wheat ?? 0) + 1; extra = `${MATERIAL_EMOJI.wheat} ${t.gotMaterial}: ${materialName('wheat')}`; }
@@ -1547,6 +1591,7 @@ function bindEvents() {
   $('#reset-pos-btn')?.addEventListener('click', () => scene3D?.resetPosition());
   $('#dialog-next')?.addEventListener('click', () => showDialogLine());
   $('#travel-close')?.addEventListener('click', () => { $('#travel-modal').hidden = true; });
+  $('#end-close')?.addEventListener('click', () => { $('#end-modal').hidden = true; });
   $('#dialog-repeat')?.addEventListener('click', () => speak($('#dialog-text').textContent, 0.85));
   $('#grimoire-btn')?.addEventListener('click', () => { renderGrimoire(); $('#grimoire-modal').hidden = false; });
   $('#grimoire-close')?.addEventListener('click', () => { $('#grimoire-modal').hidden = true; });
@@ -1656,11 +1701,39 @@ function dashMessage(text) {
   msg.hidden = !text;
 }
 
+// Mastery per sound family: how often words with that pattern were spelled right.
+const FAMILIES = [
+  ['ch', /ch/, 'chat, vache'], ['ou', /ou/, 'loup, mouton'], ['on / om', /o[nm]/, 'cochon, bonbon'],
+  ['an / en', /[ae][nm]/, 'maman, enfant'], ['in / ain / ein', /[aei]?i[nm]/, 'lapin, pain'], ['au / eau', /au/, 'auto, bateau'],
+  ['oi', /oi/, 'roi, étoile'], ['gn', /gn/, 'montagne'], ['e muet final', /e$/, 'tomate, école'],
+  ['lettres muettes', /[stdxp]$/, 'loup, escargot'], ['consonnes doubles', /(ss|ll|tt|mm|nn|pp|rr|ff)/, 'poisson, ballon'],
+  ['accents', /[éèêàùâîôûç]/, 'vélo, forêt, garçon'],
+];
+function renderFamilies(stats) {
+  const box = $('#dash-families');
+  if (!box) return;
+  const ch = game?.story ? chapterDef() : progress.save?.story ? CHAPTERS.find((c) => c.id === progress.save.story.chapter) : null;
+  $('#dash-chapter').textContent = ch ? t.chapterNow(ch.title[lang] ?? ch.title.fr) : '';
+  const fr = stats.filter((s) => s.lang === 'fr' && s.word.length > 2 && s.correct + s.wrong > 0);
+  box.replaceChildren(...FAMILIES.map(([name, re, ex]) => {
+    const ws = fr.filter((s) => re.test(s.word));
+    const tries = ws.reduce((n, s) => n + s.correct + s.wrong, 0);
+    const ok = ws.reduce((n, s) => n + s.firstTry, 0);
+    const pct = tries ? Math.round((ok / tries) * 100) : null;
+    const row = el('div', 'fam-row');
+    const label = el('div', '', name); label.append(el('span', 'fam-ex', ex));
+    const bar = el('div', 'fam-bar'); const fill = el('span'); fill.style.width = `${pct ?? 0}%`; bar.append(fill);
+    row.append(label, bar, el('div', 'fam-val', pct === null ? t.familyNone : `${pct} % · ${t.familyWords(ws.length)}`));
+    return row;
+  }));
+}
+
 function renderDashboard() {
   ageButtons($('#dash-age'), (a) => { setAge(a); renderDashboard(); });
   const startLevel = LEVELS[lang].find((l) => l.id === levelAt(0));
   $('#dash-age-note').textContent = progress.age ? t.ageNote(progress.age, startLevel?.name ?? '') : '';
   const stats = Object.values(progress.wordStats ?? {});
+  renderFamilies(stats);
   const seen = stats.filter((s) => s.seen > 0 || s.correct + s.wrong > 0);
   const attempts = stats.reduce((n, s) => n + s.correct + s.wrong, 0);
   const correct = stats.reduce((n, s) => n + s.correct, 0);

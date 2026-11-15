@@ -5,6 +5,7 @@
 export const SPEAKERS = {
   narrator: { emoji: '📜', name: { fr: 'Le conteur', en: 'Storyteller' } },
   mage: { emoji: '🧙', name: { fr: 'Alaric le mage', en: 'Alaric the mage' } },
+  choice: { emoji: '💭', name: { fr: 'À toi de choisir', en: 'Your choice' } },
   mimot: { emoji: '🐣', name: { fr: 'Le Mimot', en: 'The Mimot' } },
   page: { emoji: '📄', name: { fr: 'La page arrachée', en: 'The torn page' } },
   forester: { emoji: '🪓', name: { fr: 'Sylvain le forestier', en: 'Sylvain the forester' } },
@@ -89,7 +90,61 @@ export const SCENES = {
     ['page', '« … Gaspard, Rosa, Lili, la fontaine… Je ne veux oublier personne. Alors j’emprunte les mots, un par un, et je les range dans mon livre. Alaric. »'],
     ['narrator', 'Alaric ! C’est lui qui a écrit toutes ces pages…'],
     ['narrator', 'Le vieux mage perd la mémoire. Il prend les mots du village pour ne pas les oublier.'],
-    ['narrator', 'Il n’est pas méchant : il a peur. Il faut l’aider… La suite, dans la montagne !'],
+    ['narrator', 'Il n’est pas méchant : il a peur. Il faut l’aider… Sa tour est en haut de la montagne, au nord.'],
+  ],
+  mountainSign: [
+    ['narrator', 'Le panneau de la montagne est réparé ! Tout en haut, on voit le toit violet de la tour d’Alaric.'],
+    ['narrator', 'Une falaise entoure le sommet… Ton grimoire connaît un nouveau sort : la Pierre !'],
+  ],
+  mountainStairs: [
+    ['narrator', 'Crac, crac, crac ! Un escalier de pierre monte jusqu’au sommet.'],
+    ['narrator', 'Deux Mimots jouent dans la neige, là-haut.'],
+  ],
+  mountainMimots: [
+    ['narrator', 'Les Mimots de la montagne sont apprivoisés. Sous le toit de la tour, un grand livre brille…'],
+  ],
+  readBook: [
+    ['narrator', 'Le grand livre est ouvert. Ses pages bougent toutes seules… Des petits Mimots courent entre les lignes !'],
+    ['mage', 'Tu as trouvé mon livre… Je suis désolé, mon petit.'],
+    ['mage', 'J’oublie tout : les noms, les chemins, même le mot « fontaine ». Alors j’ai rangé les mots ici, pour les garder.'],
+    ['mage', 'Mais dans le livre, les mots sont devenus vivants. Ils sont heureux ensemble… et le village s’est vidé.'],
+    ['mage', 'Une page du livre s’est envolée jusqu’à la mer. Les derniers Mimots s’y cachent. Viens, je t’attendrai là-bas.'],
+  ],
+  coastSign: [
+    ['narrator', 'Le panneau de la plage est réparé ! Le phare est éteint, et la mer est sombre.'],
+    ['narrator', 'Le sort de Lumière pourrait rallumer le phare…'],
+  ],
+  lighthouse: [
+    ['narrator', 'Le phare brille ! Sa lumière montre une île étrange, toute blanche, couverte de lettres : la page du livre !'],
+    ['narrator', 'Un ponton s’avance vers elle. Il manque juste un pont…'],
+  ],
+  islandBridge: [
+    ['narrator', 'Un pont mène à l’île de papier. Trois Mimots de papier y jouent à cache-cache.'],
+  ],
+  bookMimots: [
+    ['narrator', 'Les trois Mimots de papier sont apprivoisés ! Alaric t’attend sur l’île.'],
+  ],
+  finale: [
+    ['mage', 'Tu as rendu leur vie à tous ces mots… Tu es un vrai magicien des mots.'],
+    ['mage', 'Mais moi, comment vais-je me souvenir, sans mon livre ?'],
+    ['narrator', 'Tu regardes ton album des mots. Il est plein de mots que tu as écrits toi-même…'],
+    ['choice', 'Que proposes-tu à Alaric ?', [
+      { label: { fr: '📖 Rendre tous les mots au village, et lui prêter ton album', en: '📖 Give every word back, and lend him your album' }, scene: 'endGive' },
+      { label: { fr: '✨ Garder quelques mots dans le livre, pour les Mimots', en: '✨ Keep a few words in the book, for the Mimots' }, scene: 'endKeep' },
+    ]],
+  ],
+  endGive: [
+    ['mage', 'Ton album ? Pour moi ? Quand j’oublierai un mot, je le relirai ici… Merci !'],
+    ['narrator', 'Les mots s’envolent du livre et retournent au village. Les panneaux brillent, les maisons chantent.'],
+    ['narrator', 'Et chaque soir, Alaric relit ton album, en souriant.'],
+  ],
+  endKeep: [
+    ['mage', 'Quelques mots resteront dans le livre, avec les Mimots. Et toi, tu m’apprendras les autres.'],
+    ['narrator', 'Le livre garde une page pour les Mimots, et les autres mots rentrent au village.'],
+    ['narrator', 'Chaque soir, Alaric relit ton album, en souriant.'],
+  ],
+  ending: [
+    ['narrator', 'Fin de l’histoire… mais pas des mots ! Il reste des Mimots, des sorts et des trésors partout.'],
   ],
 };
 
@@ -133,7 +188,28 @@ export const CHAPTERS = [
     id: 4,
     title: { fr: 'Chapitre 4 · La montagne', en: 'Chapter 4 · The mountains' },
     objectives: [
-      { id: 'soon4', text: { fr: 'La suite arrive bientôt ! Il reste des Mimots à trouver 🐣', en: 'More soon! Some Mimots are still hiding 🐣' } },
+      { id: 'mountainSign', text: { fr: 'Va au nord et répare le panneau de la montagne 🪧', en: 'Go north and fix the mountain sign 🪧' } },
+      { id: 'mountainStairs', text: { fr: 'Lance le sort Pierre au pied de la falaise 🪨', en: 'Cast the Stone spell below the cliff 🪨' } },
+      { id: 'mountainMimots', count: 2, countFrom: 'mountain', text: { fr: 'Apprivoise les 2 Mimots de la neige 🐣', en: 'Tame the 2 snow Mimots 🐣' } },
+      { id: 'readBook', text: { fr: 'Lis le grand livre sous la tour d’Alaric 📖', en: 'Read the big book under Alaric’s tower 📖' } },
+    ],
+  },
+  {
+    id: 5,
+    title: { fr: 'Chapitre 5 · La page envolée', en: 'Chapter 5 · The page that flew away' },
+    objectives: [
+      { id: 'coastSign', text: { fr: 'Va au sud et répare le panneau de la plage 🪧', en: 'Go south and fix the beach sign 🪧' } },
+      { id: 'lighthouse', text: { fr: 'Rallume le phare avec le sort Lumière ✨', en: 'Light the lighthouse with the Light spell ✨' } },
+      { id: 'islandBridge', text: { fr: 'Lance le sort Pont au début du ponton 🌉', en: 'Cast the Bridge spell at the start of the pier 🌉' } },
+      { id: 'bookMimots', count: 3, countFrom: 'book', text: { fr: 'Apprivoise les 3 Mimots de papier 🐣', en: 'Tame the 3 paper Mimots 🐣' } },
+      { id: 'finale', text: { fr: 'Parle à Alaric sur l’île de papier 🧙', en: 'Talk to Alaric on the paper island 🧙' } },
+    ],
+  },
+  {
+    id: 6,
+    title: { fr: 'Épilogue · Le village des mots', en: 'Epilogue · The village of words' },
+    objectives: [
+      { id: 'free', text: { fr: 'Bravo ! Trouve tous les Mimots et deviens maître des mots ⭐', en: 'Well done! Find every Mimot and become a word master ⭐' } },
     ],
   },
 ];
@@ -161,6 +237,11 @@ export const MIMOTS = [
   { id: 'foret2', x: -63, z: -11, color: 0xffa04a, region: 'forest', after: 'forester' },
   { id: 'marais1', x: 64, z: 11, color: 0x6ad8c8, region: 'marsh', after: 'marshFire' },
   { id: 'marais2', x: 72, z: -9.5, color: 0xd88aff, region: 'marsh', after: 'marshFire' },
+  { id: 'neige1', x: -3, z: -66, color: 0xd8f0ff, region: 'mountain', after: 'mountainStairs', y: 4.5 },
+  { id: 'neige2', x: 3.5, z: -64, color: 0xffd8e8, region: 'mountain', after: 'mountainStairs', y: 4.5 },
+  { id: 'papier1', x: 12, z: 74, color: 0xf6f0e0, region: 'book', after: 'islandBridge', y: 0.32, roam: 1.2 },
+  { id: 'papier2', x: 14.5, z: 75.5, color: 0xf0eadc, region: 'book', after: 'islandBridge', y: 0.32, roam: 1.2 },
+  { id: 'papier3', x: 13, z: 76.6, color: 0xfaf6ec, region: 'book', after: 'islandBridge', y: 0.32, roam: 1.0 },
 ];
 // Torn pages: one per chapter, shown when the story reaches them.
 export const PAGES = [
@@ -173,4 +254,6 @@ export const PAGE_SPOT = PAGES[0];
 export const REGION_NPCS = [
   { id: 'forester', spec: 'forester', x: -66.5, z: -2.6, ry: 0.8 },
   { id: 'fisher', spec: 'fisher', x: 58, z: 1.6, ry: Math.PI, y: 0.22 },
+  { id: 'alaricTower', spec: 'mage', x: 1.8, z: -68.4, ry: -0.8 },
+  { id: 'alaricIsland', spec: 'mage', x: 14.2, z: 76.2, ry: Math.PI + 0.6, y: 0.32 },
 ];

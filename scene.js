@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { SIGNS, MIMOTS, PAGES, REGION_NPCS } from './story.js';
-import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh } from './regions.js';
+import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh, buildMountain, buildCoast, STAIRS, SUMMIT, PIER, ISLAND, BOOK } from './regions.js';
 import { mergeStatic as mergeGroup } from './perf.js';
 import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
 import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
@@ -542,8 +542,18 @@ export class GameScene {
     const marsh = buildMarsh(ctx);
     this.marsh = marsh;
     this.marshMist = true;
+    const hStairs = this.terrain.heightAt(STAIRS.x, STAIRS.z0 + 0.4);
+    this.stairsY = (z) => hStairs + (SUMMIT.level - hStairs) * Math.min(1, Math.max(0, (STAIRS.z0 - z) / (STAIRS.z0 - STAIRS.z1)));
+    ctx.stairsY = this.stairsY;
+    ctx.seaMat = new THREE.MeshStandardMaterial({ color: 0x2f7fc0, transparent: true, opacity: 0.85, roughness: 0.1, metalness: 0.3, emissive: 0x0a2a4a, emissiveIntensity: 0.3 });
+    this.waterMats.push(ctx.seaMat);
+    this.mountain = buildMountain(ctx);
+    this.coast = buildCoast(ctx);
+    // Pier and paper island are walkable (the island is reached by the coast bridge).
+    (this.walkways ??= []).push({ axis: 'z', x: PIER.x, z0: PIER.z0, z1: PIER.z1, hw: PIER.hw, y: () => 0.26 });
+    this.walkways.push({ circle: true, x: ISLAND.x, z: ISLAND.z, r: ISLAND.r - 0.1, y: () => 0.32 });
     this.regionGroups = [];
-    for (const [name, group] of [['forest', forest], ['marsh', marsh.group]]) {
+    for (const [name, group] of [['forest', forest], ['marsh', marsh.group], ['mountain', this.mountain.group], ['coast', this.coast.group]]) {
       mergeGroup(group);
       group.userData.dynamic = true;
       this.scene.add(group);
@@ -562,9 +572,23 @@ export class GameScene {
       this.collidables.push({ x: n.x, z: n.z, r: 0.4 });
       this._addInteractable({ kind: 'npc', npcId: n.id, npc, worldPos: npc.position.clone(), iconY: 2.45, reach: 2.2, hitRadius: 0.9 });
     }
+    this.bookObj = this._addInteractable({ kind: 'book', worldPos: new THREE.Vector3(BOOK.x, SUMMIT.level, BOOK.z), iconY: 2.0, reach: 1.8, hitRadius: 0.9 });
+  }
+  setNpcVisible(id, on) {
+    const o = this.interactables.find((i) => i.kind === 'npc' && i.npcId === id);
+    if (!o) return;
+    o.npc.visible = on;
+    o.active = on;
+    o.respawnAt = undefined;
+    o.iconHolder.visible = on;
+    if (!on && o.labelEl) o.labelEl.style.display = 'none';
   }
   _tickRegions() {
     const p = this.player.position;
+    const t = this.clock.elapsedTime;
+    if (this.lighthouseOn) this.coast.beamPivot.rotation.y = t * 0.8;
+    if (this.coast) for (const b of this.coast.island.children) if (b.userData.float) { const f = b.userData.float; b.position.y = 1.2 + Math.sin(t * 1.5 + f.i) * 0.25; b.rotation.y = t * 0.6 + f.a; }
+    if (this.mountain) this.mountain.book.position.y = SUMMIT.level + 1.08 + Math.sin(t * 2) * 0.04;
     for (const r of this.regionGroups ?? []) r.group.visible = Math.hypot(p.x - r.def.x, p.z - r.def.z) < r.def.show + 10;
     // The sun (and its shadows) follow the hero around the bigger world.
     if (this.sun) {
@@ -598,7 +622,7 @@ export class GameScene {
     }
     this.mimots = MIMOTS.map((m) => {
       const group = buildMimot(m.color);
-      group.position.set(m.x, h(m.x, m.z), m.z);
+      group.position.set(m.x, this.groundAt(m.x, m.z), m.z);
       group.userData.dynamic = true;
       this.scene.add(group);
       const obj = this._addInteractable({ kind: 'mimot', mimotId: m.id, block: group, worldPos: group.position.clone(), iconY: 1.6, reach: 1.6, hitRadius: 0.8 });
@@ -675,7 +699,7 @@ export class GameScene {
         const d = Math.hypot(dx, dz);
         if (d < 0.1) {
           m.wait = 1 + Math.random() * 2.5;
-          const a = Math.random() * Math.PI * 2, r = Math.random() * 2.2;
+          const a = Math.random() * Math.PI * 2, r = Math.random() * (m.def.roam ?? 2.2);
           const tx = m.def.x + Math.cos(a) * r, tz = m.def.z + Math.sin(a) * r;
           if (!this._checkCollision(tx, tz) && !this._insideAnyHouse?.(tx, tz, 0.6)) m.target.set(tx, 0, tz);
         } else {
@@ -688,7 +712,7 @@ export class GameScene {
       // Turn towards the hero when close.
       const pdx = this.player.position.x - g.position.x, pdz = this.player.position.z - g.position.z;
       if (Math.hypot(pdx, pdz) < 3) g.rotation.y = this._lerpAngle(g.rotation.y, Math.atan2(pdx, pdz), 0.1);
-      const ground = this.terrain.heightAt(g.position.x, g.position.z);
+      const ground = this.groundAt(g.position.x, g.position.z);
       g.position.y = ground + Math.abs(Math.sin(m.hop)) * 0.18;
       g.userData.body.scale.y = 1.35 * (1 + Math.sin(elapsed * 3 + m.def.x) * 0.04);
       m.obj.worldPos.set(g.position.x, ground, g.position.z);
@@ -776,6 +800,23 @@ export class GameScene {
         (this.tweens ??= []).push((t) => { const k = Math.min(1, (t - start) / 2.2); mist.material.opacity = 0.78 * (1 - k); mist.position.x = k * 14; if (k >= 1) { mist.visible = false; return false; } return true; });
         for (let i = 0; i < 40; i++) this.particleBurst(new THREE.Vector3(MIST_X - 2, 1 + Math.random() * 2, (Math.random() - 0.5) * 10), '#ffffff', 1);
       } else if (mist) mist.visible = false;
+      if (circle) { circle.active = false; circle.block.visible = false; circle.iconHolder.visible = false; if (circle.labelEl) circle.labelEl.style.display = 'none'; }
+      return true;
+    }
+    if (id === 'pierre') {
+      if (this.spellObjects[key]) return null;
+      this.spellObjects[key] = true;
+      const st = this.mountain?.stairs;
+      if (st) { st.visible = true; if (!silent) grow(st); }
+      (this.walkways ??= []).push({ axis: 'z', x: STAIRS.x, z0: STAIRS.z0 + 0.6, z1: STAIRS.z1 - 0.6, hw: STAIRS.hw, y: (x, z) => this.stairsY(z) });
+      if (circle) { circle.active = false; circle.block.visible = false; circle.iconHolder.visible = false; if (circle.labelEl) circle.labelEl.style.display = 'none'; }
+      if (!silent) this.screenShake(0.12);
+      return true;
+    }
+    if (id === 'lumiere' && key === 'lumiere-phare') {
+      this.coast.lamp.visible = true;
+      this.coast.beamPivot.visible = true;
+      this.lighthouseOn = true;
       if (circle) { circle.active = false; circle.block.visible = false; circle.iconHolder.visible = false; if (circle.labelEl) circle.labelEl.style.display = 'none'; }
       return true;
     }
@@ -1596,7 +1637,7 @@ export class GameScene {
       if (!this._blocked(p.x, nz, p.y)) p.z = nz;
       // Near a magic bridge, gently pull the hero onto its axis (easy to cross with the joystick).
       for (const w of this.walkways ?? []) {
-        if (w.circle || p.x < w.x0 - 1.4 || p.x > w.x1 + 1.4 || Math.abs(p.z - w.z) > 1.4) continue;
+        if (w.circle || w.axis === 'z' || p.x < w.x0 - 1.4 || p.x > w.x1 + 1.4 || Math.abs(p.z - w.z) > 1.4) continue;
         const nzw = p.z + (w.z - p.z) * Math.min(1, dt * 7);
         if (!this._blocked(p.x, nzw, p.y)) p.z = nzw;
       }
@@ -1681,7 +1722,7 @@ export class GameScene {
   // Bridges built by magic: walkable strips over the water, with their own height.
   _walkwayAt(x, z) {
     for (const w of this.walkways ?? []) {
-      if (w.circle ? Math.hypot(x - w.x, z - w.z) < w.r : x > w.x0 && x < w.x1 && Math.abs(z - w.z) < w.hw) return w;
+      if (w.circle ? Math.hypot(x - w.x, z - w.z) < w.r : w.axis === 'z' ? Math.abs(x - w.x) < w.hw && z > Math.min(w.z0, w.z1) && z < Math.max(w.z0, w.z1) : x > w.x0 && x < w.x1 && Math.abs(z - w.z) < w.hw) return w;
     }
     return null;
   }

@@ -38,7 +38,10 @@ export class Terrain {
     this.scene = scene;
     this.ctx = ctx; // { flat(x, z) -> true where the ground must stay at 0 }
     this.h = new Float32Array(SIZE * SIZE);
+    this.locked = new Uint8Array(SIZE * SIZE);
     this.quarry = { x: 20, z: -20, r: 3.2, level: 1.0 };
+    // The mountain (north): slopes up to a snowy plateau ringed by a cliff (climbed with the Stone spell).
+    this.summit = { x: 0, z: -68, r: 8.5, level: 4.5 };
   }
 
   heightAt(x, z) {
@@ -65,7 +68,12 @@ export class Terrain {
           if (Math.abs(z) < 4.5 || Math.abs(x) < 4.5) raw = Math.min(raw, 0);
         }
         // Hills at the edge of the world.
-        if (r > 76) raw = Math.max(raw, (r - 76) * 0.45 + n1(x * 0.15, z * 0.15) * 1.5);
+        if (r > 76 && z < 56) raw = Math.max(raw, (r - 76) * 0.45 + n1(x * 0.15, z * 0.15) * 1.5);
+        // Mountain slopes (north), up to the cliff around the summit.
+        const S = this.summit;
+        const ds = Math.hypot(x - S.x, z - S.z);
+        if (z < -42 && ds < 30) raw = Math.max(raw, Math.min(2.5, (30 - ds) * 0.14) + n2(x * 0.25, z * 0.25) * 0.4);
+        if (ds < S.r) raw = S.level;
         // A rocky hill behind the quarry, north-east.
         const dm = Math.hypot(x - (q.x + 4), z - (q.z - 4));
         raw += Math.max(0, 1 - dm / 9) * 4.2;
@@ -74,6 +82,7 @@ export class Terrain {
         if (dq < q.r) raw = q.level;
         if (this.ctx.flat(x, z)) raw = 0;
         this.h[j * SIZE + i] = Math.max(0, Math.min(6, Math.floor(raw / LAYER) * LAYER));
+        if (ds < S.r) this.locked[j * SIZE + i] = 1;
       }
     }
     // Never more than half a block between neighbours, so you can always walk back to the
@@ -88,6 +97,7 @@ export class Terrain {
           if (i < SIZE - 1) m = Math.min(m, this.h[k + 1]);
           if (j > 0) m = Math.min(m, this.h[k - SIZE]);
           if (j < SIZE - 1) m = Math.min(m, this.h[k + SIZE]);
+          if (this.locked[k]) continue;
           if (this.h[k] > m + LAYER) { this.h[k] = m + LAYER; changed = true; }
         }
       }
@@ -100,7 +110,7 @@ export class Terrain {
         const k = j * SIZE + i;
         const nb = [copy[k - 1], copy[k + 1], copy[k - SIZE], copy[k + SIZE]];
         const maxN = Math.max(...nb);
-        if (copy[k] > maxN) this.h[k] = maxN;
+        if (copy[k] > maxN && !this.locked[k]) this.h[k] = maxN;
       }
     }
   }
@@ -140,8 +150,9 @@ export class Terrain {
       grassSide: new THREE.MeshStandardMaterial({ map: grassSide, roughness: 0.95 }),
       dirt: new THREE.MeshStandardMaterial({ map: dirt, roughness: 1 }),
       stone: new THREE.MeshStandardMaterial({ map: stone, roughness: 1 }),
+      snow: new THREE.MeshStandardMaterial({ color: 0xf4f8fc, roughness: 0.9 }),
     };
-    for (const m of Object.values(mats)) { m.map.wrapS = THREE.RepeatWrapping; m.map.wrapT = THREE.RepeatWrapping; }
+    for (const m of Object.values(mats)) { if (!m.map) continue; m.map.wrapS = THREE.RepeatWrapping; m.map.wrapT = THREE.RepeatWrapping; }
     // Quads are grouped by material and by 46×46 chunk, so chunks off screen are culled.
     const CH = 46;
     const buf = {};
@@ -159,8 +170,10 @@ export class Terrain {
         if (hgt <= 0) continue;
         const x0 = i - HALF, z0 = j - HALF, x1 = x0 + 1, z1 = z0 + 1;
         chunkKey = `${Math.floor(i / CH)},${Math.floor(j / CH)}`;
-        const rocky = Math.hypot(x0 + 0.5 - (q.x + 4), z0 + 0.5 - (q.z - 4)) < 8.5 || Math.hypot(x0 + 0.5 - q.x, z0 + 0.5 - q.z) < q.r + 0.5;
-        quad(rocky ? 'stone' : 'grassTop', [x0, hgt, z1], [x1, hgt, z1], [x1, hgt, z0], [x0, hgt, z0], [0, 1, 0], 1, 1);
+        const S = this.summit;
+        const nearSummit = Math.hypot(x0 + 0.5 - S.x, z0 + 0.5 - S.z) < S.r + 0.6;
+        const rocky = nearSummit || Math.hypot(x0 + 0.5 - (q.x + 4), z0 + 0.5 - (q.z - 4)) < 8.5 || Math.hypot(x0 + 0.5 - q.x, z0 + 0.5 - q.z) < q.r + 0.5;
+        quad(hgt >= 4 ? 'snow' : rocky ? 'stone' : 'grassTop', [x0, hgt, z1], [x1, hgt, z1], [x1, hgt, z0], [x0, hgt, z0], [0, 1, 0], 1, 1);
         faces++;
         const sides = [
           [H(i, j + 1), [x0, z1], [x1, z1], [0, 0, 1]],

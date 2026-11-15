@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.5.0 — La montagne, la mer et la fin de l'histoire
+
+- 🏔️ **La montagne** (nord) : pentes, rochers, sapins, un sommet enneigé entouré d'une falaise. Le nouveau sort **Pierre** fait apparaître un escalier jusqu'à la tour d'Alaric.
+- 🏖️ **La plage** (sud) : la mer, des dunes, un phare à rallumer avec le sort **Lumière**, un ponton, et l'**île de papier**, une page du grand livre couverte de mots et entourée de lettres flottantes.
+- **Chapitre 4** : grimper au sommet, apprivoiser 2 Mimots de la neige, lire le grand livre. **Deuxième rebondissement :** les mots sont vivants dans le livre.
+- **Chapitre 5** : rallumer le phare, poser un pont vers l'île de papier, apprivoiser 3 Mimots de papier, puis **choisir quoi proposer à Alaric**. Les deux choix mènent à un épilogue doux : l'album des mots de l'enfant devient la mémoire d'Alaric.
+- **Écran de fin** (mots, Mimots, étoiles) avec un feu d'artifice, puis le jeu continue en épilogue. 13 Mimots au total.
+- **Espace parents** : réussite du premier coup par famille de sons (ch, ou, on, an/en, in/ain, au/eau, oi, gn, e muet, lettres muettes, consonnes doubles, accents) et chapitre en cours.
+
 ## v1.4.0 — La forêt et le marais (chapitres 2 et 3)
 
 - **Carte quatre fois plus grande** : le village reste au centre, des vallées traversent les collines vers deux nouvelles régions, et des collines ferment le bout du monde.

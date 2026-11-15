@@ -133,6 +133,9 @@ export class VillageBuilder {
       const fo = Math.min(1, Math.max(0, (-x - 40) / 8)), ma = Math.min(1, Math.max(0, (x - 40) / 8));
       if (fo) c.setRGB(c.r * (1 - fo * 0.35), c.g * (1 - fo * 0.12), c.b * (1 - fo * 0.3));
       if (ma) c.setRGB(c.r * (1 + ma * 0.08), c.g * (1 - ma * 0.08), c.b * (1 - ma * 0.45));
+      // Sand on the coast (south).
+      const sa = Math.min(1, Math.max(0, (z - 54) / 5));
+      if (sa) c.lerp(new THREE.Color(1.45, 1.3, 0.85), sa * 0.85);
       colors.push(c.r, c.g, c.b);
     }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));

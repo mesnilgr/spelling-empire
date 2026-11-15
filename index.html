@@ -248,6 +248,11 @@
           </section>
           <div class="stat-grid stat-grid-4" id="dash-summary"></div>
           <section class="card section">
+            <h2 data-i18n="familiesTitle">Sounds</h2>
+            <p class="note" id="dash-chapter"></p>
+            <div class="dash-families" id="dash-families"></div>
+          </section>
+          <section class="card section">
             <h2 data-i18n="activity14">Activity</h2>
             <div class="dash-activity" id="dash-activity"></div>
           </section>
@@ -354,6 +359,7 @@
         <div class="dialog-name" id="dialog-name"></div>
         <p class="dialog-text" id="dialog-text"></p>
       </div>
+      <div class="dialog-choices" id="dialog-choices" hidden></div>
       <div class="dialog-actions">
         <button class="btn btn-ghost btn-small" id="dialog-repeat" type="button" aria-label="Repeat">🔊</button>
         <button class="btn btn-primary" id="dialog-next" type="button">▶</button>
@@ -366,6 +372,15 @@
       <h2 data-i18n="travelTitle">Where to?</h2>
       <div class="travel-buttons" id="travel-buttons"></div>
       <button class="btn btn-ghost" id="travel-close" type="button" data-i18n="cancel">Cancel</button>
+    </div>
+  </div>
+  <!-- The end -->
+  <div class="modal-overlay end-overlay" id="end-modal" hidden>
+    <div class="modal card end-card">
+      <div class="end-emoji">📖✨🐣</div>
+      <h2 id="end-title">Fin !</h2>
+      <p class="end-stats" id="end-stats"></p>
+      <button class="btn btn-primary" id="end-close" type="button" data-i18n="keepPlaying">Keep playing</button>
     </div>
   </div>
   <!-- Age picker (first game, and in the parents' corner) -->

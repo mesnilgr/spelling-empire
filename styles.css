@@ -1638,3 +1638,21 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .travel-card { max-width: 460px; text-align: center; }
 .travel-buttons { display: grid; gap: 10px; margin: 12px 0; }
 .travel-buttons .btn { font-size: 1.2rem; padding: 14px; }
+
+.dialog-choices { grid-column: 1 / -1; display: grid; gap: 8px; }
+.dialog-choices[hidden] { display: none; }
+.dialog-choices .btn { font-size: 1.05rem; padding: 12px; text-align: left; }
+.end-overlay { z-index: 85; }
+.end-card { text-align: center; max-width: 480px; background: linear-gradient(180deg, #fffaf0, #f3e6c8); border: 3px solid #c8a46a; }
+.end-emoji { font-size: 3rem; }
+.end-card h2 { font-size: 2.2rem; margin: 6px 0; }
+.end-stats { font-weight: 800; font-size: 1.1rem; }
+
+.dash-families { display: grid; gap: 6px; margin-top: 8px; }
+.fam-row { display: grid; grid-template-columns: 9.5em 1fr 7.5em; gap: 10px; align-items: center; font-weight: 700; }
+.fam-row .fam-ex { font-weight: 500; color: var(--ink-300); font-size: 0.8em; display: block; }
+.fam-bar { height: 12px; border-radius: 6px; background: var(--ink-100, #e6e8ef); overflow: hidden; }
+.fam-bar span { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #f2b632, #2f9a4a); }
+.fam-val { text-align: right; font-size: 0.85em; }
+.dash-families, .dash-age .age-buttons { align-self: stretch; width: 100%; }
+.dash-age .age-buttons { max-width: 420px; }

@@ -239,3 +239,156 @@ export const TRAVEL = {
   forest: { x: -45.5, z: 3.6, back: { x: -46.5, z: 1.2 }, word: { 5: 'f', 6: 'bois', 7: 'forêt' } },
   marsh: { x: 41.5, z: -3.6, back: { x: 40.5, z: -1.2 }, word: { 5: 'm', 6: 'mare', 7: 'marais' } },
 };
+
+/* ===== Mountain (north) and coast (south) ===== */
+REGIONS.mountain = { x: 0, z: -64, show: 40 };
+REGIONS.coast = { x: 0, z: 64, show: 40 };
+BRIDGES.coast = { x0: 6.6, x1: 10.2, z: 75 };
+TRAVEL.mountain = { x: -3.6, z: -45.5, back: { x: -1.4, z: -46.5 }, word: { 5: 'm', 6: 'mont', 7: 'montagne' } };
+TRAVEL.coast = { x: 3.6, z: 48.5, back: { x: 1.4, z: 49.5 }, word: { 5: 'p', 6: 'mer', 7: 'plage' } };
+export const SUMMIT = { x: 0, z: -68, level: 4.5, r: 8.5 };
+// Stone stairs up the cliff (built by the Stone spell), along z.
+export const STAIRS = { x: 0, z0: -55.2, z1: -60.2, hw: 0.8 };
+export const TOWER = { x: 0, z: -70.5 };
+export const BOOK = { x: 0, z: -69.2 };
+export const SEA_Z = 70.3;
+export const PIER = { x: 6, z0: 67.5, z1: 75.6, hw: 0.7 };
+export const ISLAND = { x: 13.2, z: 75, r: 3.0 };
+export const LIGHTHOUSE = { x: -10, z: 66.5 };
+
+export function buildMountain(ctx) {
+  const g = new THREE.Group();
+  const rnd = seededRandom(23);
+  const h = ctx.heightAt;
+  // Boulders on the slopes and snowy pines.
+  const rocks = [], spots = [];
+  for (let i = 0; i < 160; i++) {
+    const x = (rnd() - 0.5) * 70, z = -44 - rnd() * 38;
+    if (Math.hypot(x, z) > WORLD_RADIUS - 1 || Math.abs(x) < 3.5 || Math.hypot(x - SUMMIT.x, z - SUMMIT.z) < SUMMIT.r + 1.5) continue;
+    if (rnd() < 0.55) { const s = 0.5 + rnd() * 0.9; rocks.push([x, h(x, z) + s * 0.35, z, s, s * 0.7, s * 0.9, rnd() * 3]); ctx.collidables.push({ x, z, r: s * 0.45 }); }
+    else if (spots.length < 40 && !spots.some(([sx, , sz]) => Math.hypot(sx - x, sz - z) < 3)) spots.push([x, h(x, z), z, 0.7 + rnd() * 0.4]);
+  }
+  instanced(g, mat(0x8d8a86), rocks);
+  pines(g, spots);
+  for (const [x, , z, s] of spots) ctx.collidables.push({ x, z, r: 0.35 * s + 0.1 });
+  // Alaric's tower on the summit: four stone pillars and a purple roof over the lectern.
+  const y0 = SUMMIT.level;
+  for (const [px, pz] of [[-2.2, -2.2], [2.2, -2.2], [-2.2, 2.2], [2.2, 2.2]]) {
+    texBox(g, 0.7, 3.4, 0.7, blockMat('stoneBricks'), TOWER.x + px, y0 + 1.7, TOWER.z + pz, { tile: 0.5 });
+    ctx.collidables.push({ x: TOWER.x + px, z: TOWER.z + pz, r: 0.45 });
+  }
+  for (let k = 0; k < 5; k++) texBox(g, 5.6 - k * 1.1, 0.45, 5.6 - k * 1.1, blockMat('roofPurple'), TOWER.x, y0 + 3.6 + k * 0.45, TOWER.z, { tile: 0.5 });
+  texBox(g, 5.2, 0.2, 5.2, blockMat('stoneBricks'), TOWER.x, y0 + 0.1, TOWER.z, { tile: 0.5 });
+  // The lectern and the big book (glowing).
+  texBox(g, 0.5, 1.0, 0.5, blockMat('darkOakPlanks'), BOOK.x, y0 + 0.5, BOOK.z, { tile: 0.5 });
+  const book = new THREE.Group();
+  book.position.set(BOOK.x, y0 + 1.08, BOOK.z);
+  book.rotation.x = -0.35;
+  const cover = new THREE.Mesh(BOX, mat(0x6a2a8a)); cover.scale.set(1.0, 0.1, 0.72); book.add(cover);
+  const pages = new THREE.Mesh(BOX, mat(0xfff6dc, { emissive: 0xffe8a0, emissiveIntensity: 0.9 })); pages.scale.set(0.92, 0.08, 0.64); pages.position.y = 0.07; book.add(pages);
+  book.userData.dynamic = true;
+  g.add(book);
+  // Stone stairs (hidden until the Stone spell).
+  const stairs = new THREE.Group();
+  const n = 10;
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n;
+    const z = STAIRS.z0 + (STAIRS.z1 - STAIRS.z0) * t;
+    const top = ctx.stairsY(z);
+    texBox(stairs, STAIRS.hw * 2 + 0.2, Math.max(0.2, top - 1.5), (STAIRS.z0 - STAIRS.z1) / n + 0.02, blockMat('cobble'), STAIRS.x, (top + 1.5) / 2, z, { tile: 0.5 });
+  }
+  stairs.visible = false;
+  stairs.userData.dynamic = true;
+  g.add(stairs);
+  return { group: g, stairs, book };
+}
+
+function letterTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fbf6ea'; x.fillRect(0, 0, 256, 256);
+  x.fillStyle = 'rgba(60, 50, 90, 0.55)';
+  x.font = '700 22px Georgia, serif';
+  const words = ['lune', 'pont', 'ami', 'chat', 'école', 'bateau', 'maman', 'soleil', 'fleur', 'livre', 'rêve', 'mot'];
+  for (let row = 0; row < 11; row++) x.fillText(Array.from({ length: 3 }, (_, k) => words[(row * 3 + k * 5) % words.length]).join('  '), 8, 22 + row * 23);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+export function buildCoast(ctx) {
+  const g = new THREE.Group();
+  const rnd = seededRandom(77);
+  // The sea.
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(200, 40), ctx.seaMat);
+  sea.rotation.x = -Math.PI / 2;
+  sea.position.set(0, 0.04, SEA_Z + 20);
+  g.add(sea);
+  ctx.collidables.push({ rect: true, water: true, x0: -100, x1: 100, z0: SEA_Z, z1: 120 });
+  // Beach rocks and tufts of dune grass.
+  const rocks = [], tufts = [];
+  for (let i = 0; i < 120; i++) {
+    const x = (rnd() - 0.5) * 80, z = 52 + rnd() * 18;
+    if (Math.hypot(x, z) > WORLD_RADIUS - 1 || Math.abs(x) < 3 || Math.hypot(x - LIGHTHOUSE.x, z - LIGHTHOUSE.z) < 3 || Math.abs(x - PIER.x) < 1.5) continue;
+    if (rnd() < 0.3) { const s = 0.4 + rnd() * 0.8; rocks.push([x, s * 0.3, z, s, s * 0.6, s * 0.8, rnd() * 3]); ctx.collidables.push({ x, z, r: s * 0.45 }); }
+    else tufts.push([x, 0.2, z, 0.08, 0.4 + rnd() * 0.3, 0.5, rnd() * 3]);
+  }
+  instanced(g, mat(0x9a9590), rocks);
+  instanced(g, mat(0x9ab05a), tufts, { cast: false });
+  // The pier (walkable along z).
+  const planks = [], posts = [];
+  for (let z = PIER.z0; z < PIER.z1; z += 0.5) {
+    planks.push([PIER.x, 0.22, z + 0.25, PIER.hw * 2, 0.08, 0.46]);
+    if (Math.round(z * 2) % 4 === 0) for (const s of [-1, 1]) posts.push([PIER.x + s * (PIER.hw + 0.06), 0.1, z + 0.25, 0.16, 0.6, 0.16]);
+  }
+  instanced(g, mat(0x9a7a54), planks, { cast: false });
+  instanced(g, mat(0x5a3a22), posts, { cast: false });
+  // The lighthouse: red and white rings, a lamp room on top (lit by the Light spell).
+  const lh = new THREE.Group();
+  lh.position.set(LIGHTHOUSE.x, 0, LIGHTHOUSE.z);
+  for (let k = 0; k < 8; k++) {
+    const r = 1.5 - k * 0.08;
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(r - 0.04, r, 0.8, 10), mat(k % 2 ? 0xffffff : 0xd8372d));
+    ring.position.y = 0.4 + k * 0.8; ring.castShadow = true; lh.add(ring);
+  }
+  const room = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.9, 10), mat(0x2a2a30)); room.position.y = 6.9; lh.add(room);
+  const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.75, 10), mat(0xfff4c0, { emissive: 0xffe08a, emissiveIntensity: 3 }));
+  lamp.position.y = 6.9; lamp.visible = false; lh.add(lamp);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.1, 0.9, 10), mat(0xd8372d)); roof.position.y = 7.8; lh.add(roof);
+  const beam = new THREE.Mesh(new THREE.ConeGeometry(1.4, 9, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
+  beam.rotation.z = Math.PI / 2; beam.position.set(4.5, 0, 0);
+  const beamPivot = new THREE.Group(); beamPivot.position.y = 6.9; beamPivot.add(beam); beamPivot.visible = false; lh.add(beamPivot);
+  lh.userData.dynamic = true;
+  g.add(lh);
+  ctx.collidables.push({ x: LIGHTHOUSE.x, z: LIGHTHOUSE.z, r: 1.6 });
+  // A rowing boat on the sand.
+  const boat = new THREE.Group();
+  boat.position.set(-4, 0, 63); boat.rotation.y = 0.6;
+  const hull = new THREE.Mesh(BOX, mat(0x8a5a32)); hull.scale.set(1.0, 0.4, 2.4); hull.position.y = 0.2; boat.add(hull);
+  const inside = new THREE.Mesh(BOX, mat(0x6a4422)); inside.scale.set(0.8, 0.1, 2.1); inside.position.y = 0.36; boat.add(inside);
+  g.add(boat);
+  ctx.collidables.push({ x: -4, z: 63, r: 1.1 });
+  // The paper island: a page of the big book floating on the sea.
+  const isl = new THREE.Group();
+  isl.position.set(ISLAND.x, 0, ISLAND.z);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND.r, ISLAND.r + 0.3, 0.5, 14), mat(0xece4d0));
+  base.position.y = 0.05; isl.add(base);
+  const top = new THREE.Mesh(new THREE.CircleGeometry(ISLAND.r - 0.05, 14), new THREE.MeshStandardMaterial({ map: letterTexture(), roughness: 0.9 }));
+  top.rotation.x = -Math.PI / 2; top.position.y = 0.31; isl.add(top);
+  // Floating letter blocks around it.
+  const letters = 'MOTSLIVRE';
+  [...letters].forEach((ch, i) => {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const x = c.getContext('2d'); x.fillStyle = '#fffaf0'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#4a3a8a'; x.font = '900 46px Georgia, serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(ch, 32, 36);
+    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+    const b = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({ map: tx, emissive: 0x6a5aaa, emissiveIntensity: 0.15 }));
+    const a = (i / letters.length) * Math.PI * 2;
+    b.scale.setScalar(0.45); b.position.set(Math.cos(a) * (ISLAND.r + 1.2), 1.2 + (i % 3) * 0.3, Math.sin(a) * (ISLAND.r + 1.2));
+    b.userData.float = { a, i };
+    isl.add(b);
+  });
+  isl.userData.dynamic = true;
+  g.add(isl);
+  return { group: g, lamp, beamPivot, island: isl };
+}

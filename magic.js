@@ -11,10 +11,10 @@ export const SPELLS = [
   { id: 'fleur', emoji: '🌸', name: { fr: 'Fleur', en: 'Flower' }, word: { 5: 'f', 6: 'fleur', 7: 'fleur' }, wordEn: 'flower', unlock: 0, effect: { fr: 'Un massif de fleurs pousse.', en: 'A flower bed grows.' } },
   { id: 'arbre', emoji: '🌳', name: { fr: 'Arbre', en: 'Tree' }, word: { 5: 'a', 6: 'arbre', 7: 'arbre' }, wordEn: 'tree', unlock: 0, effect: { fr: 'Un arbre magique : son bois se ramasse sans hache.', en: 'A magic tree: its wood needs no axe.' } },
   { id: 'pluie', emoji: '🌧️', name: { fr: 'Pluie', en: 'Rain' }, word: { 5: 'p', 6: 'pluie', 7: 'pluie' }, wordEn: 'rain', unlock: 15, effect: { fr: 'La pluie fait repousser le blé tout de suite.', en: 'Rain makes the wheat grow back at once.' } },
-  { id: 'lumiere', emoji: '✨', name: { fr: 'Lumière', en: 'Light' }, word: { 5: 'l', 6: 'lune', 7: 'lumière' }, wordEn: 'light', unlock: 30, effect: { fr: 'Une boule de lumière te suit et éclaire la nuit.', en: 'A ball of light follows you at night.' } },
+  { id: 'lumiere', emoji: '✨', name: { fr: 'Lumière', en: 'Light' }, word: { 5: 'l', 6: 'lune', 7: 'lumière' }, wordEn: 'light', unlock: 30, story: 'coastSign', effect: { fr: 'Une boule de lumière te suit et éclaire la nuit.', en: 'A ball of light follows you at night.' } },
   { id: 'feu', emoji: '🔥', name: { fr: 'Feu', en: 'Fire' }, word: { 5: 'f', 6: 'feu', 7: 'feu' }, wordEn: 'fire', unlock: 50, story: 'fisher', effect: { fr: 'Les braseros s’allument et donnent du feu.', en: 'The braziers light up and give fire.' } },
   { id: 'vent', emoji: '🌬️', name: { fr: 'Vent', en: 'Wind' }, word: { 5: 'v', 6: 'vent', 7: 'vent' }, wordEn: 'wind', unlock: null, story: 'marshSign', soon: { fr: 'Au marais', en: 'In the marsh' }, effect: { fr: 'Le vent chasse la brume.', en: 'The wind blows the mist away.' } },
-  { id: 'pierre', emoji: '🪨', name: { fr: 'Pierre', en: 'Stone' }, word: { 5: 'p', 6: 'pierre', 7: 'pierre' }, wordEn: 'stone', unlock: null, soon: { fr: 'Bientôt : à la montagne', en: 'Soon: in the mountains' }, effect: { fr: 'Un escalier de pierre apparaît.', en: 'A stone staircase appears.' } },
+  { id: 'pierre', emoji: '🪨', name: { fr: 'Pierre', en: 'Stone' }, word: { 5: 'p', 6: 'pierre', 7: 'pierre' }, wordEn: 'stone', unlock: null, story: 'mountainSign', soon: { fr: 'À la montagne', en: 'In the mountains' }, effect: { fr: 'Un escalier de pierre apparaît.', en: 'A stone staircase appears.' } },
 ];
 export const spellById = (id) => SPELLS.find((s) => s.id === id);
 
@@ -41,6 +41,9 @@ export const CIRCLES = [
   { cid: 'pont-foret', spell: 'pont', x: -53.6, z: 2.0, bridge: 'forest' },
   { cid: 'vent-marais', spell: 'vent', x: 42.6, z: 1.8 },
   { cid: 'feu-marais', spell: 'feu', x: 49.2, z: 2.6 },
+  { cid: 'pierre-montagne', spell: 'pierre', x: 2.8, z: -53.2 },
+  { cid: 'lumiere-phare', spell: 'lumiere', x: -6.8, z: 63.6 },
+  { cid: 'pont-ile', spell: 'pont', x: 4.2, z: 68.2, bridge: 'coast' },
 ];
 // The pond bridge, in world coordinates (west → east across the pond centre).
 export const BRIDGE = BRIDGES.village;

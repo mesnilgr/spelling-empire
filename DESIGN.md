@@ -95,10 +95,11 @@ mots dans le livre) mènent au même épilogue doux.
 ## Découpage en versions
 
 1. **v1.1 — Âges** (fait) : 5, 6, 7, 8 ans, listes par niveau scolaire, progression automatique.
-2. **v1.2 — Magie** : grimoire, cercles magiques, sorts dans le village actuel.
-3. **v1.3 — Prologue, chapitre 1 et Mimots** : panneaux effacés, objectifs, première page.
-4. **v1.4 — Carte agrandie, forêt et marais** : régions, panneaux de voyage, chapitres 2 et 3.
-5. **v1.5 — Montagne, côte, livre et fin** : chapitres 4 et 5, rebondissements, épilogue, parents.
+2. **v1.2 — Magie** (fait) : grimoire, cercles magiques, sorts dans le village actuel.
+3. **v1.3 — Prologue, chapitre 1 et Mimots** (fait) : panneaux effacés, objectifs, première page.
+4. **v1.4 — Carte agrandie, forêt et marais** (fait) : régions, panneaux de voyage, chapitres 2 et 3.
+5. **v1.5 — Montagne, côte, livre et fin** (fait) : chapitres 4 et 5, rebondissements, épilogue, parents.
+   Le monde du livre est une île de papier sur la mer plutôt qu'un monde séparé (plus léger pour l'iPad).
 
 ## Fichiers prévus
 

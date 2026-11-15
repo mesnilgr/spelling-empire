@@ -8,6 +8,8 @@ export const NPC_INFO = {
   guard: { emoji: '💂', name: { fr: 'Bastien le garde', en: 'Bastien the guard' } },
   forester: { emoji: '🪓', name: { fr: 'Sylvain le forestier', en: 'Sylvain the forester' } },
   fisher: { emoji: '🎣', name: { fr: 'Mélusine la pêcheuse', en: 'Mélusine the fisher' } },
+  alaricTower: { emoji: '🧙', name: { fr: 'Alaric le mage', en: 'Alaric the mage' } },
+  alaricIsland: { emoji: '🧙', name: { fr: 'Alaric le mage', en: 'Alaric the mage' } },
 };
 
 // Two quests per villager. `need` is materials to hand over, an object you must have crafted,
