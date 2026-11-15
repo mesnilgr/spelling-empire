@@ -58,6 +58,8 @@
             <button class="btn btn-primary btn-large" id="new-game-btn" type="button" data-i18n="startGame">Start Game</button>
             <button class="btn btn-ghost" id="trophy-btn" type="button" data-i18n="trophyRoom">My Trophy Room</button>
             <button class="btn btn-ghost" id="help-btn" type="button" data-i18n="howToPlay">How to Play</button>
+            <button class="btn btn-ghost" id="menu-album-btn" type="button" data-i18n="albumTitle">Album</button>
+            <button class="btn btn-ghost" id="menu-wardrobe-btn" type="button" data-i18n="wardrobeTitle">Wardrobe</button>
             <button class="btn btn-ghost" id="parents-btn" type="button" data-i18n="parents">Parents’ corner</button>
           </div>
           <div class="difficulty-cards" id="difficulty-cards" hidden></div>
@@ -70,6 +72,9 @@
               <button class="hud-btn" id="quit-btn" type="button" aria-label="Menu">☰</button>
               <span class="hud-stars"><span class="star-icon" aria-hidden="true"></span><span id="hud-stars">0</span></span>
               <button class="hud-btn" id="reset-pos-btn" type="button" aria-label="Back to the village">🏠</button>
+              <button class="hud-btn" id="album-btn" type="button" aria-label="Album">📖</button>
+              <button class="hud-btn" id="wardrobe-btn" type="button" aria-label="Wardrobe">👕</button>
+              <span class="hud-time" id="hud-time" aria-hidden="true">☀️</span>
             </div>
             <div class="streak-display is-hidden" id="streak-display"></div>
             <div class="map-instruction" id="map-instruction" data-i18n="exploreVillage">
@@ -102,6 +107,29 @@
             <div class="materials-display" id="materials-display"></div>
             <div class="equip-bar" id="equip-bar" hidden></div>
             <button class="craft-open-btn" id="craft-open-btn" type="button">⚒️ <span data-i18n="craftMenu">Crafting</span> <span class="craft-badge" id="craft-badge" hidden>0</span></button>
+          </div>
+
+          <!-- Message banner (night falls, new card, quest done…) -->
+          <div class="toast" id="toast" hidden></div>
+
+          <!-- Fishing: wait for a bite, then pull! -->
+          <div class="fish-prompt" id="fish-prompt" hidden>
+            <p id="fish-text">…</p>
+            <button class="btn btn-accent btn-large" id="fish-pull-btn" type="button" hidden>🎣 <span data-i18n="pull">Pull!</span></button>
+          </div>
+
+          <!-- Talking to a villager -->
+          <div class="modal-overlay" id="quest-modal" hidden>
+            <div class="modal card quest-card">
+              <div class="quest-head"><span class="quest-portrait" id="quest-portrait">🧙</span><h2 id="quest-name">…</h2></div>
+              <p class="quest-text" id="quest-text"></p>
+              <div class="quest-need" id="quest-need"></div>
+              <div class="quest-reward" id="quest-reward"></div>
+              <div class="quest-actions">
+                <button class="btn btn-primary" id="quest-give-btn" type="button" data-i18n="give">Give</button>
+                <button class="btn btn-ghost" id="quest-close-btn" type="button" data-i18n="ok">OK</button>
+              </div>
+            </div>
           </div>
 
           <!-- Crafting drawer -->
@@ -153,6 +181,26 @@
               <div class="keyboard" id="spell-keyboard" aria-label="On-screen keyboard"></div>
             </div>
           </div>
+        </section>
+
+        <!-- WORD ALBUM -->
+        <section class="screen" id="screen-album" aria-label="Word album">
+          <div class="trophy-head">
+            <h1 data-i18n="albumTitle">Word album</h1>
+            <button class="btn btn-ghost btn-small" id="album-back-btn" type="button" data-i18n="back">Back</button>
+          </div>
+          <p class="lede" id="album-lede"></p>
+          <div id="album-content"></div>
+        </section>
+
+        <!-- WARDROBE -->
+        <section class="screen" id="screen-wardrobe" aria-label="Wardrobe">
+          <div class="trophy-head">
+            <h1 data-i18n="wardrobeTitle">Wardrobe</h1>
+            <button class="btn btn-ghost btn-small" id="wardrobe-back-btn" type="button" data-i18n="back">Back</button>
+          </div>
+          <p class="lede" id="wardrobe-lede"></p>
+          <div class="wardrobe-grid" id="wardrobe-grid"></div>
         </section>
 
         <!-- PARENT DASHBOARD -->

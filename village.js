@@ -374,6 +374,8 @@ export class VillageBuilder {
       this.box(g, 0.12, 2.3, 0.12, this.mats.iron, 0, 1.25, 0);
       this.box(g, 0.34, 0.08, 0.34, this.mats.iron, 0, 2.42, 0);
       this.box(g, 0.24, 0.3, 0.24, this.mats.lantern, 0, 2.25, 0, { cast: false });
+      // Lamp light that only shines at night (handled by the day/night cycle).
+      this.kit.pointLight(this.scene, 0xffc46a, 4, 8, 1.6, x, 2.2, z, { amp: 0.04, speed: 4 }).userData.night = true;
       this.box(g, 0.3, 0.06, 0.3, this.mats.iron, 0, 2.08, 0);
       this.ctx.collidables.push({ x, z, r: 0.22 });
     }
@@ -387,14 +389,20 @@ export class VillageBuilder {
       const z = (r() - 0.5) * 50;
       if (this.blocked(x, z, 1.0)) continue;
       const y0 = this.ctx.heightAt(x, z);
-      if (r() < 0.5) {
+      // Rocks and bushes near the village can be mined (pickaxe / axe): keep them in their own group.
+      const minable = Math.hypot(x, z) < 26;
+      const parent = minable ? new THREE.Group() : this.scene;
+      if (minable) { parent.userData.dynamic = true; this.scene.add(parent); }
+      const isRock = r() < 0.5;
+      if (isRock) {
         const s = 0.4 + r() * 0.5;
-        this.box(this.scene, s, s * 0.6, s * 0.9, this.mats.stone, x, y0 + s * 0.3, z, { ry: r() * Math.PI });
+        this.box(parent, s, s * 0.6, s * 0.9, this.mats.stone, x, y0 + s * 0.3, z, { ry: r() * Math.PI });
       } else {
         const s = 0.6 + r() * 0.5;
-        this.box(this.scene, s, s * 0.75, s, bush, x, y0 + s * 0.37, z, { ry: r() * Math.PI });
-        this.box(this.scene, s * 0.6, s * 0.5, s * 0.6, bush, x + s * 0.4, y0 + s * 0.25, z + s * 0.2, { ry: r() * Math.PI });
+        this.box(parent, s, s * 0.75, s, bush, x, y0 + s * 0.37, z, { ry: r() * Math.PI });
+        this.box(parent, s * 0.6, s * 0.5, s * 0.6, bush, x + s * 0.4, y0 + s * 0.25, z + s * 0.2, { ry: r() * Math.PI });
       }
+      if (minable) (this.decorSpots ??= []).push({ kind: isRock ? 'rock' : 'bush', x, z, y: y0, group: parent });
     }
   }
 

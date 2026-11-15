@@ -519,6 +519,7 @@ export class PropKit {
     const g = this.group(parent, x, z, ry, y);
     const frame = this.mat(0x3a2416, { roughness: 0.7 });
     const glass = this.mat(PALETTE.glass, { emissive: 0x9fd2ee, emissiveIntensity: 0.55, roughness: 0.15 });
+    this.windowGlass = glass; // warmed up at night by the day/night cycle
     this.box(g, w, h, t + 0.02, glass, 0, 0, 0, { cast: false });
     for (const s of [-1, 1]) {
       this.box(g, 0.1, h + 0.12, t + 0.08, frame, s * (w / 2 + 0.04), 0, 0, { cast: false });

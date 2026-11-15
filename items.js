@@ -27,6 +27,8 @@ export const HOLDABLE = {
   hammer: { action: 'swing', duration: 0.4, upright: false },
   sword: { action: 'swing', duration: 0.4, upright: false },
   torch: { action: 'raise', duration: 1.1, upright: true },
+  lantern: { action: 'raise', duration: 1.1, upright: true },
+  rod: { action: 'swing', duration: 0.5, upright: false },
   wand: { action: 'raise', duration: 0.9, upright: false },
   potion: { action: 'drink', duration: 1.1, upright: true },
   bread: { action: 'drink', duration: 1.0, upright: true },
@@ -109,6 +111,22 @@ export function buildItem(fullId) {
     light = new THREE.Object3D();
     light.position.y = 0.6;
     g.add(light);
+  } else if (id === 'lantern') {
+    // Magic lantern: a glowing mushroom in an iron cage.
+    box(g, 0.04, 0.3, 0.04, 0x2b2523, 0, 0.12, 0, { metalness: 0.5 });
+    box(g, 0.26, 0.05, 0.26, 0x2b2523, 0, 0.3, 0, { metalness: 0.5 });
+    box(g, 0.26, 0.05, 0.26, 0x2b2523, 0, 0.62, 0, { metalness: 0.5 });
+    for (const [x, z] of [[-0.11, -0.11], [0.11, -0.11], [-0.11, 0.11], [0.11, 0.11]]) box(g, 0.03, 0.3, 0.03, 0x2b2523, x, 0.46, z, { metalness: 0.5 });
+    const glowCore = box(g, 0.16, 0.2, 0.16, 0x7af0ff, 0, 0.46, 0, { emissive: 0x3ad8f0, emissiveIntensity: 2.6 });
+    flames.push({ mesh: glowCore, base: glowCore.scale.clone(), y0: glowCore.position.y, h: 0, phase: 0, speed: 3, spin: true });
+    light = new THREE.Object3D();
+    light.position.y = 0.46;
+    light.userData.color = 0x7af0ff;
+    g.add(light);
+  } else if (id === 'rod') {
+    box(g, 0.05, 1.3, 0.05, WOOD, 0, 0.55, 0);
+    box(g, 0.08, 0.14, 0.12, 0x5a3820, 0, 0.12, 0.06);
+    box(g, 0.012, 0.6, 0.012, 0xf4f4f4, 0, 1.0, 0.18);
   } else if (id === 'wand') {
     box(g, 0.045, 0.55, 0.045, 0x3a2416, 0, 0.17, 0);
     box(g, 0.07, 0.06, 0.07, GOLD, 0, 0.45, 0, { metalness: 0.6, roughness: 0.3 });

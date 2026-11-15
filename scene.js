@@ -10,7 +10,7 @@ import { VillageBuilder, skyTexture } from './village.js';
 import { BLOCKS, blockMat, texBox } from './textures.js';
 import { mergeStatic, LightPool, QualityManager } from './perf.js';
 import { Terrain, STEP_UP } from './terrain.js';
-import { buildMaterialIcon, makeLabelSprite } from './icons.js';
+import { buildMaterialIcon, buildChest, buildMushroomPatch } from './icons.js';
 
 // Each building has its own blocks, roof and trim so the village has variety.
 const HOUSE_STYLES = {
@@ -326,6 +326,7 @@ export class GameScene {
           const npc = this._createCharacter(specName);
           npc.position.set(lx, 0.1, lz);
           npc.rotation.y = ry;
+          npc.userData.name = specName;
           group.add(npc);
           this.npcs.push(npc);
           this._addLocalCollider(group, lx, lz, 0.4);
@@ -399,7 +400,8 @@ export class GameScene {
 
   // After a successful harvest a world node disappears for a while, then grows back.
   depleteNode(obj, seconds = 40) {
-    if (obj.kind !== 'node') return;
+    if (obj.kind !== 'node' || obj.noDeplete) return;
+    seconds = obj.respawn ?? seconds;
     obj.active = false;
     obj.respawnAt = this.clock.elapsedTime + seconds;
     obj.iconHolder.visible = false;
@@ -456,6 +458,52 @@ export class GameScene {
       this.kit.box(this.scene, 0.16, 0.16, 0.16, this.kit.mat(colors[i % 5], { emissive: colors[i % 5], emissiveIntensity: 0.15 }), fx, 0.36, fz, { cast: false });
     }
     this._addInteractable({ kind: 'node', nodeType: 'flower', material: 'flower', worldPos: new THREE.Vector3(mx, 0, mz), iconY: 1.4, reach: 1.9, hitRadius: 1.2 });
+    // Rocks (pickaxe → stone) and bushes (axe → wood) near the village: quick, easy words.
+    for (const d of this.village.decorSpots ?? []) {
+      this._addInteractable({
+        kind: 'node', nodeType: d.kind, decor: true, block: d.group,
+        material: d.kind === 'rock' ? 'stone' : 'wood', requires: d.kind === 'rock' ? 'pickaxe' : 'axe',
+        burst: d.kind === 'rock' ? '#9a9792' : '#4a9a40',
+        worldPos: new THREE.Vector3(d.x, d.y, d.z), iconY: 1.35, reach: 1.5, hitRadius: 0.8, respawn: 60,
+      });
+    }
+    // Treasure chests hidden around the world: something random inside.
+    for (const [cx, cz, ry] of [[-25, 13, 0.6], [27, 8, -1.2], [-6, 23, 0.2], [13.5, -21, 2.4], [-22, -24, 0.9], [11, 24, -0.4]]) {
+      const y = h(cx, cz);
+      const chest = buildChest();
+      chest.position.set(cx, y, cz);
+      chest.rotation.y = ry;
+      chest.userData.dynamic = true;
+      this.scene.add(chest);
+      this.collidables.push({ x: cx, z: cz, r: 0.6 });
+      this._addInteractable({
+        kind: 'node', nodeType: 'chest', material: 'chest', block: chest, chest,
+        burst: '#f2c84b', worldPos: new THREE.Vector3(cx, y, cz), iconY: 1.6, reach: 1.7, respawn: 240,
+      });
+    }
+    // Glowing mushrooms: they only come out at night.
+    for (const [mx2, mz2] of [[-28, 4], [-24, -13], [12, 27], [27, 14], [-11, 28], [29, -6]]) {
+      const y = h(mx2, mz2);
+      const patch = buildMushroomPatch();
+      patch.position.set(mx2, y, mz2);
+      patch.userData.dynamic = true;
+      this.scene.add(patch);
+      this._addInteractable({
+        kind: 'node', nodeType: 'mushroom', material: 'mushroom', nightOnly: true, block: patch,
+        burst: '#5af0e6', worldPos: new THREE.Vector3(mx2, y, mz2), iconY: 1.3, reach: 1.6, respawn: 50,
+      });
+    }
+    // Fishing pier on the pond (needs a fishing rod).
+    const pier = new THREE.Group();
+    pier.position.set(-16, 0.1, -13.1);
+    this.scene.add(pier);
+    for (let i = 0; i < 6; i++) texBox(pier, 1.4, 0.08, 0.36, blockMat('sprucePlanks'), 0, 0, -i * 0.4, { tile: 0.7 });
+    for (const [px2, pz2] of [[-0.6, -0.2], [0.6, -0.2], [-0.6, -2.0], [0.6, -2.0]]) texBox(pier, 0.14, 0.5, 0.14, blockMat('oakLog'), px2, -0.2, pz2);
+    this._addInteractable({
+      kind: 'node', nodeType: 'fish', material: 'fish', requires: 'rod', noDeplete: true,
+      worldPos: new THREE.Vector3(-16, 0, -12.5), iconY: 1.4, reach: 1.6,
+    });
+
     // Pond: draw water at its edge.
     this._addInteractable({ kind: 'node', nodeType: 'water', material: 'water', worldPos: new THREE.Vector3(-13.4, 0, -13.9), iconY: 1.1, reach: 1.4 });
   }
@@ -843,6 +891,12 @@ export class GameScene {
       this.npcs.push(npc);
       this.collidables.push({ x: cfg.pos[0], z: cfg.pos[2], r: 0.4 });
     }
+    // Every villager can be talked to (quests).
+    for (const npc of this.npcs) {
+      if (!npc.userData.name) continue;
+      const wp = npc.getWorldPosition(new THREE.Vector3());
+      this._addInteractable({ kind: 'npc', npcId: npc.userData.name, npc, worldPos: wp, iconY: 2.45, reach: 2.2, hitRadius: 0.9 });
+    }
   }
 
   _createCharacter(specName) {
@@ -883,7 +937,7 @@ export class GameScene {
       return p;
     };
     const at = (ms, fn) => setTimeout(fn, ms);
-    if (id === 'axe' || id === 'scythe' || id === 'hammer') {
+    if (id === 'axe' || id === 'scythe' || id === 'hammer' || id === 'rod') {
       at(200, () => { this.particleBurst(front(), id === 'scythe' ? '#e2c25a' : '#c8a070', 16); this.screenShake(0.06); });
     } else if (id === 'sword') {
       at(180, () => { this.particleBurst(front(), '#e8f2ff', 22); this.screenShake(0.08); });
@@ -893,7 +947,7 @@ export class GameScene {
         this.particleBurst(front(), '#ffd36a', 8);
         this.screenShake(0.12);
       });
-    } else if (id === 'torch') {
+    } else if (id === 'torch' || id === 'lantern') {
       const light = this.heldItem?.userData.light;
       if (light) { light.userData.boost = 2.5; at(1100, () => { light.userData.boost = 1; }); }
       at(300, () => { const p = this.player.position.clone(); p.y = 2; this.particleBurst(p, '#ffb340', 26); });
@@ -930,6 +984,85 @@ export class GameScene {
       this.scene.add(f);
       this.growing ??= [];
       this.growing.push(f);
+    }
+  }
+
+  openChest(obj) {
+    const lid = obj.chest?.userData.lid;
+    if (!lid) return;
+    const t0 = this.clock.elapsedTime;
+    this.tweens ??= [];
+    this.tweens.push((t) => { const k = Math.min(1, (t - t0) / 0.5); lid.rotation.x = -1.9 * k; return k < 1; });
+    const p = obj.worldPos.clone(); p.y += 0.9;
+    this.particleBurst(p, '#f2c84b', 30);
+    this.particleBurst(p, '#ffffff', 12);
+  }
+
+  // Fishing: a bobber lands on the pond, then dips when a fish bites.
+  castLine() {
+    this.endFishing();
+    const b = new THREE.Group();
+    const red = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.16), new THREE.MeshStandardMaterial({ color: 0xd8382e }));
+    const white = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.16), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+    white.position.y = 0.1;
+    b.add(red, white);
+    b.position.set(-16 + (Math.random() - 0.5) * 1.6, 0.08, -15.4 - Math.random() * 0.8);
+    this.scene.add(b);
+    this.bobber = { mesh: b, dip: 0 };
+    this.particleBurst(b.position.clone(), '#bfe6ff', 10);
+    this.player.rotation.y = Math.PI;
+    playAction(this.player, 'swing', 0.4);
+  }
+  bobberBite() { if (this.bobber) { this.bobber.dip = 1; this.particleBurst(this.bobber.mesh.position.clone(), '#bfe6ff', 14); } }
+  endFishing() { if (this.bobber) { this.scene.remove(this.bobber.mesh); this.bobber = null; } }
+
+  // Swap the hero's outfit, keeping position, facing and the held object.
+  setHeroCostume(spec) {
+    const old = this.player;
+    const hero = createBlockyCharacter(spec);
+    hero.position.copy(old.position);
+    hero.rotation.copy(old.rotation);
+    this.scene.remove(old);
+    this.scene.add(hero);
+    this.characters = this.characters.filter((c) => c !== old);
+    this.characters.push(hero);
+    this.player = hero;
+    const held = old.userData.held;
+    this.heldItem = null;
+    if (held) this.setHeldItem(held);
+  }
+
+  // Day and night: one full day lasts a few minutes.
+  _updateDayNight(dt) {
+    const CYCLE = 420;
+    this.dayTime = ((this.dayTime ?? 60) + dt) % CYCLE;
+    const t = this.dayTime / CYCLE;
+    const ss = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+    let n = t < 0.55 ? 0 : t < 0.65 ? ss(0.55, 0.65, t) : t < 0.9 ? 1 : 1 - ss(0.9, 1, t);
+    if (this.mode === 'title') n = 0.35; // a warm dusk behind the title screen
+    this.night = n;
+    const isNight = n > 0.5;
+    if (isNight !== this._wasNight) { this._wasNight = isNight; this.onDayPhase?.(isNight ? 'night' : 'day'); }
+    this.sun.color.setHex(0xffd6a0).lerp(this._moonColor ??= new THREE.Color(0x8aa8ff), n);
+    this.scene.fog.color.setHex(0xcfe0e4).lerp(this._nightFog ??= new THREE.Color(0x1c2440), n);
+    if (this.kit.windowGlass) {
+      this.kit.windowGlass.emissive.setHex(0x9fd2ee).lerp(this._warm ??= new THREE.Color(0xffb860), n);
+      this.kit.windowGlass.emissiveIntensity = 0.55 + n * 0.9;
+    }
+    // Repaint the sky gradient now and then.
+    this._skyT = (this._skyT ?? 1) + dt;
+    if (this._skyT > 0.5 && this.scene.background?.isTexture) {
+      this._skyT = 0;
+      const c = this.scene.background.image;
+      const g = c.getContext('2d');
+      const mix = (a, b) => `#${new THREE.Color(a).lerp(new THREE.Color(b), n).getHexString()}`;
+      const grad = g.createLinearGradient(0, 0, 0, c.height);
+      grad.addColorStop(0, mix(0x7fb6e6, 0x0e1430));
+      grad.addColorStop(0.6, mix(0xbcdcef, 0x24305a));
+      grad.addColorStop(1, mix(0xfbe6c4, 0x4a3a5a));
+      g.fillStyle = grad;
+      g.fillRect(0, 0, c.width, c.height);
+      this.scene.background.needsUpdate = true;
     }
   }
 
@@ -1199,7 +1332,7 @@ export class GameScene {
     );
     this.raycaster ??= new THREE.Raycaster();
     this.raycaster.setFromCamera(ndc, this.camera);
-    const targets = this.interactables.filter((i) => i.hit && i.active !== false).map((i) => i.hit);
+    const targets = this.interactables.filter((i) => i.hit && this.isAvailable(i)).map((i) => i.hit);
     const hits = this.raycaster.intersectObjects(targets, false);
     if (!hits.length) return;
     const obj = hits[0].object.userData.interactable;
@@ -1312,12 +1445,17 @@ export class GameScene {
 
     // Dim the daylight while indoors so the fire and candles carry the room.
     const f = maxCut;
-    this.ambient.intensity = this.lightBase.ambient * lerp(1, 0.6, f);
-    this.hemi.intensity = this.lightBase.hemi * lerp(1, 0.5, f);
-    this.sun.intensity = this.lightBase.sun * lerp(1, 0.55, f);
+    const nightK = this.night ?? 0;
+    this.ambient.intensity = this.lightBase.ambient * lerp(1, 0.6, f) * (1 - 0.5 * nightK);
+    this.hemi.intensity = this.lightBase.hemi * lerp(1, 0.5, f) * (1 - 0.6 * nightK);
+    this.sun.intensity = this.lightBase.sun * lerp(1, 0.55, f) * (1 - 0.78 * nightK);
   }
 
   // ===== INTERACTION =====
+
+  isAvailable(obj) {
+    return obj.active && (!obj.nightOnly || this.night > 0.5);
+  }
 
   _updateInteractables() {
     this.nearbyInteractable = null;
@@ -1325,12 +1463,19 @@ export class GameScene {
     let minDist = Infinity;
     const p = this.player.position;
     for (const obj of this.interactables) {
+      if (obj.nightOnly) {
+        const show = obj.active && this.night > 0.5;
+        obj.block.visible = show;
+        obj.iconHolder.visible = show;
+        if (!show) { if (obj.labelEl) obj.labelEl.style.display = 'none'; if (obj.active) continue; }
+      }
       if (!obj.active) {
         if (obj.labelEl) obj.labelEl.style.display = 'none';
         if (t > obj.respawnAt) {
           obj.active = true;
           obj.iconHolder.visible = true;
           if (obj.block) { obj.block.visible = true; obj.block.scale.setScalar(0.01); }
+          if (obj.chest) obj.chest.userData.lid.rotation.x = 0;
         }
         continue;
       }
@@ -1342,6 +1487,10 @@ export class GameScene {
       if (obj.labelEl) this._placeLabel(obj, holder.position);
       const dist = Math.hypot(obj.worldPos.x - p.x, obj.worldPos.z - p.z);
       const near = dist < obj.reach;
+      // Scenery rocks and bushes only show their icon and name when you're close.
+      const shown = obj.decor ? dist < 5 : dist < 24;
+      holder.visible = obj.decor ? shown : true;
+      if (obj.labelEl && !shown) { obj.labelEl.style.display = 'none'; if (near && dist < minDist) { minDist = dist; this.nearbyInteractable = obj; } continue; }
       holder.scale.setScalar(holder.scale.x + ((near ? 1.3 : 1) - holder.scale.x) * 0.15);
       if (near && dist < minDist) { minDist = dist; this.nearbyInteractable = obj; }
       if (obj.labelEl) obj.labelEl.classList.toggle('is-near', near);
@@ -1489,6 +1638,13 @@ export class GameScene {
     this.quality?.tick(rawDt);
     const elapsed = this.clock.elapsedTime;
 
+    this._updateDayNight(dt);
+    if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
+    if (this.bobber) {
+      const bb = this.bobber;
+      bb.dip = Math.max(0, bb.dip - dt * 1.5);
+      bb.mesh.position.y = 0.08 + Math.sin(elapsed * 3) * 0.02 - bb.dip * 0.12;
+    }
     if (this.mode === 'play') {
       this._updatePlayer(dt);
       this._updateCamera(dt);
@@ -1517,7 +1673,9 @@ export class GameScene {
     const torchAnchor = this.heldItem?.userData.light;
     if (torchAnchor) {
       torchAnchor.getWorldPosition(this.torchLight.position);
-      this.torchLight.intensity = 4 * (torchAnchor.userData.boost ?? 1) * (1 + Math.sin(elapsed * 13) * 0.12);
+      const magic = torchAnchor.userData.color;
+      this.torchLight.color.setHex(magic ?? 0xff9a40);
+      this.torchLight.intensity = (magic ? 5 : 4) * (torchAnchor.userData.boost ?? 1) * (1 + Math.sin(elapsed * (magic ? 3 : 13)) * 0.12);
     } else this.torchLight.intensity = 0;
     if (this.growing?.length) {
       for (const f of this.growing) f.scale.setScalar(Math.min(1, f.scale.x + dt * 2.5));
@@ -1556,7 +1714,7 @@ export class GameScene {
     }
     for (const l of this.kit.lights) {
       const n = Math.sin(elapsed * l.speed + l.phase) * 0.6 + Math.sin(elapsed * l.speed * 2.3 + l.phase) * 0.4;
-      l.current = l.base * (1 + n * l.amp) * (l.houseFactor ?? 1);
+      l.current = l.base * (1 + n * l.amp) * (l.houseFactor ?? 1) * (l.light.userData.night ? (this.night ?? 0) : 1);
     }
     this.lightPool.update(this.kit.lights, this.camTarget);
 

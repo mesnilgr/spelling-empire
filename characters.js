@@ -239,6 +239,39 @@ export function createBlockyCharacter(specOrName) {
     part(headPivot, 0.46, 0.06, 0.46, lambert({ color: 0xf2c84b }), 0, 0.6, 0);
   }
 
+  if (spec.hat) {
+    const hm = lambert({ color: spec.hat.color ?? 0x8a5a32 });
+    const kind = spec.hat.type;
+    if (kind === 'cap') {
+      part(headPivot, 0.56, 0.16, 0.56, hm, 0, 0.56, 0);
+      part(headPivot, 0.6, 0.05, 0.3, hm, 0, 0.5, 0.36);
+    } else if (kind === 'crown') {
+      const gold = lambert({ color: 0xf2c84b, metalness: 0.6, roughness: 0.3, emissive: 0x6a4a10, emissiveIntensity: 0.3 });
+      part(headPivot, 0.54, 0.1, 0.54, gold, 0, 0.55, 0);
+      for (const [x, z] of [[-0.22, 0.22], [0.22, 0.22], [-0.22, -0.22], [0.22, -0.22], [0, 0.24], [0, -0.24], [0.24, 0], [-0.24, 0]]) part(headPivot, 0.09, 0.14, 0.09, gold, x, 0.66, z);
+      part(headPivot, 0.08, 0.08, 0.04, lambert({ color: 0xd8382e, emissive: 0x8a1a10, emissiveIntensity: 0.5 }), 0, 0.56, 0.28);
+    } else if (kind === 'chef') {
+      const w = lambert({ color: 0xffffff });
+      part(headPivot, 0.54, 0.1, 0.54, w, 0, 0.55, 0);
+      part(headPivot, 0.62, 0.32, 0.62, w, 0, 0.76, 0);
+    } else if (kind === 'bandana') {
+      part(headPivot, 0.54, 0.14, 0.54, hm, 0, 0.47, 0);
+      part(headPivot, 0.14, 0.18, 0.08, hm, 0.12, 0.38, -0.3);
+    } else if (kind === 'flowers') {
+      const colors = [0xff6b9d, 0xffd93d, 0xffffff, 0xb07aff, 0xff8a3d];
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        part(headPivot, 0.12, 0.12, 0.12, lambert({ color: colors[i % 5] }), Math.cos(a) * 0.28, 0.52, Math.sin(a) * 0.28);
+      }
+    } else if (kind === 'hood') {
+      part(headPivot, 0.58, 0.2, 0.58, hm, 0, 0.55, -0.02);
+      part(headPivot, 0.58, 0.5, 0.1, hm, 0, 0.3, -0.29);
+      part(headPivot, 0.06, 0.5, 0.56, hm, 0.29, 0.3, -0.02);
+      part(headPivot, 0.06, 0.5, 0.56, hm, -0.29, 0.3, -0.02);
+      part(headPivot, 0.5, 0.1, 0.04, hm, 0, 0.12, 0.27);
+    }
+  }
+
   root.userData = {
     dynamic: true,
     walkPhase: 0,
@@ -303,3 +336,17 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 export function playAction(ch, kind, duration = 0.5) {
   ch.userData.action = { kind, t: 0, duration };
 }
+
+// Outfits the hero can wear (bought with stars or earned through quests).
+const HERO = CHARACTER_SPECS.hero;
+export const COSTUMES = [
+  { id: 'hero', price: 0, emoji: '🧒', name: { fr: 'Aventurier', en: 'Adventurer' }, spec: HERO },
+  { id: 'explorer', price: 15, emoji: '🧭', name: { fr: 'Explorateur', en: 'Explorer' }, spec: { ...HERO, shirt: 0x6a8a3a, trim: 0xd8b04a, pants: 0x8a6a3a, cape: null, hat: { type: 'cap', color: 0x7a5a2a } } },
+  { id: 'cook', price: 20, emoji: '👨‍🍳', name: { fr: 'Cuisinier', en: 'Cook' }, spec: { ...HERO, shirt: 0xf4f0e6, trim: 0xd8382e, pants: 0x3a3a46, apron: 0xffffff, cape: null, hat: { type: 'chef' } } },
+  { id: 'pirate', price: 30, emoji: '🏴‍☠️', name: { fr: 'Pirate', en: 'Pirate' }, spec: { ...HERO, shirt: 0xf0ead8, trim: 0x2a2a2a, pants: 0x2a2a3a, belt: 0x8a3b2e, cape: null, mustache: 0x3a2214, hat: { type: 'bandana', color: 0xc8372d } } },
+  { id: 'flower', price: 25, emoji: '🌸', name: { fr: 'Jardinier', en: 'Gardener' }, spec: { ...HERO, shirt: 0xf2a0c8, trim: 0xffffff, pants: 0x5a8a3a, cape: null, hat: { type: 'flowers' } } },
+  { id: 'ninja', price: 40, emoji: '🥷', name: { fr: 'Ninja', en: 'Ninja' }, spec: { ...HERO, shirt: 0x26262e, trim: 0xc8372d, pants: 0x1e1e24, shoes: 0x111114, cape: null, hat: { type: 'hood', color: 0x1e1e24 } } },
+  { id: 'knight', price: 50, emoji: '🛡️', name: { fr: 'Chevalier', en: 'Knight' }, spec: { ...HERO, shirt: 0xb8bcc4, trim: 0xc8372d, pants: 0x6a6e76, cape: 0x2a4f9a, helmet: 0xc8ccd4 } },
+  { id: 'wizard', price: 60, emoji: '🧙', name: { fr: 'Sorcier', en: 'Wizard' }, spec: { ...HERO, shirt: 0x5a3aa8, trim: 0xf2c84b, pants: 0x5a3aa8, robe: true, cape: null, wizardHat: 0x4a2c98 } },
+  { id: 'king', price: 80, emoji: '👑', name: { fr: 'Roi', en: 'Royal' }, spec: { ...HERO, shirt: 0xa8302a, trim: 0xf2c84b, pants: 0x3a2a5a, cape: 0x6a2a9a, hat: { type: 'crown' } } },
+];

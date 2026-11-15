@@ -78,6 +78,7 @@ export class LightPool {
     const scored = [];
     for (const e of entries) {
       if (!e.light.parent) continue;
+      if ((e.current ?? 1) < 0.05) continue; // switched off (e.g. street lamps by day)
       e.light.getWorldPosition(this.tmp);
       const d = this.tmp.distanceToSquared(focus) / Math.max(0.2, e.houseFactor ?? 1);
       scored.push({ e, d, pos: this.tmp.clone() });

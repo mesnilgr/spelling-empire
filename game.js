@@ -1,5 +1,7 @@
 import { LANGUAGES, LEVELS, WORDS, UI, buildSentence } from './language-engine.js';
 import { GameScene } from './scene.js';
+import { NPC_INFO, QUESTS, rollLoot, WORD_EMOJI } from './content.js';
+import { COSTUMES } from './characters.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -24,6 +26,8 @@ const CRAFTABLES = [
   { id: 'bread', emoji: '🍞', name: { en: 'Bread', fr: 'Pain' }, parts: ['wheat', 'fire', 'water'] },
   { id: 'potion', emoji: '🧪', name: { en: 'Potion', fr: 'Potion' }, parts: ['water', 'flower', 'crystal'] },
   { id: 'wand', emoji: '🪄', name: { en: 'Magic wand', fr: 'Baguette magique' }, parts: ['wood', 'crystal', 'flower'] },
+  { id: 'rod', emoji: '🎣', name: { en: 'Fishing rod', fr: 'Canne à pêche' }, parts: ['wood', 'wood', 'cloth'] },
+  { id: 'lantern', emoji: '🏮', name: { en: 'Magic lantern', fr: 'Lanterne magique' }, parts: ['mushroom', 'mushroom', 'iron'] },
   { id: 'house', emoji: '🏠', name: { en: 'House', fr: 'Maison' }, parts: ['wood', 'stone', 'wood'] },
   { id: 'boat', emoji: '⛵', name: { en: 'Boat', fr: 'Bateau' }, parts: ['wood', 'wood', 'cloth'] },
   { id: 'pickaxe_diamond', emoji: '💎', name: { en: 'Diamond pickaxe', fr: 'Pioche en diamant' }, parts: ['diamond', 'diamond', 'wood'], requires: ['pickaxe', 'hammer'] },
@@ -34,7 +38,7 @@ const itemName = (item) => item.name[lang] ?? item.name.en;
 const craftable = (id) => CRAFTABLES.find((c) => c.id === id);
 
 // Crafted objects the hero can carry and use with the action button.
-const HOLDABLE_IDS = ['pickaxe', 'axe', 'scythe', 'hammer', 'sword', 'torch', 'wand', 'potion', 'bread'];
+const HOLDABLE_IDS = ['pickaxe', 'axe', 'scythe', 'hammer', 'sword', 'torch', 'lantern', 'rod', 'wand', 'potion', 'bread'];
 // Best owned version of a tool (diamond beats iron, obsidian beats diamond).
 function bestVersion(base) {
   const owned = (game?.crafted ?? []).filter((id) => id === base || id.startsWith(`${base}_`));
@@ -45,7 +49,7 @@ const ownsTool = (base) => !!bestVersion(base);
 
 const MATERIAL_EMOJI = {
   iron: '⛓️', wood: '🪵', fire: '🔥', stone: '🪨', wheat: '🌾',
-  water: '💧', cloth: '🧵', flower: '🌸', crystal: '🔮', diamond: '💎', obsidian: '🟪',
+  water: '💧', cloth: '🧵', flower: '🌸', crystal: '🔮', diamond: '💎', obsidian: '🟪', mushroom: '🍄', fish: '🐟',
 };
 
 // Each building yields its own materials. Spelling words come from the level word list,
@@ -53,8 +57,9 @@ const MATERIAL_EMOJI = {
 const MATERIAL_FR = {
   iron: 'fer', wood: 'bois', fire: 'feu', stone: 'pierre', wheat: 'blé',
   water: 'eau', cloth: 'toile', flower: 'fleur', crystal: 'cristal', diamond: 'diamant', obsidian: 'obsidienne',
+  mushroom: 'champignon', fish: 'poisson', chest: 'trésor',
 };
-const TOOL_NAMES = { pickaxe: { en: 'a pickaxe', fr: 'une pioche' }, axe: { en: 'an axe', fr: 'une hache' }, scythe: { en: 'a scythe', fr: 'une faux' } };
+const TOOL_NAMES = { pickaxe: { en: 'a pickaxe', fr: 'une pioche' }, axe: { en: 'an axe', fr: 'une hache' }, scythe: { en: 'a scythe', fr: 'une faux' }, rod: { en: 'a fishing rod', fr: 'une canne à pêche' } };
 // Every house offers wood among its materials so the first tools are easy to make.
 const HOUSE_MATERIALS = {
   forge: ['iron', 'fire', 'stone', 'wood'],
@@ -77,6 +82,8 @@ const screens = {
   trophy: $('#screen-trophy'),
   help: $('#screen-help'),
   parents: $('#screen-parents'),
+  album: $('#screen-album'),
+  wardrobe: $('#screen-wardrobe'),
 };
 const spellInput = $('#spell-input');
 const spellTilesEl = $('#spell-tiles');
@@ -157,7 +164,7 @@ function shuffle(list) {
 // Difficulty is part of the world: houses ask level 1, things out in the world level 2,
 // and rare diamond / obsidian ores level 3.
 function levelFor(obj) {
-  if (obj.kind !== 'node') return 'easy';
+  if (obj.kind !== 'node' || obj.decor || obj.nodeType === 'fish') return 'easy';
   if (obj.material === 'diamond' || obj.material === 'obsidian') return 'challenge';
   return 'medium';
 }
@@ -397,6 +404,8 @@ function showScreen(name) {
   if (name === 'menu') renderMenu();
   if (name === 'trophy') renderTrophy();
   if (name === 'parents') renderDashboard();
+  if (name === 'album') renderAlbum();
+  if (name === 'wardrobe') renderWardrobe();
   window.scrollTo(0, 0);
 }
 
@@ -409,6 +418,11 @@ function init3DScene() {
   scene3D.minimapCanvas = $('#minimap');
   scene3D.onStep = (surface) => sfxStep(surface);
   scene3D.onJump = () => sfxJump();
+  scene3D.onDayPhase = (phase) => {
+    $('#hud-time').textContent = phase === 'night' ? '🌙' : '☀️';
+    if (document.body.dataset.screen === 'game') toast(phase === 'night' ? t.nightFalls : t.dayBreaks);
+  };
+  applyCostume();
   refreshSpots();
 }
 
@@ -417,7 +431,8 @@ function refreshSpots() {
   const taken = {};
   for (const obj of scene3D?.interactables ?? []) {
     let id = obj.material;
-    if (obj.kind === 'house') {
+    if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
+    else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
       id = pickMaterial(obj.houseType, taken[obj.name]);
@@ -429,6 +444,7 @@ function refreshSpots() {
 
 // Text shown under each floating material: its name, plus the tool needed out in the world.
 function spotLabel(obj, id) {
+  if (obj.kind === 'npc') return NPC_INFO[obj.npcId]?.name[lang] ?? obj.npcId;
   const tool = obj.requires ? ` ${craftable(obj.requires)?.emoji ?? ''}` : '';
   return `${materialName(id)}${tool}`;
 }
@@ -444,6 +460,9 @@ function saveGame() {
     equipped: game.equipped ?? null,
     starsEarned: game.starsEarned,
     wordsSpelled: game.wordsSpelled,
+    quests: game.quests ?? {},
+    chests: game.chests ?? 0,
+    fish: game.fish ?? 0,
     savedAt: Date.now(),
   };
   saveProgress();
@@ -458,6 +477,9 @@ function continueGame() {
     crafted: [...s.crafted],
     starsEarned: s.starsEarned ?? 0,
     wordsSpelled: s.wordsSpelled ?? 0,
+    quests: { ...(s.quests ?? {}) },
+    chests: s.chests ?? 0,
+    fish: s.fish ?? 0,
   });
   for (const id of game.crafted) if (!HOLDABLE_IDS.includes(id.split('_')[0])) scene3D?.spawnTrophy(id);
   game.equipped = null;
@@ -521,6 +543,13 @@ function tryInteract() {
 // World nodes need the right tool; houses don't.
 function interactWith(obj) {
   if (!game || !$('#spell-modal').hidden || !obj.active) return;
+  if (!$('#quest-modal').hidden || fishing) return;
+  if (obj.kind === 'npc') { openQuest(obj); return; }
+  if (obj.nodeType === 'fish' && ownsTool('rod')) {
+    if (game.equipped !== bestVersion('rod')) equipItem(bestVersion('rod'));
+    startFishing(obj);
+    return;
+  }
   if (obj.requires) {
     const tool = bestVersion(obj.requires);
     if (!tool) {
@@ -744,7 +773,11 @@ function handleSpellSuccess() {
   progress.stars += earned;
   game.starsEarned += earned;
   if (!copied) game.wordsSpelled += 1;
-  if (firstTry) { progress.mastered[wordStr] = true; delete progress.difficult[wordStr]; }
+  if (firstTry) {
+    if (!progress.mastered[wordStr]) setTimeout(() => toast(`🃏 ${t.newCard} : ${WORD_EMOJI[lang]?.[wordStr] ?? ''} ${wordStr}`), 600);
+    progress.mastered[wordStr] = true;
+    delete progress.difficult[wordStr];
+  }
   else if (!copied) { progress.difficult[wordStr] = (progress.difficult[wordStr] ?? 0) + 1; }
 
   sfxMine();
@@ -764,13 +797,28 @@ function handleSpellSuccess() {
   }
 
   if (type === 'mine') {
-    const material = spellContext.material;
+    let material = spellContext.material;
     const obj = spellContext.mineObj;
+    let lootText = '';
+    if (material === 'chest') {
+      // Treasure: something random inside.
+      const loot = rollLoot();
+      game.chests = (game.chests ?? 0) + 1;
+      scene3D?.openChest(obj);
+      for (const [m, n] of Object.entries(loot.materials ?? {})) game.materials[m] = (game.materials[m] ?? 0) + n;
+      if (loot.stars) { progress.stars += loot.stars; game.starsEarned += loot.stars; }
+      lootText = [...Object.entries(loot.materials ?? {}).map(([m, n]) => `${MATERIAL_EMOJI[m]} ${materialName(m)} ×${n}`), loot.stars ? `${loot.stars} ★` : ''].filter(Boolean).join(' · ');
+      material = Object.keys(loot.materials ?? {})[0] ?? null;
+    }
+    if (obj?.nodeType === 'fish') game.fish = (game.fish ?? 0) + 1;
     // Diamond and obsidian tools gather twice as much.
     const tool = obj?.requires ? bestVersion(obj.requires) : null;
     const amount = tool && tool.includes('_') ? 2 : 1;
-    game.materials[material] = (game.materials[material] ?? 0) + amount;
-    if (obj?.kind === 'node') scene3D?.depleteNode(obj);
+    if (!lootText) game.materials[material] = (game.materials[material] ?? 0) + amount;
+    if (obj?.kind === 'node') {
+      if (obj.nodeType === 'chest') setTimeout(() => scene3D?.depleteNode(obj), 1400);
+      else scene3D?.depleteNode(obj);
+    }
     else if (obj) {
       const others = (scene3D?.interactables ?? []).filter((o) => o !== obj && o.name === obj.name).map((o) => o.material);
       const next = pickMaterial(obj.houseType, others);
@@ -783,7 +831,7 @@ function handleSpellSuccess() {
       el('p', 'spell-success', copied ? t.copiedWell : firstTry ? t.perfectSpelling : t.youGotIt),
       el('p', 'spell-sentence', sentence),
       el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`),
-      el('p', 'spell-material', `${MATERIAL_EMOJI[material] ?? ''} ${t.gotMaterial}: ${materialName(material)}${amount > 1 ? ` ×${amount}` : ''}`),
+      el('p', 'spell-material', lootText ? `🎁 ${t.treasureFound} ${lootText}` : `${MATERIAL_EMOJI[material] ?? ''} ${t.gotMaterial}: ${materialName(material)}${amount > 1 ? ` ×${amount}` : ''}`),
     );
     if (streak >= 2) spellResultEl.appendChild(el('p', 'spell-streak-badge', `${streak}x ${t.streakLabel}! +${streakBonus} ${t.bonusStars}`));
     spellResultEl.hidden = false;
@@ -1409,3 +1457,218 @@ document.addEventListener('keydown', (event) => {
 $('#use-btn')?.addEventListener('click', useEquipped);
 $('#jump-btn')?.addEventListener('pointerdown', (e) => { e.preventDefault(); scene3D?.jump(); });
 $('#continue-btn')?.addEventListener('click', () => { initAudio(); continueGame(); });
+
+
+/* ===== MESSAGES ===== */
+function toast(text, ms = 3200) {
+  const el2 = $('#toast');
+  if (!el2) return;
+  el2.textContent = text;
+  el2.hidden = false;
+  el2.classList.remove('is-in'); void el2.offsetWidth; el2.classList.add('is-in');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { el2.hidden = true; }, ms);
+}
+
+/* ===== VILLAGER QUESTS ===== */
+function questFor(npcId) {
+  const list = QUESTS[npcId];
+  if (!list) return null;
+  const i = game?.quests?.[npcId] ?? 0;
+  return list[i] ?? null;
+}
+
+function questReady(q) {
+  if (q.need.materials) return Object.entries(q.need.materials).every(([m, n]) => (game.materials[m] ?? 0) >= n);
+  if (q.need.crafted) return game.crafted.includes(q.need.crafted);
+  if (q.need.stat?.chests) return (game.chests ?? 0) >= q.need.stat.chests;
+  return false;
+}
+
+let questNpc = null;
+function openQuest(obj) {
+  questNpc = obj.npcId;
+  const info = NPC_INFO[obj.npcId];
+  const q = questFor(obj.npcId);
+  $('#quest-portrait').textContent = info?.emoji ?? '🙂';
+  $('#quest-name').textContent = info?.name[lang] ?? obj.npcId;
+  const need = $('#quest-need');
+  const reward = $('#quest-reward');
+  if (!q) {
+    $('#quest-text').textContent = t.allQuestsDone;
+    need.replaceChildren(); reward.replaceChildren();
+    $('#quest-give-btn').hidden = true;
+  } else {
+    $('#quest-text').textContent = q.text[lang];
+    const chips = [];
+    if (q.need.materials) {
+      chips.push(el('span', 'quest-label', t.youNeed));
+      for (const [m, n] of Object.entries(q.need.materials)) {
+        const have = game.materials[m] ?? 0;
+        chips.push(el('span', `quest-chip ${have >= n ? 'ok' : ''}`, `${MATERIAL_EMOJI[m]} ${materialName(m)} ${Math.min(have, n)}/${n}`));
+      }
+    } else if (q.need.crafted) {
+      const it = craftable(q.need.crafted);
+      chips.push(el('span', 'quest-label', t.craftedNeed), el('span', `quest-chip ${game.crafted.includes(q.need.crafted) ? 'ok' : ''}`, `${it.emoji} ${itemName(it)}`));
+    } else if (q.need.stat?.chests) {
+      chips.push(el('span', 'quest-label', t.doneNeed), el('span', `quest-chip ${(game.chests ?? 0) >= q.need.stat.chests ? 'ok' : ''}`, `🎁 ${t.chestsNeed(q.need.stat.chests)}`));
+    }
+    need.replaceChildren(...chips);
+    const r = [el('span', 'quest-label', t.rewardLabel)];
+    if (q.reward.stars) r.push(el('span', 'quest-chip gold', `${q.reward.stars} ★`));
+    for (const [m, n] of Object.entries(q.reward.materials ?? {})) r.push(el('span', 'quest-chip gold', `${MATERIAL_EMOJI[m]} ${materialName(m)} ×${n}`));
+    if (q.reward.costume) { const c = COSTUMES.find((x) => x.id === q.reward.costume); r.push(el('span', 'quest-chip gold', `${c.emoji} ${c.name[lang]}`)); }
+    reward.replaceChildren(...r);
+    $('#quest-give-btn').hidden = !questReady(q);
+  }
+  $('#quest-modal').hidden = false;
+  speak($('#quest-text').textContent, 0.95);
+}
+
+function completeQuest() {
+  const q = questFor(questNpc);
+  if (!q || !questReady(q)) return;
+  for (const [m, n] of Object.entries(q.need.materials ?? {})) {
+    game.materials[m] -= n;
+    if (game.materials[m] <= 0) delete game.materials[m];
+  }
+  if (q.reward.stars) { progress.stars += q.reward.stars; game.starsEarned += q.reward.stars; }
+  for (const [m, n] of Object.entries(q.reward.materials ?? {})) game.materials[m] = (game.materials[m] ?? 0) + n;
+  if (q.reward.costume) unlockCostume(q.reward.costume);
+  game.quests ??= {};
+  game.quests[questNpc] = (game.quests[questNpc] ?? 0) + 1;
+  sfxVictory();
+  launchConfetti();
+  $('#quest-text').textContent = q.thanks[lang];
+  speak(q.thanks[lang], 0.95);
+  $('#quest-need').replaceChildren();
+  $('#quest-give-btn').hidden = true;
+  saveGame();
+  updateGameUI();
+  renderCraftMenu();
+  refreshSpots();
+}
+
+/* ===== FISHING ===== */
+let fishing = null;
+function startFishing(obj) {
+  initAudio();
+  scene3D.castLine();
+  sfxJump();
+  const prompt = $('#fish-prompt');
+  $('#fish-text').textContent = t.fishWait;
+  $('#fish-pull-btn').hidden = true;
+  prompt.hidden = false;
+  const biteIn = 1500 + Math.random() * 2500;
+  fishing = { obj, state: 'waiting' };
+  fishing.timer = setTimeout(() => {
+    if (!fishing) return;
+    fishing.state = 'bite';
+    scene3D.bobberBite();
+    sfxBreak();
+    $('#fish-text').textContent = t.fishBite;
+    $('#fish-pull-btn').hidden = false;
+    // Too slow: the fish swims away.
+    fishing.timer = setTimeout(() => {
+      if (!fishing || fishing.state !== 'bite') return;
+      $('#fish-text').textContent = t.fishMissed;
+      $('#fish-pull-btn').hidden = true;
+      scene3D.endFishing();
+      fishing = null;
+      setTimeout(() => { if (!fishing) prompt.hidden = true; }, 1500);
+    }, 2600);
+  }, biteIn);
+}
+function pullFish() {
+  if (!fishing || fishing.state !== 'bite') return;
+  clearTimeout(fishing.timer);
+  const obj = fishing.obj;
+  fishing = null;
+  $('#fish-prompt').hidden = true;
+  scene3D.endFishing();
+  beginMine(obj);
+}
+
+/* ===== COSTUMES ===== */
+function costumeState() {
+  progress.costumes ??= { owned: ['hero'], current: 'hero' };
+  return progress.costumes;
+}
+function applyCostume() {
+  const c = COSTUMES.find((x) => x.id === costumeState().current) ?? COSTUMES[0];
+  if (c.id !== 'hero' || scene3D?.player?.userData.costume) scene3D?.setHeroCostume(c.spec);
+  if (scene3D?.player) scene3D.player.userData.costume = c.id;
+}
+function unlockCostume(id) {
+  const s = costumeState();
+  if (!s.owned.includes(id)) s.owned.push(id);
+  const c = COSTUMES.find((x) => x.id === id);
+  setTimeout(() => toast(`${c.emoji} ${t.costumeUnlocked} : ${c.name[lang]} !`), 900);
+  saveProgress();
+}
+function renderWardrobe() {
+  const s = costumeState();
+  $('#wardrobe-lede').textContent = t.wardrobeLede(progress.stars);
+  const questCostumes = new Set(Object.values(QUESTS).flat().map((q) => q.reward.costume).filter(Boolean));
+  $('#wardrobe-grid').replaceChildren(...COSTUMES.map((c) => {
+    const owned = s.owned.includes(c.id);
+    const card = el('div', `wardrobe-card ${s.current === c.id ? 'is-current' : ''} ${owned ? '' : 'is-locked'}`);
+    card.append(el('span', 'wardrobe-emoji', c.emoji), el('span', 'wardrobe-name', c.name[lang]));
+    const btn = el('button', 'btn btn-small');
+    btn.type = 'button';
+    if (s.current === c.id) { btn.textContent = t.wearing; btn.disabled = true; btn.classList.add('btn-ghost'); }
+    else if (owned) { btn.textContent = t.wear; btn.classList.add('btn-primary'); btn.addEventListener('click', () => { s.current = c.id; saveProgress(); applyCostume(); renderWardrobe(); }); }
+    else {
+      btn.textContent = `${t.buy} · ${c.price} ★`;
+      btn.classList.add('btn-accent');
+      btn.disabled = progress.stars < c.price;
+      btn.addEventListener('click', () => {
+        if (progress.stars < c.price) return;
+        progress.stars -= c.price;
+        s.owned.push(c.id); s.current = c.id;
+        saveProgress(); applyCostume(); sfxCraft(); renderWardrobe();
+        $('#total-stars').textContent = progress.stars;
+      });
+    }
+    card.append(btn);
+    if (!owned && questCostumes.has(c.id)) card.append(el('span', 'wardrobe-note', `🎖️ ${t.questReward}`));
+    return card;
+  }));
+}
+
+/* ===== WORD ALBUM ===== */
+function renderAlbum() {
+  const words = WORDS[lang];
+  const got = words.filter((w) => progress.mastered[w.word]).length;
+  $('#album-lede').textContent = t.albumLede(got, words.length);
+  const sections = ['easy', 'medium', 'challenge'].map((lvl) => {
+    const list = words.filter((w) => w.level === lvl);
+    const sec = el('section', 'card section');
+    const n = list.filter((w) => progress.mastered[w.word]).length;
+    sec.append(el('h2', '', `${t.levelNames?.[lvl] ?? lvl} · ${n}/${list.length}`));
+    const grid = el('div', 'album-grid');
+    for (const w of list) {
+      const has = progress.mastered[w.word];
+      const card = el('div', `album-card ${has ? 'is-got' : ''}`);
+      card.append(el('span', 'album-emoji', has ? (WORD_EMOJI[lang]?.[w.word] ?? '⭐') : '?'), el('span', 'album-word', has ? w.word : '• '.repeat(w.word.length).trim()));
+      if (has) card.addEventListener('click', () => speak(`${w.word}. ${buildSentence(w.word, lang)}`, 0.9));
+      grid.append(card);
+    }
+    sec.append(grid);
+    return sec;
+  });
+  $('#album-content').replaceChildren(...sections);
+}
+
+// Navigation for the new pages; they return to wherever you came from.
+let returnScreen = 'menu';
+function openPage(name) { returnScreen = document.body.dataset.screen === 'game' ? 'game' : 'menu'; showScreen(name); }
+$('#album-btn')?.addEventListener('click', () => openPage('album'));
+$('#wardrobe-btn')?.addEventListener('click', () => openPage('wardrobe'));
+$('#menu-album-btn')?.addEventListener('click', () => openPage('album'));
+$('#menu-wardrobe-btn')?.addEventListener('click', () => openPage('wardrobe'));
+$('#album-back-btn')?.addEventListener('click', () => showScreen(returnScreen));
+$('#wardrobe-back-btn')?.addEventListener('click', () => showScreen(returnScreen));
+$('#quest-give-btn')?.addEventListener('click', completeQuest);
+$('#quest-close-btn')?.addEventListener('click', () => { $('#quest-modal').hidden = true; });
+$('#fish-pull-btn')?.addEventListener('click', pullFish);

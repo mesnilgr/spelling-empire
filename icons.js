@@ -10,6 +10,34 @@ const box = (g, w, h, d, m, x = 0, y = 0, z = 0) => {
   return b;
 };
 
+// A wooden treasure chest with a lid that can open.
+export function buildChest() {
+  const g = new THREE.Group();
+  const wood = blockMat('oakPlanks');
+  texBox(g, 0.9, 0.55, 0.6, wood, 0, 0.275, 0, { tile: 0.6 });
+  const lid = new THREE.Group();
+  lid.position.set(0, 0.55, -0.3);
+  g.add(lid);
+  texBox(lid, 0.92, 0.22, 0.62, wood, 0, 0.11, 0.3, { tile: 0.6 });
+  const gold = mat(0xe2b440, { metalness: 0.6, roughness: 0.35 });
+  for (const x of [-0.42, 0.42]) box(g, 0.06, 0.58, 0.62, mat(0x3a2a1a), x, 0.29, 0);
+  box(lid, 0.16, 0.16, 0.06, gold, 0, 0.0, 0.62);
+  g.userData.lid = lid;
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+export function buildMushroomPatch() {
+  const g = new THREE.Group();
+  const stem = mat(0xf0ead8);
+  const cap = mat(0x5af0e6, { emissive: 0x2ad0c8, emissiveIntensity: 1.4 });
+  for (const [x, z, s] of [[0, 0, 1], [0.35, 0.2, 0.7], [-0.3, 0.25, 0.6], [0.1, -0.35, 0.55]]) {
+    box(g, 0.1 * s, 0.3 * s, 0.1 * s, stem, x, 0.15 * s, z);
+    box(g, 0.36 * s, 0.14 * s, 0.36 * s, cap, x, 0.33 * s, z);
+  }
+  return g;
+}
+
 export function buildMaterialIcon(id) {
   const g = new THREE.Group();
   switch (id) {
@@ -77,6 +105,30 @@ export function buildMaterialIcon(id) {
     }
     case 'obsidian':
       texBox(g, 0.4, 0.4, 0.4, blockMat('obsidian', { emissive: 0x2a1048, emissiveIntensity: 0.5 }), 0, 0, 0, { tile: 0.4, cast: false });
+      break;
+    case 'chest':
+      // A golden "?" block: what's inside is a surprise.
+      box(g, 0.36, 0.36, 0.36, mat(0xf2c84b, { emissive: 0xc88a26, emissiveIntensity: 0.6, metalness: 0.3, roughness: 0.4 }));
+      box(g, 0.08, 0.16, 0.38, mat(0x7a4a12), 0, 0.03, 0);
+      box(g, 0.38, 0.08, 0.08, mat(0x7a4a12), 0, 0.03, 0);
+      break;
+    case 'mushroom':
+      box(g, 0.1, 0.24, 0.1, mat(0xf0ead8), 0, -0.1, 0);
+      box(g, 0.36, 0.14, 0.36, mat(0x5af0e6, { emissive: 0x2ad0c8, emissiveIntensity: 1.6 }), 0, 0.06, 0);
+      box(g, 0.22, 0.08, 0.22, mat(0x9afff8, { emissive: 0x5af0e6, emissiveIntensity: 1.8 }), 0, 0.16, 0);
+      break;
+    case 'fish':
+      box(g, 0.42, 0.18, 0.1, mat(0xf2a040, { roughness: 0.4 }));
+      box(g, 0.14, 0.2, 0.06, mat(0xe07a20), -0.26, 0, 0);
+      box(g, 0.05, 0.05, 0.11, mat(0x1a1a1a), 0.13, 0.03, 0);
+      break;
+    case 'talk':
+      box(g, 0.08, 0.3, 0.08, mat(0xffd93d, { emissive: 0xffb000, emissiveIntensity: 1.2 }), 0, 0.08, 0);
+      box(g, 0.08, 0.08, 0.08, mat(0xffd93d, { emissive: 0xffb000, emissiveIntensity: 1.2 }), 0, -0.16, 0);
+      break;
+    case 'done':
+      box(g, 0.08, 0.2, 0.08, mat(0x5ad86a, { emissive: 0x2a9a3a, emissiveIntensity: 1 }), -0.08, -0.04, 0).rotation.z = 0.7;
+      box(g, 0.08, 0.36, 0.08, mat(0x5ad86a, { emissive: 0x2a9a3a, emissiveIntensity: 1 }), 0.07, 0.03, 0).rotation.z = -0.6;
       break;
     default:
       box(g, 0.3, 0.3, 0.3, mat(0xffaa00, { emissive: 0xff8800, emissiveIntensity: 1 }));
