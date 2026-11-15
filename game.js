@@ -421,6 +421,7 @@ function init3DScene() {
   scene3D.onJump = () => sfxJump();
   scene3D.onDayPhase = (phase) => {
     $('#hud-time').textContent = phase === 'night' ? '🌙' : '☀️';
+    refreshBed();
     if (document.body.dataset.screen === 'game') toast(phase === 'night' ? t.nightFalls : t.dayBreaks);
   };
   applyCostume();
@@ -433,6 +434,7 @@ function refreshSpots() {
   for (const obj of scene3D?.interactables ?? []) {
     let id = obj.material;
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
+    else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -546,6 +548,7 @@ function interactWith(obj) {
   if (!game || !$('#spell-modal').hidden || !obj.active) return;
   if (!$('#quest-modal').hidden || fishing) return;
   if (obj.kind === 'npc') { openQuest(obj); return; }
+  if (obj.kind === 'bed') { goToSleep(); return; }
   if (obj.nodeType === 'fish' && ownsTool('rod')) {
     if (game.equipped !== bestVersion('rod')) equipItem(bestVersion('rod'));
     startFishing(obj);
@@ -1688,6 +1691,7 @@ function setInputMode(mode) {
   $('#hw-panel').hidden = !drawing;
   $('#spell-keyboard').hidden = drawing;
   $('#hw-toggle').textContent = drawing ? '⌨️' : '✏️';
+  $('#hw-guide').classList.toggle('is-off', progress.traceGuide === false);
   if (drawing) {
     sizeHwCanvas();
     if (!hw.ready) {
@@ -1712,6 +1716,18 @@ function redrawHw() {
   const dpr = window.devicePixelRatio || 1;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, hwCanvas.width, hwCanvas.height);
+  // Grey model letter to trace over (for younger children). It shows the next letter of the word.
+  const expected = spellContext?.word?.word[spellInput.value.length];
+  if (expected && progress.traceGuide !== false && !isLocked) {
+    const w = hwCanvas.width / dpr, h = hwCanvas.height / dpr;
+    g.save();
+    g.fillStyle = 'rgba(31, 42, 68, 0.2)';
+    g.font = `600 ${Math.round(h * 0.6)}px "Chalkboard SE", "Comic Sans MS", "Segoe Print", system-ui, sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'alphabetic';
+    g.fillText(expected, w / 2, h * 0.78);
+    g.restore();
+  }
   g.strokeStyle = '#1f2a44'; g.lineWidth = 7; g.lineCap = 'round'; g.lineJoin = 'round';
   for (const s of [...hw.strokes, ...(hw.current ? [hw.current] : [])]) {
     g.beginPath();
@@ -1720,7 +1736,7 @@ function redrawHw() {
     if (s.length === 1) g.lineTo(s[0][0] + 0.5, s[0][1]);
     g.stroke();
   }
-  $('#hw-hint').hidden = hw.strokes.length > 0 || !!hw.current;
+  $('#hw-hint').hidden = hw.strokes.length > 0 || !!hw.current || (progress.traceGuide !== false && !!spellContext);
 }
 
 function hwPoint(e) {
@@ -1760,17 +1776,84 @@ async function recognizeDrawing() {
   const strokes = hw.strokes;
   hw.strokes = [];
   const res = await recognize(strokes, lang);
+  const expected = spellContext?.word?.word[spellInput.value.length];
   typeLetter(res.letter);
+  // Right letter: say its name and its sound, and make the tile glow.
+  if (expected && res.letter === expected) {
+    speakLetter(res.letter);
+    const tile = spellTilesEl.children[spellInput.value.length - 1];
+    tile?.classList.add('tile-good');
+  }
   redrawHw();
   // One-tap corrections: replace the letter just written.
   $('#hw-alts').replaceChildren(...res.alternatives.map((ch) => {
     const b = el('button', 'key hw-alt', ch.toUpperCase());
     b.type = 'button';
-    b.addEventListener('click', () => { deleteLetter(); typeLetter(ch); $('#hw-alts').replaceChildren(); });
+    b.addEventListener('click', () => {
+      deleteLetter();
+      const exp = spellContext?.word?.word[spellInput.value.length];
+      typeLetter(ch);
+      if (exp === ch) speakLetter(ch);
+      $('#hw-alts').replaceChildren();
+      redrawHw();
+    });
     return b;
   }));
 }
 
 $('#hw-toggle')?.addEventListener('click', () => setInputMode(progress.inputMode === 'draw' ? 'keys' : 'draw'));
 $('#hw-clear')?.addEventListener('click', () => { hw.strokes = []; hw.current = null; clearTimeout(hw.timer); redrawHw(); });
-$('#hw-back')?.addEventListener('click', () => { deleteLetter(); $('#hw-alts').replaceChildren(); });
+$('#hw-back')?.addEventListener('click', () => { deleteLetter(); $('#hw-alts').replaceChildren(); redrawHw(); });
+$('#hw-keyboard')?.addEventListener('click', () => setInputMode('keys'));
+$('#hw-guide')?.addEventListener('click', () => {
+  progress.traceGuide = progress.traceGuide === false;
+  saveProgress();
+  $('#hw-guide').classList.toggle('is-off', progress.traceGuide === false);
+  redrawHw();
+});
+
+
+/* ===== SLEEPING IN THE COTTAGE BED ===== */
+function refreshBed(obj = scene3D?.interactables.find((i) => i.kind === 'bed')) {
+  if (!obj) return;
+  const night = (scene3D.night ?? 0) > 0.5;
+  scene3D.setSpotMaterial(obj, night ? 'wake' : 'sleep', night ? t.wakeLabel : t.sleepLabel);
+}
+function goToSleep() {
+  const fade = $('#sleep-fade');
+  fade.hidden = false;
+  fade.classList.remove('is-out');
+  setTimeout(() => {
+    const phase = scene3D.sleep();
+    refreshBed();
+    setTimeout(() => {
+      fade.classList.add('is-out');
+      toast(phase === 'night' ? t.goodNight : t.goodMorning);
+      setTimeout(() => { fade.hidden = true; }, 700);
+    }, 700);
+  }, 700);
+}
+
+/* ===== LETTER NAMES AND SOUNDS (said when a drawn letter is right) ===== */
+const LETTER_SPEECH = {
+  fr: {
+    a: ['a', 'a'], b: ['bé', 'beu'], c: ['cé', 'keu'], d: ['dé', 'deu'], e: ['e', 'eu'], f: ['èfe', 'feu'], g: ['gé', 'gueu'],
+    h: ['ache', 'le h ne fait pas de bruit'], i: ['i', 'i'], j: ['ji', 'jeu'], k: ['ka', 'keu'], l: ['èle', 'leu'], m: ['ème', 'meu'],
+    n: ['ène', 'neu'], o: ['o', 'o'], p: ['pé', 'peu'], q: ['ku', 'keu'], r: ['èr', 'reu'], s: ['èsse', 'seu'], t: ['té', 'teu'],
+    u: ['u', 'u'], v: ['vé', 'veu'], w: ['double vé', 'oua'], x: ['iks', 'ks'], y: ['i grec', 'i'], z: ['zèd', 'zeu'],
+    é: ['e accent aigu', 'é'], è: ['e accent grave', 'è'], ê: ['e accent circonflexe', 'è'], ë: ['e tréma', 'è'],
+    à: ['a accent grave', 'a'], â: ['a accent circonflexe', 'a'], ù: ['u accent grave', 'u'], û: ['u accent circonflexe', 'u'],
+    î: ['i accent circonflexe', 'i'], ï: ['i tréma', 'i'], ô: ['o accent circonflexe', 'o'], ç: ['cé cédille', 'seu'],
+  },
+  en: {
+    a: ['A', 'a, as in apple'], b: ['B', 'buh'], c: ['C', 'kuh'], d: ['D', 'duh'], e: ['E', 'eh'], f: ['F', 'fff'], g: ['G', 'guh'],
+    h: ['H', 'huh'], i: ['I', 'ih'], j: ['J', 'juh'], k: ['K', 'kuh'], l: ['L', 'lll'], m: ['M', 'mmm'], n: ['N', 'nnn'],
+    o: ['O', 'o, as in octopus'], p: ['P', 'puh'], q: ['Q', 'kwuh'], r: ['R', 'rrr'], s: ['S', 'sss'], t: ['T', 'tuh'],
+    u: ['U', 'uh'], v: ['V', 'vvv'], w: ['W', 'wuh'], x: ['X', 'ks'], y: ['Y', 'yuh'], z: ['Z', 'zzz'],
+  },
+};
+function speakLetter(ch) {
+  const s = LETTER_SPEECH[lang]?.[ch];
+  if (!s) return;
+  speak(s[0] === s[1] ? s[0] : `${s[0]}… ${s[1]}`, 0.85);
+}

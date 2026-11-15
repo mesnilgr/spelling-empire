@@ -179,7 +179,7 @@ export class GameScene {
       spots: [[0, 0], [-1.6, 3.4], [4.4, -2.5]],
     });
     this._buildHouse(12, 6, 0, 'tower', 5, 8, 4, 0x5544aa, 'tower', { roof: 'pyramid', wallH: 4.6 });
-    this._buildHouse(0, 14, 0, 'cottage', 6, 4, 4, COLORS.roof, 'cottage');
+    this._buildHouse(0, 14, 0, 'cottage', 6, 4, 4, COLORS.roof, 'cottage', { spots: [[0.2, 0.3], [1.9, -1.0], [-1.7, 1.0]] });
     this._buildHouse(-2, -14, 0, 'guild', 8, 5, 5, 0x6a4a2a, 'guild', { windows: { front: [-1.95, 1.95] } });
 
     // Terraced hills around the village (flat where buildings, pond and paths are).
@@ -465,6 +465,11 @@ export class GameScene {
       this.kit.box(this.scene, 0.16, 0.16, 0.16, this.kit.mat(colors[i % 5], { emissive: colors[i % 5], emissiveIntensity: 0.15 }), fx, 0.36, fz, { cast: false });
     }
     this._addInteractable({ kind: 'node', nodeType: 'flower', material: 'flower', worldPos: new THREE.Vector3(mx, 0, mz), iconY: 1.4, reach: 1.9, hitRadius: 1.2 });
+    // The cottage bed: sleep to jump to night (or back to morning).
+    if (this.bedSpot) {
+      const wp = new THREE.Vector3(this.bedSpot.lx, 0, this.bedSpot.lz).add(this.bedSpot.group.position);
+      this._addInteractable({ kind: 'bed', worldPos: wp, iconY: 1.5, reach: 1.6, hitRadius: 0.9 });
+    }
     // Rocks (pickaxe → stone) and bushes (axe → wood) near the village: quick, easy words.
     for (const d of this.village.decorSpots ?? []) {
       this._addInteractable({
@@ -803,18 +808,17 @@ export class GameScene {
       stand.position.set(0, 0.15, 0);
       group.add(stand);
     } else if (type === 'cottage') {
-      // Bed
-      const bedGeo = new THREE.BoxGeometry(0.8, 0.3, 1.5);
-      const bedMat = new THREE.MeshStandardMaterial({ color: 0xddaadd });
-      const bed = new THREE.Mesh(bedGeo, bedMat);
-      bed.position.set(-1.5, 0.2, 0);
-      bed.castShadow = true;
-      group.add(bed);
-      // Pillow
-      const pillowGeo = new THREE.BoxGeometry(0.6, 0.15, 0.3);
-      const pillow = new THREE.Mesh(pillowGeo, new THREE.MeshStandardMaterial({ color: 0xffffff }));
-      pillow.position.set(-1.5, 0.35, -0.5);
-      group.add(pillow);
+      // A proper bed against the back wall: sleep in it to jump to night or morning.
+      const bed = this.kit.group(group, -1.85, -1.05);
+      texBox(bed, 1.7, 0.32, 0.95, blockMat('oakPlanks'), 0, 0.28, 0, { tile: 0.6 });
+      texBox(bed, 0.14, 0.85, 1.0, blockMat('darkOakPlanks'), -0.85, 0.43, 0, { tile: 0.6 });
+      texBox(bed, 0.14, 0.55, 1.0, blockMat('darkOakPlanks'), 0.85, 0.28, 0, { tile: 0.6 });
+      this.kit.box(bed, 1.15, 0.14, 0.92, this.kit.mat(0xc8372d, { roughness: 0.95 }), 0.22, 0.5, 0);
+      this.kit.box(bed, 1.17, 0.04, 0.94, this.kit.mat(0xf2c84b), 0.22, 0.45, 0, { cast: false });
+      this.kit.box(bed, 0.42, 0.14, 0.7, this.kit.mat(0xffffff, { roughness: 0.9 }), -0.55, 0.52, 0);
+      this._addLocalCollider(group, -1.85, -1.05, 0.75);
+      this._addLocalCollider(group, -1.2, -1.05, 0.5);
+      this.bedSpot = { group, lx: -1.0, lz: -0.3 };
       // Table
       const tableGeo = new THREE.BoxGeometry(0.6, 0.05, 0.6);
       const table = new THREE.Mesh(tableGeo, woodMat);
@@ -1071,6 +1075,14 @@ export class GameScene {
       g.fillRect(0, 0, c.width, c.height);
       this.scene.background.needsUpdate = true;
     }
+  }
+
+  // Sleeping in the bed: jump to the evening, or to the next morning.
+  sleep() {
+    const toNight = (this.night ?? 0) < 0.5;
+    this.dayTime = (toNight ? 0.67 : 0.01) * 420;
+    this._skyT = 1;
+    return toNight ? 'night' : 'day';
   }
 
   // Objects that can't be held appear in the world instead.

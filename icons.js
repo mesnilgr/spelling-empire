@@ -122,6 +122,19 @@ export function buildMaterialIcon(id) {
       box(g, 0.14, 0.2, 0.06, mat(0xe07a20), -0.26, 0, 0);
       box(g, 0.05, 0.05, 0.11, mat(0x1a1a1a), 0.13, 0.03, 0);
       break;
+    case 'sleep':
+      // "Zzz" made of little blocks.
+      for (const [x, y, s] of [[-0.14, -0.1, 0.16], [0.06, 0.08, 0.12], [0.2, 0.22, 0.09]]) {
+        const m = mat(0x9ab8ff, { emissive: 0x5a7ae0, emissiveIntensity: 1 });
+        box(g, s, s * 0.22, 0.05, m, x, y + s / 2, 0);
+        box(g, s, s * 0.22, 0.05, m, x, y - s / 2, 0);
+        box(g, s * 1.2, s * 0.2, 0.05, m, x, y, 0).rotation.z = 0.8;
+      }
+      break;
+    case 'wake':
+      box(g, 0.3, 0.3, 0.3, mat(0xffd93d, { emissive: 0xffa000, emissiveIntensity: 1.2 }));
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; box(g, 0.07, 0.07, 0.07, mat(0xffd93d, { emissive: 0xffa000, emissiveIntensity: 1.2 }), Math.cos(a) * 0.28, Math.sin(a) * 0.28, 0); }
+      break;
     case 'talk':
       box(g, 0.08, 0.3, 0.08, mat(0xffd93d, { emissive: 0xffb000, emissiveIntensity: 1.2 }), 0, 0.08, 0);
       box(g, 0.08, 0.08, 0.08, mat(0xffd93d, { emissive: 0xffb000, emissiveIntensity: 1.2 }), 0, -0.16, 0);
