@@ -2,6 +2,7 @@
 // full; after a miss it is "wobbly" but still useful; copied out, it is small. Nobody gets stuck.
 import * as THREE from 'three';
 import { blockMat, texBox } from './textures.js';
+import { BRIDGES } from './regions.js';
 
 // The word asked depends on the age: the first letter at 5, then the whole word.
 // unlock: stars needed (until the story unlocks them chapter by chapter).
@@ -11,8 +12,8 @@ export const SPELLS = [
   { id: 'arbre', emoji: '🌳', name: { fr: 'Arbre', en: 'Tree' }, word: { 5: 'a', 6: 'arbre', 7: 'arbre' }, wordEn: 'tree', unlock: 0, effect: { fr: 'Un arbre magique : son bois se ramasse sans hache.', en: 'A magic tree: its wood needs no axe.' } },
   { id: 'pluie', emoji: '🌧️', name: { fr: 'Pluie', en: 'Rain' }, word: { 5: 'p', 6: 'pluie', 7: 'pluie' }, wordEn: 'rain', unlock: 15, effect: { fr: 'La pluie fait repousser le blé tout de suite.', en: 'Rain makes the wheat grow back at once.' } },
   { id: 'lumiere', emoji: '✨', name: { fr: 'Lumière', en: 'Light' }, word: { 5: 'l', 6: 'lune', 7: 'lumière' }, wordEn: 'light', unlock: 30, effect: { fr: 'Une boule de lumière te suit et éclaire la nuit.', en: 'A ball of light follows you at night.' } },
-  { id: 'feu', emoji: '🔥', name: { fr: 'Feu', en: 'Fire' }, word: { 5: 'f', 6: 'feu', 7: 'feu' }, wordEn: 'fire', unlock: 50, effect: { fr: 'Les braseros s’allument et donnent du feu.', en: 'The braziers light up and give fire.' } },
-  { id: 'vent', emoji: '🌬️', name: { fr: 'Vent', en: 'Wind' }, word: { 5: 'v', 6: 'vent', 7: 'vent' }, wordEn: 'wind', unlock: null, soon: { fr: 'Bientôt : au marais', en: 'Soon: in the marsh' }, effect: { fr: 'Le vent chasse la brume.', en: 'The wind blows the mist away.' } },
+  { id: 'feu', emoji: '🔥', name: { fr: 'Feu', en: 'Fire' }, word: { 5: 'f', 6: 'feu', 7: 'feu' }, wordEn: 'fire', unlock: 50, story: 'fisher', effect: { fr: 'Les braseros s’allument et donnent du feu.', en: 'The braziers light up and give fire.' } },
+  { id: 'vent', emoji: '🌬️', name: { fr: 'Vent', en: 'Wind' }, word: { 5: 'v', 6: 'vent', 7: 'vent' }, wordEn: 'wind', unlock: null, story: 'marshSign', soon: { fr: 'Au marais', en: 'In the marsh' }, effect: { fr: 'Le vent chasse la brume.', en: 'The wind blows the mist away.' } },
   { id: 'pierre', emoji: '🪨', name: { fr: 'Pierre', en: 'Stone' }, word: { 5: 'p', 6: 'pierre', 7: 'pierre' }, wordEn: 'stone', unlock: null, soon: { fr: 'Bientôt : à la montagne', en: 'Soon: in the mountains' }, effect: { fr: 'Un escalier de pierre apparaît.', en: 'A stone staircase appears.' } },
 ];
 export const spellById = (id) => SPELLS.find((s) => s.id === id);
@@ -30,15 +31,19 @@ export function spellWord(spell, age, lang = 'fr') {
 
 // Where the circles are in the village, and what each one needs nearby.
 export const CIRCLES = [
-  { spell: 'pont', x: -11.3, z: -16.6 },
+  { spell: 'pont', x: -11.3, z: -16.6, bridge: 'village' },
   { spell: 'fleur', x: 18, z: 6 },
   { spell: 'arbre', x: 14, z: -6 },
   { spell: 'pluie', x: 8, z: 17.3 },
   { spell: 'lumiere', x: 15.2, z: -14.6 },
   { spell: 'feu', x: 0, z: -5.2 },
+  // Out in the regions (the story leads there).
+  { cid: 'pont-foret', spell: 'pont', x: -53.6, z: 2.0, bridge: 'forest' },
+  { cid: 'vent-marais', spell: 'vent', x: 42.6, z: 1.8 },
+  { cid: 'feu-marais', spell: 'feu', x: 49.2, z: 2.6 },
 ];
 // The pond bridge, in world coordinates (west → east across the pond centre).
-export const BRIDGE = { x0: -20.2, x1: -11.8, z: -16.3, island: { x: -16, z: -16, r: 1.25 } };
+export const BRIDGE = BRIDGES.village;
 export const BRAZIERS = [[-2.4, -5.4], [2.4, -5.4]];
 
 const M = new Map();
@@ -74,32 +79,33 @@ export function buildCircle() {
 }
 
 // Bridge across the pond with a small island in the middle. power: 'strong' | 'wobbly' | 'weak'.
-export function buildBridge(power = 'strong') {
+export function buildBridge(power = 'strong', B = BRIDGE) {
   const g = new THREE.Group();
-  const len = BRIDGE.x1 - BRIDGE.x0;
+  const len = B.x1 - B.x0;
   const n = Math.round(len / 0.42);
   for (let i = 0; i < n; i++) {
-    const x = BRIDGE.x0 + (i + 0.5) * (len / n);
-    const t = (x - (BRIDGE.x0 + len / 2)) / (len / 2);
+    const x = B.x0 + (i + 0.5) * (len / n);
+    const t = (x - (B.x0 + len / 2)) / (len / 2);
     // Strong: a gentle arch. Wobbly: planks tilt this way and that. Weak: a plain flat walkway.
     const y = 0.16 + (power === 'weak' ? 0 : 0.28 * (1 - t * t));
     if (power === 'wobbly' && i % 5 === 3) continue; // a few missing planks (still walkable)
-    const p = texBox(g, len / n - 0.03, 0.08, power === 'weak' ? 0.9 : 1.2, blockMat('sprucePlanks'), x, y, BRIDGE.z, { tile: 0.6 });
+    const p = texBox(g, len / n - 0.03, 0.08, power === 'weak' ? 0.9 : 1.2, blockMat('sprucePlanks'), x, y, B.z, { tile: 0.6 });
     if (power === 'wobbly') { p.rotation.z = (i % 2 ? 1 : -1) * 0.07; p.rotation.x = Math.sin(i) * 0.05; }
     if (power !== 'weak' && i % 3 === 0) {
       for (const side of [-1, 1]) {
-        texBox(g, 0.1, 0.5, 0.1, blockMat('oakLog'), x, y + 0.25, BRIDGE.z + side * 0.58, { tile: 0.5 });
+        texBox(g, 0.1, 0.5, 0.1, blockMat('oakLog'), x, y + 0.25, B.z + side * 0.58, { tile: 0.5 });
       }
     }
   }
   if (power !== 'weak') {
     for (const side of [-1, 1]) {
-      const rail = texBox(g, len, 0.08, 0.08, blockMat('oakLog'), BRIDGE.x0 + len / 2, 0.62, BRIDGE.z + side * 0.58, { tile: 0.5 });
+      const rail = texBox(g, len, 0.08, 0.08, blockMat('oakLog'), B.x0 + len / 2, 0.62, B.z + side * 0.58, { tile: 0.5 });
       if (power === 'wobbly') rail.rotation.z = side * 0.03;
     }
   }
   // The island: grass blocks and a little lantern.
-  const I = BRIDGE.island;
+  const I = B.island;
+  if (!I) return g;
   for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) {
     if (Math.abs(x) + Math.abs(z) > 1 && power === 'weak') continue;
     cube(g, 0.84, 0.3, 0.84, mat(0x5aa83a), I.x + x * 0.84, 0.12, I.z + z * 0.84);

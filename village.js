@@ -114,8 +114,8 @@ export class VillageBuilder {
   }
 
   buildGround() {
-    const size = 120;
-    const seg = 96;
+    const size = 200;
+    const seg = 100;
     const geo = new THREE.PlaneGeometry(size, size, seg, seg);
     geo.rotateX(-Math.PI / 2);
     // Large, soft colour patches on top of the pixel grass so the lawn doesn't look tiled.
@@ -129,6 +129,10 @@ export class VillageBuilder {
       const k = 0.92 + n * 0.06;
       const far = Math.min(1, Math.max(0, (Math.hypot(x, z) - 30) / 25));
       c.setRGB(k * (1 - far * 0.18), k * (1 - far * 0.08), k * (1 - far * 0.2));
+      // Deeper green in the forest (west), olive in the marsh (east).
+      const fo = Math.min(1, Math.max(0, (-x - 40) / 8)), ma = Math.min(1, Math.max(0, (x - 40) / 8));
+      if (fo) c.setRGB(c.r * (1 - fo * 0.35), c.g * (1 - fo * 0.12), c.b * (1 - fo * 0.3));
+      if (ma) c.setRGB(c.r * (1 + ma * 0.08), c.g * (1 - ma * 0.08), c.b * (1 - ma * 0.45));
       colors.push(c.r, c.g, c.b);
     }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));

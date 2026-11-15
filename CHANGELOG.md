@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.4.0 — La forêt et le marais (chapitres 2 et 3)
+
+- **Carte quatre fois plus grande** : le village reste au centre, des vallées traversent les collines vers deux nouvelles régions, et des collines ferment le bout du monde.
+- 🌲 **La forêt des sapins** (ouest) : 150 sapins, champignons, fougères, une rivière, la cabane de **Sylvain le forestier**.
+- 🪷 **Le marais** (est) : mares, roseaux, nénuphars, arbres morts, une passerelle de bois, et **Mélusine la pêcheuse**.
+- **Chapitre 2** : réparer le panneau de la forêt, jeter un pont sur la rivière (sort Pont), aider Sylvain, apprivoiser 2 Mimots, trouver la deuxième page.
+- **Chapitre 3** : réparer le panneau du marais, chasser la brume (nouveau sort **Vent**), aider Mélusine, rallumer les lanternes (sort Feu), apprivoiser 2 Mimots, trouver la troisième page… et découvrir qui emprunte les mots du village.
+- **Panneaux de voyage** : un panneau réparé permet de s'y rendre d'un coup depuis n'importe quel autre panneau (celui du village est près de la fontaine).
+- **Fluidité iPad** : chaque région est fusionnée et masquée quand on est loin, les arbres, roseaux et brumes sont dessinés en instances, et le terrain est découpé en morceaux pour ne dessiner que ce qui est à l'écran. Le village reste aussi léger qu'avant. Le soleil et les ombres suivent le héros.
+
 ## v1.3.0 — Le village qui oubliait ses mots (chapitre 1)
 
 - **Une histoire commence.** Au début d'une partie, le conteur explique que les mots se sont envolés du village. Tous les dialogues sont lus à voix haute, avec un bouton 🔊 pour réécouter.

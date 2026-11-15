@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { SIGNS, MIMOTS, PAGE_SPOT } from './story.js';
+import { SIGNS, MIMOTS, PAGES, REGION_NPCS } from './story.js';
+import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh } from './regions.js';
+import { mergeStatic as mergeGroup } from './perf.js';
 import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
 import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -201,6 +203,7 @@ export class GameScene {
       insideAnyHouse: (x, z, m) => this._insideAnyHouse(x, z, m),
     });
     this.village.build();
+    this._buildRegions();
     this._buildResourceNodes();
     this._buildMagic();
     this._buildStory();
@@ -526,6 +529,59 @@ export class GameScene {
     this._addInteractable({ kind: 'node', nodeType: 'water', material: 'water', worldPos: new THREE.Vector3(-13.4, 0, -13.9), iconY: 1.1, reach: 1.4 });
   }
 
+  /* ===== REGIONS: the pine forest (west) and the marsh (east) ===== */
+  _buildRegions() {
+    const ctx = {
+      heightAt: (x, z) => this.terrain.heightAt(x, z),
+      collidables: this.collidables,
+      waterMat: this.waterMats[0] ?? new THREE.MeshStandardMaterial({ color: 0x3f8fc8, transparent: true, opacity: 0.82 }),
+      marshWaterMat: new THREE.MeshStandardMaterial({ color: 0x3a5a4a, transparent: true, opacity: 0.88, roughness: 0.1, metalness: 0.3, emissive: 0x0a2a1a, emissiveIntensity: 0.3 }),
+    };
+    this.waterMats.push(ctx.marshWaterMat);
+    const forest = buildForest(ctx);
+    const marsh = buildMarsh(ctx);
+    this.marsh = marsh;
+    this.marshMist = true;
+    this.regionGroups = [];
+    for (const [name, group] of [['forest', forest], ['marsh', marsh.group]]) {
+      mergeGroup(group);
+      group.userData.dynamic = true;
+      this.scene.add(group);
+      this.regionGroups.push({ name, group, def: REGIONS[name] });
+    }
+    // The marsh boardwalk: walkable over the pools.
+    (this.walkways ??= []).push({ x0: BOARDWALK.x0, x1: BOARDWALK.x1, z: BOARDWALK.z, hw: BOARDWALK.hw, y: () => 0.22 });
+    // Villagers out in the regions.
+    for (const n of REGION_NPCS) {
+      const npc = this._createCharacter(n.spec);
+      npc.position.set(n.x, this.terrain.heightAt(n.x, n.z) + (n.y ?? 0), n.z);
+      npc.rotation.y = n.ry ?? 0;
+      Object.assign(npc.userData, { isNPC: true, name: n.id });
+      this.scene.add(npc);
+      this.npcs.push(npc);
+      this.collidables.push({ x: n.x, z: n.z, r: 0.4 });
+      this._addInteractable({ kind: 'npc', npcId: n.id, npc, worldPos: npc.position.clone(), iconY: 2.45, reach: 2.2, hitRadius: 0.9 });
+    }
+  }
+  _tickRegions() {
+    const p = this.player.position;
+    for (const r of this.regionGroups ?? []) r.group.visible = Math.hypot(p.x - r.def.x, p.z - r.def.z) < r.def.show + 10;
+    // The sun (and its shadows) follow the hero around the bigger world.
+    if (this.sun) {
+      this.sun.position.set(p.x - 14, 24, p.z + 12);
+      this.sun.target.position.set(p.x, 0, p.z);
+      if (!this.sun.target.parent) this.scene.add(this.sun.target);
+    }
+  }
+  teleport(x, z, ry = 0) {
+    this.autoWalk = null;
+    this.playerVY = 0;
+    this.player.position.set(x, this.groundAt(x, z), z);
+    this.player.rotation.y = ry;
+    for (const c of this.companions) c.mesh.position.set(x + c.offset.x, this.groundAt(x, z), z + c.offset.z);
+    this.particleBurst(new THREE.Vector3(x, 1, z), '#b08aff', 24);
+  }
+
   /* ===== STORY: signs, Mimots, the torn page ===== */
   _buildStory() {
     const h = (x, z) => this.terrain.heightAt(x, z);
@@ -548,14 +604,31 @@ export class GameScene {
       const obj = this._addInteractable({ kind: 'mimot', mimotId: m.id, block: group, worldPos: group.position.clone(), iconY: 1.6, reach: 1.6, hitRadius: 0.8 });
       return { def: m, group, obj, target: new THREE.Vector3(m.x, 0, m.z), wait: Math.random() * 2, hop: Math.random() * 6 };
     });
-    const pg = buildPage();
-    pg.position.set(PAGE_SPOT.x, h(PAGE_SPOT.x, PAGE_SPOT.z), PAGE_SPOT.z);
-    pg.userData.dynamic = true;
-    pg.visible = false;
-    this.scene.add(pg);
-    this.pageObj = this._addInteractable({ kind: 'page', block: pg, worldPos: pg.position.clone(), iconY: 1.7, reach: 1.6, hitRadius: 0.8 });
-    this.pageObj.active = false;
-    this.pageObj.iconHolder.visible = false;
+    this.pageObjs = {};
+    for (const P of PAGES) {
+      const pg = buildPage();
+      const y = h(P.x, P.z) + (P.y ?? 0);
+      pg.position.set(P.x, y, P.z);
+      pg.userData.dynamic = true;
+      pg.visible = false;
+      this.scene.add(pg);
+      const o = this._addInteractable({ kind: 'page', pageId: P.id, scene: P.scene, block: pg, worldPos: pg.position.clone(), iconY: 1.7, reach: 1.6, hitRadius: 0.8 });
+      o.active = false;
+      o.iconHolder.visible = false;
+      this.pageObjs[P.id] = o;
+    }
+    this.pageObj = this.pageObjs.page;
+    // Travel signposts: the village hub, and one at the entrance of each region.
+    for (const [region, T] of Object.entries(TRAVEL)) {
+      const sign = buildSign();
+      const y = h(T.x, T.z);
+      sign.position.set(T.x, y, T.z);
+      sign.rotation.y = region === 'forest' ? 0.5 : region === 'marsh' ? -0.5 : 0;
+      sign.userData.dynamic = true;
+      this.scene.add(sign);
+      this.collidables.push({ x: T.x, z: T.z, r: 0.18 });
+      this._addInteractable({ kind: 'travel', region, block: sign, sign, worldPos: new THREE.Vector3(T.x, y, T.z), iconY: 2.4, reach: 1.8, hitRadius: 0.9 });
+    }
   }
   setSignWord(houseName, text) {
     const o = this.interactables.find((i) => i.kind === 'sign' && i.signHouse === houseName);
@@ -622,8 +695,9 @@ export class GameScene {
       m.obj.iconHolder.position.x = g.position.x; m.obj.iconHolder.position.z = g.position.z;
       m.obj.hit.position.set(g.position.x, ground + m.obj.iconY - 0.35, g.position.z);
     }
-    if (this.pageObj?.active) {
-      const sh = this.pageObj.block.userData.sheet;
+    for (const o of Object.values(this.pageObjs ?? {})) {
+      if (!o.active) continue;
+      const sh = o.block.userData.sheet;
       sh.position.y = 0.9 + Math.sin(elapsed * 2) * 0.1;
       sh.rotation.y = elapsed * 0.8;
     }
@@ -641,7 +715,7 @@ export class GameScene {
       this.scene.add(ring);
       (this.spinners ??= []).push(ring);
       this._addInteractable({
-        kind: 'circle', spellId: c.spell, material: 'spell', block: ring,
+        kind: 'circle', spellId: c.spell, cid: c.cid ?? c.spell, bridge: c.bridge, material: 'spell', block: ring,
         worldPos: new THREE.Vector3(c.x, y, c.z), iconY: 1.5, reach: 1.7, hitRadius: 1.0,
       });
     }
@@ -660,42 +734,66 @@ export class GameScene {
     const grow = (obj) => { obj.scale.setScalar(0.01); (this.growing ??= []).push(obj); };
     const at = circle?.worldPos ?? new THREE.Vector3();
     if (!silent && circle) this.particleBurst(at.clone().add(new THREE.Vector3(0, 0.6, 0)), '#b08aff', 34);
+    const key = circle?.cid ?? id;
     if (id === 'pont') {
-      if (this.spellObjects.pont) return null;
-      const br = buildBridge(power);
+      if (this.spellObjects[key]) return null;
+      const B = BRIDGES[circle?.bridge ?? 'village'];
+      const br = buildBridge(power, B);
       br.userData.dynamic = true;
       this.scene.add(br);
-      this.spellObjects.pont = br;
-      const len = BRIDGE.x1 - BRIDGE.x0, mid = BRIDGE.x0 + len / 2;
+      this.spellObjects[key] = br;
+      const len = B.x1 - B.x0, mid = B.x0 + len / 2;
       const arch = power === 'weak' ? 0 : 0.28;
-      this.walkways = [
-        { x0: BRIDGE.x0 - 0.2, x1: BRIDGE.x1 + 0.2, z: BRIDGE.z, hw: power === 'weak' ? 0.45 : 0.55, y: (x) => { const t = (x - mid) / (len / 2); return 0.2 + arch * Math.max(0, 1 - t * t); } },
-        { circle: true, x: BRIDGE.island.x, z: BRIDGE.island.z, r: BRIDGE.island.r, y: () => 0.27 },
-      ];
-      // A treasure chest waits on the island.
-      if (!this.islandChest) {
-        const I = BRIDGE.island;
-        const chest = buildChest();
-        chest.position.set(I.x, 0.27, I.z + 0.75);
-        chest.rotation.y = Math.PI;
-        chest.userData.dynamic = true;
-        this.scene.add(chest);
-        this.collidables.push({ x: I.x, z: I.z + 0.75, r: 0.45 });
-        this.islandChest = this._addInteractable({
-          kind: 'node', nodeType: 'chest', material: 'chest', block: chest, chest,
-          burst: '#f2c84b', worldPos: new THREE.Vector3(I.x, 0.27, I.z + 0.75), iconY: 1.6, reach: 1.5, respawn: 300,
-        });
+      (this.walkways ??= []).push({ x0: B.x0 - 0.2, x1: B.x1 + 0.2, z: B.z, hw: power === 'weak' ? 0.45 : 0.55, y: (x) => { const t = (x - mid) / (len / 2); return 0.2 + arch * Math.max(0, 1 - t * t); } });
+      if (B.island) {
+        this.walkways.push({ circle: true, x: B.island.x, z: B.island.z, r: B.island.r, y: () => 0.27 });
+        // A treasure chest waits on the island.
+        if (!this.islandChest) {
+          const I = B.island;
+          const chest = buildChest();
+          chest.position.set(I.x, 0.27, I.z + 0.75);
+          chest.rotation.y = Math.PI;
+          chest.userData.dynamic = true;
+          this.scene.add(chest);
+          this.collidables.push({ x: I.x, z: I.z + 0.75, r: 0.45 });
+          this.islandChest = this._addInteractable({
+            kind: 'node', nodeType: 'chest', material: 'chest', block: chest, chest,
+            burst: '#f2c84b', worldPos: new THREE.Vector3(I.x, 0.27, I.z + 0.75), iconY: 1.6, reach: 1.5, respawn: 300,
+          });
+        }
       }
       if (circle) { circle.active = false; circle.block.visible = false; circle.iconHolder.visible = false; if (circle.labelEl) circle.labelEl.style.display = 'none'; }
       if (!silent) { grow(br); this.screenShake(0.08); }
       return br;
+    }
+    if (id === 'vent') {
+      // The wind blows the marsh mist away.
+      if (!this.marshMist) return null;
+      this.marshMist = false;
+      const mist = this.marsh?.mist;
+      if (mist && !silent) {
+        const start = this.clock.elapsedTime;
+        (this.tweens ??= []).push((t) => { const k = Math.min(1, (t - start) / 2.2); mist.material.opacity = 0.78 * (1 - k); mist.position.x = k * 14; if (k >= 1) { mist.visible = false; return false; } return true; });
+        for (let i = 0; i < 40; i++) this.particleBurst(new THREE.Vector3(MIST_X - 2, 1 + Math.random() * 2, (Math.random() - 0.5) * 10), '#ffffff', 1);
+      } else if (mist) mist.visible = false;
+      if (circle) { circle.active = false; circle.block.visible = false; circle.iconHolder.visible = false; if (circle.labelEl) circle.labelEl.style.display = 'none'; }
+      return true;
+    }
+    if (id === 'feu' && key === 'feu-marais') {
+      for (const l of this.marsh?.lanterns ?? []) { l.userData.glow.visible = true; l.userData.unlit.visible = false; }
+      if (!this.marshLights) {
+        this.marshLights = true;
+        for (const l of this.marsh?.lanterns ?? []) this.kit.pointLight(l, 0xffb347, 2.2, 7, 1.6, 0, 1.9, 0, { amp: 0.08, speed: 6 });
+      }
+      if (circle) { circle.active = false; circle.block.visible = false; circle.iconHolder.visible = false; if (circle.labelEl) circle.labelEl.style.display = 'none'; }
+      return true;
     }
     if (id === 'fleur' || id === 'arbre') {
       // Grows next to the circle and can be gathered (no tool needed for magic plants).
       const off = new THREE.Vector3(1.9, 0, 0.6);
       const p = at.clone().add(off);
       p.y = this.terrain.heightAt(p.x, p.z);
-      const old = this.spellObjects[id];
+      const old = this.spellObjects[key];
       if (old?.node?.active) return null;
       if (old) { this.scene.remove(old.group); this.interactables = this.interactables.filter((o) => o !== old.node); old.node.iconHolder.removeFromParent(); old.node.hit.removeFromParent(); old.node.labelEl?.remove(); }
       const group = id === 'fleur' ? buildFlowerBed(power) : buildMagicTree(power);
@@ -708,7 +806,7 @@ export class GameScene {
         block: group, burst: id === 'fleur' ? '#ff7ab0' : '#7ad86a', respawn: 1e9,
         worldPos: p, iconY: id === 'fleur' ? 1.3 : 3.4, reach: 1.7, hitRadius: 1.1,
       });
-      this.spellObjects[id] = { group, node };
+      this.spellObjects[key] = { group, node };
       if (!silent) grow(group);
       return group;
     }
@@ -1415,6 +1513,7 @@ export class GameScene {
     const onWalk = this.walkways?.length && this._walkwayAt(x, z);
     for (const c of this.collidables) {
       if (c.water && onWalk) continue;
+      if (c.rect) { if (x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1) return true; continue; }
       if (c.type === 'houseWall') {
         // Transform world position into the house's local space
         const cosR = Math.cos(-c.rotation);
@@ -1573,7 +1672,8 @@ export class GameScene {
 
   // Player-only blocking: obstacles plus terrain steps too high to walk up.
   _blocked(x, z, y) {
-    if (Math.hypot(x, z) > 42) return true; // edge of the world
+    if (Math.hypot(x, z) > WORLD_RADIUS) return true; // edge of the world
+    if (this.marshMist && x > MIST_X - 1.2 && x < MIST_X + 6) return true; // the mist (Wind spell)
     if (this._checkCollision(x, z)) return true;
     return this.groundAt(x, z) - y > STEP_UP;
   }
@@ -1859,8 +1959,8 @@ export class GameScene {
   }
 
   _buildMinimapBackground() {
-    const half = 46;
-    const px = 4; // pixels per world unit
+    const half = 90;
+    const px = 3; // pixels per world unit
     const c = document.createElement('canvas');
     c.width = c.height = half * 2 * px;
     const g = c.getContext('2d');
@@ -1871,7 +1971,8 @@ export class GameScene {
       for (let z = -half; z < half; z++) {
         const h = this.terrain.heightAt(x + 0.5, z + 0.5);
         const l = 34 + Math.min(18, h * 4);
-        g.fillStyle = Math.hypot(x - 22, z + 22) < 9 && h > 0.4 ? `hsl(30, 6%, ${l + 10}%)` : `hsl(100, 38%, ${l}%)`;
+        const hue = x < -42 ? 125 : x > 42 ? 70 : 100;
+        g.fillStyle = Math.hypot(x - 22, z + 22) < 9 && h > 0.4 ? `hsl(30, 6%, ${l + 10}%)` : `hsl(${hue}, 38%, ${x < -42 ? l - 8 : l}%)`;
         g.fillRect(x, z, 1, 1);
       }
     }
@@ -1881,6 +1982,13 @@ export class GameScene {
     }
     g.fillStyle = '#4a9ad8';
     g.beginPath(); g.arc(-16, -16, 3.2, 0, Math.PI * 2); g.fill();
+    // Regions: the river, the marsh pools and boardwalk, the forester's cabin.
+    g.fillRect(-60.2, -half, 4.4, half * 2);
+    g.fillStyle = '#3a6a5a';
+    for (const c of this.collidables) if (c.water && !c.rect && c.x > 40) { g.beginPath(); g.arc(c.x, c.z, c.r, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = '#a07a4a';
+    g.fillRect(BOARDWALK.x0, BOARDWALK.z - BOARDWALK.hw, BOARDWALK.x1 - BOARDWALK.x0, BOARDWALK.hw * 2);
+    g.fillRect(-70 - 2.2, -6 - 1.8, 4.4, 3.6);
     g.beginPath(); g.arc(0, 0, 1.6, 0, Math.PI * 2); g.fill();
     const roofs = { tavern: '#3f7a44', forge: '#4a4e58', shop: '#3e5f98', tower: '#6a4aa8', cottage: '#c9a24a', guild: '#6a4428' };
     for (const h of this.houses) {
@@ -1958,6 +2066,7 @@ export class GameScene {
     this._updateDayNight(dt);
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
+    this._tickRegions();
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

@@ -1632,3 +1632,9 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .map-instruction.is-objective { background: rgba(31, 42, 68, 0.88); border: 2px solid #f2c84b; }
 .map-instruction .obj-chapter { display: block; font-size: 0.75em; color: #f2c84b; font-weight: 800; }
 .album-mimots { font-weight: 900; font-size: 1.1rem; margin: 6px 0 12px; }
+
+/* ===== Travel ===== */
+#travel-modal { z-index: 75; }
+.travel-card { max-width: 460px; text-align: center; }
+.travel-buttons { display: grid; gap: 10px; margin: 12px 0; }
+.travel-buttons .btn { font-size: 1.2rem; padding: 14px; }

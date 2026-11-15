@@ -135,6 +135,8 @@ export const CHARACTER_SPECS = {
   merchant: { skin: 0xd99f74, hair: 0x2a1c14, hairStyle: 'short', mustache: 0x2a1c14, eyes: 0x5a3a20, shirt: 0xd8a03a, trim: 0x8a3b2e, pants: 0x4a3a2a, shoes: 0x2e2018, apron: 0xf0e6d0 },
   guard: { skin: 0xf0c49c, hair: 0x6a4a2a, hairStyle: 'short', eyes: 0x3a5a8a, shirt: 0xb8322c, trim: 0xd8d8de, pants: 0x3a3a46, shoes: 0x22222a, helmet: 0xb8bcc4, belt: 0x2a2224 },
   barkeep: { skin: 0xe6b08a, hair: 0x8a4a2a, hairStyle: 'bald', mustache: 0x8a4a2a, eyes: 0x4a3020, shirt: 0xf0ead8, trim: 0x7a2a22, pants: 0x3a2a22, shoes: 0x22180f, apron: 0x7a2a22 },
+  forester: { skin: 0xe2a882, hair: 0x6a3a1a, hairStyle: 'short', beard: 0x7a4a22, eyes: 0x3a5a2a, shirt: 0x3a6a3a, trim: 0xb8322c, pants: 0x5a4a2a, shoes: 0x2e2018, belt: 0x3a2414 },
+  fisher: { skin: 0xc98a62, hair: 0x2a2a3a, hairStyle: 'long', eyes: 0x3a6a8a, shirt: 0x2f6a8a, trim: 0xf2c84b, pants: 0x3a4a5a, shoes: 0x22222a, blush: true },
   patron: { skin: 0xc98a62, hair: 0x1e1a18, hairStyle: 'short', eyes: 0x4a3020, shirt: 0x2f8a8a, trim: 0xd8c27a, pants: 0x4a3a5a, shoes: 0x22180f, lookLeft: true },
 };
 

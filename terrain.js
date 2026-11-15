@@ -6,7 +6,7 @@ import { seededRandom } from './interiors.js';
 
 export const LAYER = 0.5;
 export const STEP_UP = 0.55;
-const SIZE = 104; // cells per side, 1 unit each, centred on the origin
+const SIZE = 184; // cells per side, 1 unit each, centred on the origin
 const HALF = SIZE / 2;
 
 function valueNoise(seed) {
@@ -60,7 +60,12 @@ export class Terrain {
         let raw = 0;
         if (r > 21 && r < 40) {
           raw = (r - 21) * 0.16 + n1(x * 0.12, z * 0.12) * 2.2 + n2(x * 0.3, z * 0.3) * 0.6 - 1.0;
+          if (r > 30) raw *= Math.max(0, (40 - r) / 10) * 1.2;
+          // Valleys through the hills: west to the forest, east to the marsh, north and south.
+          if (Math.abs(z) < 4.5 || Math.abs(x) < 4.5) raw = Math.min(raw, 0);
         }
+        // Hills at the edge of the world.
+        if (r > 76) raw = Math.max(raw, (r - 76) * 0.45 + n1(x * 0.15, z * 0.15) * 1.5);
         // A rocky hill behind the quarry, north-east.
         const dm = Math.hypot(x - (q.x + 4), z - (q.z - 4));
         raw += Math.max(0, 1 - dm / 9) * 4.2;
@@ -137,11 +142,13 @@ export class Terrain {
       stone: new THREE.MeshStandardMaterial({ map: stone, roughness: 1 }),
     };
     for (const m of Object.values(mats)) { m.map.wrapS = THREE.RepeatWrapping; m.map.wrapT = THREE.RepeatWrapping; }
-    const buf = { grassTop: [], grassSide: [], dirt: [], stone: [] };
+    // Quads are grouped by material and by 46×46 chunk, so chunks off screen are culled.
+    const CH = 46;
+    const buf = {};
+    let chunkKey = '';
     const quad = (key, a, b, c, d, n, uw, vh) => {
       // a,b,c,d counter-clockwise seen from the normal side
-      const B = buf[key];
-      B.push([a, b, c, d, n, uw, vh]);
+      (buf[`${key}|${chunkKey}`] ??= []).push([a, b, c, d, n, uw, vh]);
     };
     const q = this.quarry;
     const H = (i, j) => (i < 0 || j < 0 || i >= SIZE || j >= SIZE ? 0 : this.h[j * SIZE + i]);
@@ -151,6 +158,7 @@ export class Terrain {
         const hgt = this.h[j * SIZE + i];
         if (hgt <= 0) continue;
         const x0 = i - HALF, z0 = j - HALF, x1 = x0 + 1, z1 = z0 + 1;
+        chunkKey = `${Math.floor(i / CH)},${Math.floor(j / CH)}`;
         const rocky = Math.hypot(x0 + 0.5 - (q.x + 4), z0 + 0.5 - (q.z - 4)) < 8.5 || Math.hypot(x0 + 0.5 - q.x, z0 + 0.5 - q.z) < q.r + 0.5;
         quad(rocky ? 'stone' : 'grassTop', [x0, hgt, z1], [x1, hgt, z1], [x1, hgt, z0], [x0, hgt, z0], [0, 1, 0], 1, 1);
         faces++;
@@ -172,8 +180,9 @@ export class Terrain {
         }
       }
     }
-    for (const [key, quads] of Object.entries(buf)) {
+    for (const [bk, quads] of Object.entries(buf)) {
       if (!quads.length) continue;
+      const key = bk.split('|')[0];
       const pos = new Float32Array(quads.length * 18);
       const nor = new Float32Array(quads.length * 18);
       const uv = new Float32Array(quads.length * 12);
@@ -190,6 +199,7 @@ export class Terrain {
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
       geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      geo.computeBoundingSphere();
       const mesh = new THREE.Mesh(geo, mats[key]);
       mesh.receiveShadow = true;
       mesh.userData.dynamic = true;

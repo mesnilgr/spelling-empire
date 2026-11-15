@@ -5,6 +5,8 @@ import { COSTUMES } from './characters.js';
 import { loadModel, recognize, inkBox } from './handwriting.js';
 import { SPELLS, spellById, spellWord } from './magic.js';
 import { CHAPTERS, SCENES, SPEAKERS, SIGNS, signWord, MIMOTS } from './story.js';
+import { TRAVEL } from './regions.js';
+import { setSignText } from './story3d.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -490,7 +492,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (obj.kind === 'sign' || obj.kind === 'mimot' || obj.kind === 'page') continue;
+    else if (obj.kind === 'sign' || obj.kind === 'mimot' || obj.kind === 'page' || obj.kind === 'travel') continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -546,10 +548,10 @@ function continueGame() {
     story: { ...newStory(), ...(s.story ?? {}) },
   });
   // Lasting spells come back: the bridge, the lit braziers.
-  for (const id of ['pont', 'feu']) {
-    if (!game.spells[id]) continue;
-    const circle = scene3D?.interactables.find((o) => o.kind === 'circle' && o.spellId === id);
-    scene3D?.castSpell(id, circle, game.spells[id], { silent: true });
+  for (const [key, power] of Object.entries(game.spells)) {
+    const circle = scene3D?.interactables.find((o) => o.kind === 'circle' && o.cid === key);
+    if (!circle || !['pont', 'feu', 'vent'].includes(circle.spellId)) continue;
+    scene3D?.castSpell(circle.spellId, circle, power, { silent: true });
   }
   for (const id of game.crafted) if (!HOLDABLE_IDS.includes(id.split('_')[0])) scene3D?.spawnTrophy(id);
   game.equipped = null;
@@ -618,9 +620,14 @@ function tryInteract() {
 
 // World nodes need the right tool; houses don't.
 function interactWith(obj) {
-  if (!game || !$('#spell-modal').hidden || !obj.active || !$('#dialog').hidden) return;
+  if (!game || !$('#spell-modal').hidden || !obj.active || !$('#dialog').hidden || !$('#travel-modal').hidden) return;
   if (!$('#quest-modal').hidden || fishing) return;
   if (obj.kind === 'npc' && obj.npcId === 'mage' && storyAt('talkMage')) { playScene('mage1', () => { advanceStory('talkMage'); toast('🔮 ' + t.grimoireTitle + ' !'); }); return; }
+  if (obj.kind === 'npc' && (obj.npcId === 'forester' || obj.npcId === 'fisher')) {
+    const id = obj.npcId;
+    if (storyAt(id)) playScene(id, () => advanceStory(id)); else playScene(`${id}Idle`);
+    return;
+  }
   if (obj.kind === 'npc') { openQuest(obj); return; }
   if (obj.kind === 'bed') { goToSleep(); return; }
   if (obj.kind === 'circle') {
@@ -629,7 +636,8 @@ function interactWith(obj) {
   }
   if (obj.kind === 'sign') { beginSign(obj); return; }
   if (obj.kind === 'mimot') { beginMimot(obj); return; }
-  if (obj.kind === 'page') { scene3D.setStoryActive(obj, false); playScene('page1', () => advanceStory('page')); return; }
+  if (obj.kind === 'page') { scene3D.setStoryActive(obj, false); playScene(obj.scene, () => advanceStory(obj.pageId)); return; }
+  if (obj.kind === 'travel') { useTravelSign(obj); return; }
   if (obj.nodeType === 'fish' && ownsTool('rod')) {
     if (game.equipped !== bestVersion('rod')) equipItem(bestVersion('rod'));
     startFishing(obj);
@@ -689,7 +697,7 @@ function openSpellModal(title, instruction, emoji) {
 }
 
 /* ===== STORY ===== */
-function newStory() { return { chapter: 1, step: 0, counts: {}, signs: {}, mimots: [], mimotWords: {}, intro: false }; }
+function newStory() { return { chapter: 1, step: 0, counts: {}, signs: {}, mimots: [], mimotWords: {}, travel: {}, intro: false }; }
 function chapterDef() { return CHAPTERS.find((c) => c.id === game.story.chapter) ?? CHAPTERS[CHAPTERS.length - 1]; }
 function currentObjective() { return chapterDef().objectives[game.story.step] ?? null; }
 // Has the story gone past this objective (in this chapter or an earlier one)?
@@ -760,8 +768,16 @@ function objectivePos() {
     return it.filter((i) => i.kind === 'sign' && !game.story.signs[i.signHouse]).sort((a, b) => a.worldPos.distanceTo(p) - b.worldPos.distanceTo(p))[0]?.worldPos;
   }
   if (o.id === 'mimot') return it.find((i) => i.kind === 'mimot' && i.mimotId === 'fontaine')?.worldPos;
-  if (o.id === 'page') return scene3D.pageObj?.worldPos;
-  return null;
+  if (scene3D.pageObjs?.[o.id]) return scene3D.pageObjs[o.id].worldPos;
+  const circleAt = (cid) => it.find((i) => i.kind === 'circle' && i.cid === cid)?.worldPos;
+  const travelAt = (r) => it.find((i) => i.kind === 'travel' && i.region === r)?.worldPos;
+  const npcAt = (id) => it.find((i) => i.kind === 'npc' && i.npcId === id)?.worldPos;
+  const p = scene3D.player.position;
+  const mimotIn = (r) => it.filter((i) => i.kind === 'mimot' && i.active && MIMOTS.find((m) => m.id === i.mimotId)?.region === r).sort((a, b) => a.worldPos.distanceTo(p) - b.worldPos.distanceTo(p))[0]?.worldPos;
+  return ({
+    forestSign: () => travelAt('forest'), forestBridge: () => circleAt('pont-foret'), forester: () => npcAt('forester'), forestMimots: () => mimotIn('forest'),
+    marshSign: () => travelAt('marsh'), marshFog: () => circleAt('vent-marais'), fisher: () => npcAt('fisher'), marshFire: () => circleAt('feu-marais'), marshMimots: () => mimotIn('marsh'),
+  })[o.id]?.() ?? null;
 }
 function updateObjectiveUI() {
   const box = $('#map-instruction');
@@ -800,7 +816,7 @@ function applyStoryState() {
     const o = scene3D.interactables.find((i) => i.kind === 'mimot' && i.mimotId === m.id);
     if (!o) continue;
     const tamed = st.mimots.includes(m.id);
-    const show = !tamed && (m.story ? storyAt('mimot') : storyPast('talkMage'));
+    const show = !tamed && (m.story ? storyAt(m.story) : m.after ? storyPast(m.after) : storyPast('talkMage'));
     if (show && !st.mimotWords[m.id]) {
       st.mimotWords[m.id] = pickWord(levelAt(1))?.word;
     }
@@ -808,9 +824,16 @@ function applyStoryState() {
     scene3D.setStoryActive(o, show);
     if (show) scene3D.setSpotMaterial(o, 'talk', '🐣 Mimot');
   }
-  const page = scene3D.pageObj;
-  scene3D.setStoryActive(page, storyAt('page'));
-  if (storyAt('page')) scene3D.setSpotMaterial(page, 'talk', '📄 ?');
+  for (const page of Object.values(scene3D.pageObjs ?? {})) {
+    scene3D.setStoryActive(page, storyAt(page.pageId));
+    if (storyAt(page.pageId)) scene3D.setSpotMaterial(page, 'talk', '📄 ?');
+  }
+  for (const o of scene3D.interactables.filter((i) => i.kind === 'travel')) {
+    const fixed = o.region === 'village' || st.travel?.[o.region];
+    setTravelSignText(o, fixed);
+    scene3D.setSpotMaterial(o, fixed ? 'talk' : 'talk', fixed ? '🧭 ' + (t.placeNames[o.region] ?? o.region) : '🪧 ?');
+  }
+  refreshCircles();
   updateObjectiveUI();
   updateMapPins();
 }
@@ -829,19 +852,58 @@ function beginMimot(obj) {
   openSpellModal(`🐣 ${t.mimotTitle}`, t.mimotInstruction, '🐣');
 }
 
+/* ===== TRAVEL SIGNPOSTS ===== */
+function setTravelSignText(o, fixed) {
+  const T = TRAVEL[o.region];
+  setSignText(o.sign, o.region === 'village' ? 'Voyage' : fixed ? T.word[7] : null);
+}
+function travelWord(region) {
+  const T = TRAVEL[region], age = progress.age ?? 6;
+  const w = age <= 5 ? T.word[5] : age === 6 ? T.word[6] : T.word[7];
+  const names = { f: 'èfe', m: 'ème' };
+  return w.length === 1 ? { word: w, level: 'story', say: `La lettre ${names[w] ?? w}… comme dans ${T.word[7]}.` } : { word: w, level: 'story', say: `${w}.` };
+}
+function useTravelSign(o) {
+  const fixed = o.region === 'village' || game.story.travel?.[o.region];
+  if (!fixed) {
+    if (!storyPast('talkMage')) { toast(t.talkToMageFirst); return; }
+    spellContext = { type: 'travel', region: o.region, obj: o, word: travelWord(o.region), tries: 0 };
+    openSpellModal(`🪧 ${t.travelSignTitle}`, t.travelSignInstruction, '🪧');
+    return;
+  }
+  const places = Object.keys(TRAVEL).filter((r) => r === 'village' || game.story.travel?.[r]);
+  $('#travel-buttons').replaceChildren(...places.map((r) => {
+    const b = el('button', `btn ${r === o.region ? 'btn-ghost' : 'btn-primary'}`, t.placeNames[r] ?? r);
+    b.type = 'button';
+    b.addEventListener('click', () => {
+      if (r === o.region) { toast(t.notThere); return; }
+      $('#travel-modal').hidden = true;
+      const fade = $('#sleep-fade');
+      fade.hidden = false; fade.classList.remove('is-out');
+      setTimeout(() => {
+        const back = TRAVEL[r].back;
+        scene3D.teleport(back.x, back.z);
+        setTimeout(() => { fade.classList.add('is-out'); setTimeout(() => { fade.hidden = true; }, 700); }, 300);
+      }, 650);
+    });
+    return b;
+  }));
+  $('#travel-modal').hidden = false;
+}
+
 /* ===== WORD MAGIC ===== */
 function refreshCircle(obj) {
   const sp = spellById(obj.spellId);
   scene3D.setSpotMaterial(obj, 'spell', spellUnlocked(sp) ? `${sp.emoji} ${spellName(sp)}` : `🔒 ${spellName(sp)}`);
 }
 function refreshCircles() { for (const o of scene3D?.interactables ?? []) if (o.kind === 'circle') refreshCircle(o); }
-function spellUnlocked(sp) { return !!sp && sp.unlock !== null && (progress.stars ?? 0) >= sp.unlock; }
+function spellUnlocked(sp) { return !!sp && ((sp.unlock !== null && (progress.stars ?? 0) >= sp.unlock) || (!!sp.story && !!game?.story && storyPast(sp.story))); }
 function spellName(sp) { return sp.name[lang] ?? sp.name.fr; }
 function beginSpellCast(circle) {
   initAudio();
   const sp = spellById(circle.spellId);
-  if (!spellUnlocked(sp)) { toast(sp.unlock === null ? t.spellSoon : t.spellLocked(spellName(sp), sp.unlock)); return; }
-  if (scene3D.spellObjects?.[sp.id]?.node?.active) { toast(t.spellAlready); return; }
+  if (!spellUnlocked(sp)) { toast(sp.unlock === null ? (sp.soon?.[lang] ?? t.spellSoon) : t.spellLocked(spellName(sp), sp.unlock)); return; }
+  if (scene3D.spellObjects?.[circle.cid ?? sp.id]?.node?.active) { toast(t.spellAlready); return; }
   const word = spellWord(sp, progress.age ?? 6, lang);
   spellContext = { type: 'spell', spell: sp, circle, word, tries: 0 };
   openSpellModal(`${sp.emoji} ${t.spellTitle} : ${spellName(sp)}`, t.spellInstruction, sp.emoji);
@@ -1121,6 +1183,22 @@ function handleSpellSuccess() {
     speak(t.signBack(name), 0.9);
     const ctxDone = () => { advanceStory('signs'); if (storyAt('mimot')) playScene('signsDone'); };
     spellContext.after = ctxDone;
+  } else if (type === 'travel') {
+    const region = spellContext.region;
+    game.story.travel ??= {};
+    game.story.travel[region] = true;
+    setTravelSignText(spellContext.obj, true);
+    { const w = spellContext.obj.worldPos; scene3D?.particleBurst({ x: w.x, y: w.y + 1.6, z: w.z }, '#ffe08a', 26); }
+    sfxCraft();
+    const name = TRAVEL[region].word[7];
+    spellResultEl.replaceChildren(
+      el('p', 'spell-success', `🪧 ${t.travelFixed(name.toUpperCase())}`),
+      el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`),
+    );
+    spellResultEl.hidden = false;
+    speak(t.travelFixed(name), 0.9);
+    const hook = `${region}Sign`;
+    spellContext.after = () => { applyStoryState(); if (storyAt(hook)) playScene(hook, () => advanceStory(hook)); saveGame(); };
   } else if (type === 'mimot') {
     const id = spellContext.mimotId;
     game.story.mimots.push(id);
@@ -1133,13 +1211,26 @@ function handleSpellSuccess() {
     );
     spellResultEl.hidden = false;
     speak(buildSentence(wordStr, lang), 0.9);
-    spellContext.after = () => { if (id === 'fontaine' && storyAt('mimot')) playScene('mimot1', () => advanceStory('mimot')); else applyStoryState(); saveGame(); };
+    spellContext.after = () => {
+      const def = MIMOTS.find((m) => m.id === id);
+      const o = currentObjective();
+      if (id === 'fontaine' && storyAt('mimot')) playScene('mimot1', () => advanceStory('mimot'));
+      else if (def?.region && o?.countFrom === def.region) {
+        const n = game.story.mimots.filter((mid) => MIMOTS.find((m) => m.id === mid)?.region === def.region).length;
+        game.story.counts[o.id] = n;
+        if (n >= o.count) { game.story.counts[o.id] = n - 1; playScene(o.id, () => advanceStory(o.id)); } else applyStoryState();
+      } else applyStoryState();
+      saveGame();
+    };
   } else if (type === 'spell') {
     const sp = spellContext.spell;
     const power = copied ? 'weak' : firstTry ? 'strong' : 'wobbly';
     scene3D?.castSpell(sp.id, spellContext.circle, power);
     game.spells ??= {};
-    game.spells[sp.id] = power;
+    const key = spellContext.circle?.cid ?? sp.id;
+    game.spells[key] = power;
+    const hook = { 'pont-foret': 'forestBridge', 'vent-marais': 'marshFog', 'feu-marais': 'marshFire' }[key];
+    if (hook) spellContext.after = () => { if (storyAt(hook)) playScene(hook, () => advanceStory(hook)); };
     let extra = '';
     if (sp.id === 'pluie') { game.materials.wheat = (game.materials.wheat ?? 0) + 1; extra = `${MATERIAL_EMOJI.wheat} ${t.gotMaterial}: ${materialName('wheat')}`; }
     sfxCraft();
@@ -1455,6 +1546,7 @@ function bindEvents() {
   });
   $('#reset-pos-btn')?.addEventListener('click', () => scene3D?.resetPosition());
   $('#dialog-next')?.addEventListener('click', () => showDialogLine());
+  $('#travel-close')?.addEventListener('click', () => { $('#travel-modal').hidden = true; });
   $('#dialog-repeat')?.addEventListener('click', () => speak($('#dialog-text').textContent, 0.85));
   $('#grimoire-btn')?.addEventListener('click', () => { renderGrimoire(); $('#grimoire-modal').hidden = false; });
   $('#grimoire-close')?.addEventListener('click', () => { $('#grimoire-modal').hidden = true; });
