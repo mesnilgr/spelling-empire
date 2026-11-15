@@ -179,7 +179,8 @@ export class GameScene {
       spots: [[0, 0], [-1.6, 3.4], [4.4, -2.5]],
     });
     this._buildHouse(12, 6, 0, 'tower', 5, 8, 4, 0x5544aa, 'tower', { roof: 'pyramid', wallH: 4.6 });
-    this._buildHouse(0, 14, 0, 'cottage', 6, 4, 4, COLORS.roof, 'cottage', { spots: [[0.2, 0.3], [1.9, -1.0], [-1.7, 1.0]] });
+    // The cottage is the bedroom: no materials to collect there, only the bed.
+    this._buildHouse(0, 14, 0, 'cottage', 6, 4, 4, COLORS.roof, 'cottage', { spots: [] });
     this._buildHouse(-2, -14, 0, 'guild', 8, 5, 5, 0x6a4a2a, 'guild', { windows: { front: [-1.95, 1.95] } });
 
     // Terraced hills around the village (flat where buildings, pond and paths are).
@@ -1560,6 +1561,15 @@ export class GameScene {
       ctx.fillStyle = '#ffe9b0';
       ctx.beginPath(); ctx.arc(c.mesh.position.x, c.mesh.position.z, 0.7, 0, Math.PI * 2); ctx.fill();
     }
+    // Named pins (the bed…): drawn upright, kept on the rim when out of range so they can be found.
+    const pins = (this.mapPins ?? []).map((pin) => {
+      const dx = pin.x - p.x, dz = pin.z - p.z;
+      const c = Math.cos(CAM_YAW), s = Math.sin(CAM_YAW);
+      let sx = (dx * c - dz * s) * k, sy = (dx * s + dz * c) * k;
+      const lim = W / 2 - 14, d = Math.hypot(sx, sy);
+      if (d > lim) { sx *= lim / d; sy *= lim / d; }
+      return { ...pin, sx: W / 2 + sx, sy: W / 2 + sy };
+    });
     // Hero arrow.
     ctx.translate(p.x, p.z);
     ctx.rotate(-this.player.rotation.y);
@@ -1567,6 +1577,18 @@ export class GameScene {
     ctx.beginPath(); ctx.moveTo(0, 2.2); ctx.lineTo(1.4, -1.4); ctx.lineTo(0, -0.6); ctx.lineTo(-1.4, -1.4); ctx.closePath();
     ctx.fill(); ctx.stroke();
     ctx.restore();
+    for (const pin of pins) {
+      const fs = Math.round(W * 0.075);
+      ctx.save();
+      ctx.font = `700 ${fs}px system-ui, sans-serif`;
+      const tw = ctx.measureText(pin.text).width + fs * 0.8;
+      const x = Math.min(Math.max(pin.sx, tw / 2 + 2), W - tw / 2 - 2), y = pin.sy;
+      ctx.fillStyle = 'rgba(31, 42, 68, 0.85)';
+      ctx.beginPath(); ctx.roundRect(x - tw / 2, y - fs * 0.75, tw, fs * 1.5, fs * 0.75); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(pin.text, x, y + 1);
+      ctx.restore();
+    }
   }
 
   _buildMinimapBackground() {

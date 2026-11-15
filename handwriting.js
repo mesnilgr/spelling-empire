@@ -130,8 +130,30 @@ const ACCENTS = {
 };
 export const ACCENTED = { e: ['é', 'è', 'ê'], a: ['à', 'â'], u: ['ù', 'û'], i: ['î', 'ï'], o: ['ô'], c: ['ç'] };
 
+// Letters the network can mix up because they share a shape, while a child spelling a word
+// would not swap them (unlike b/d, o/au or s/c, which are left alone on purpose).
+const LOOKALIKE = { a: 'qdg', q: 'agd', d: 'a', g: 'aq', i: 'lj', l: 'i', j: 'i', h: 'n', n: 'h', u: 'v', v: 'u' };
+
+// A drawing made only of small marks just above the previous letter: a late dot or accent.
+// Returns the corrected previous letter, or null when the marks are not that.
+export function lateMark(strokes, prevBox, prevLetter, lang = 'fr') {
+  if (!prevBox || !prevLetter || !strokes.length) return null;
+  const H = Math.max(prevBox.h, prevBox.w * 0.6, 1);
+  const b = bbox(strokes.flat());
+  if (Math.max(b.w, b.h) > H * 0.45 || b.maxY > prevBox.minY + H * 0.2) return null;
+  if (b.minX > prevBox.maxX + H * 0.4 || b.maxX < prevBox.minX - H * 0.4) return null;
+  const kind = accentKind(strokes, H);
+  const base = prevLetter.normalize('NFD')[0];
+  // A stick with any small mark over it is an i (a finger dot is often a short dash).
+  if (base === 'l' || base === 'i') return kind === 'circ' && lang === 'fr' ? 'î' : kind === 'trema' && lang === 'fr' ? 'ï' : 'i';
+  if (lang === 'fr' && ACCENTS[base]?.[kind]) return ACCENTS[base][kind];
+  return null;
+}
+export const inkBox = (strokes) => bbox(strokes.flat());
+
 // strokes: arrays of [x, y] in screen pixels (y down). Returns best letter + alternatives.
-export async function recognize(strokes, lang = 'fr') {
+// `expected` (the letter the word needs next) only settles a tie between two lookalike shapes.
+export async function recognize(strokes, lang = 'fr', expected = null) {
   const m = await loadModel();
   const { body, above, below, H } = splitMarks(strokes);
   const accent = accentKind(above, H);
@@ -147,6 +169,14 @@ export async function recognize(strokes, lang = 'fr') {
     if (li > 0) { const [it] = ranked.splice(li, 1); ranked.unshift(it); }
     if (!ranked.some(([ch]) => ch === 'i')) ranked.push(['i', 0]);
   }
+  // Lookalike shapes (a/q, i/l, n/h…): when the network hesitates, the word decides.
+  const eb = expected?.normalize('NFD')[0];
+  if (eb && eb !== best && LOOKALIKE[best]?.includes(eb)) {
+    const k = ranked.findIndex(([ch]) => ch === eb);
+    if (k > 0 && k < 4 && ranked[k][1] >= 0.04) { best = eb; const [it] = ranked.splice(k, 1); ranked.unshift(it); }
+  }
+  // A stick with a mark over it that was not neat enough to be read as a dot is still an i.
+  if (best === 'l' && above.length && !ACCENTS.i[accent]) best = 'i';
   if (lang === 'fr') {
     if (accent && accent !== 'dot' && ACCENTS[best]?.[accent]) best = ACCENTS[best][accent];
     else if (accent === 'dot' && best === 'l') best = 'i';

@@ -11,9 +11,11 @@ Première version jouable d'**Empire des Mots / Spelling Empires**, un jeu d'ort
 - 16 objets à fabriquer (outils, torche, lanterne, canne à pêche, baguette, potion, pain, maison, bateau, outils en diamant et en obsidienne), utilisables avec un bouton.
 - Coffres au trésor, cycle jour / nuit avec champignons lumineux, pêche, quêtes de 5 villageois, album des mots, garde-robe de 9 tenues.
 - Saut, retour au village, minicarte, sauvegarde automatique de la partie.
+- Un lit dans la chaumière pour passer à la nuit ou revenir au matin, repéré « 🛏️ Lit » sur la minicarte.
 
 ### Écrire
 - Clavier à l'écran (voyelles surlignées) ou **mode écriture à la main** reconnu sur l'appareil (capitales, minuscules, écriture attachée, accents).
+- Lettre modèle grisée à repasser (désactivable), nom et son de la lettre dits quand elle est juste, bouton pour revenir au clavier.
 - Après 3 erreurs, le mot s'affiche et doit être recopié pour continuer.
 - Une phrase d'exemple lue à voix haute pour chaque mot.
 
@@ -23,5 +25,7 @@ Première version jouable d'**Empire des Mots / Spelling Empires**, un jeu d'ort
 ### iPad
 - Plein écran, commandes tactiles, qualité graphique qui s'adapte si le jeu ralentit. Ajoutez `?fps` à l'adresse pour afficher un compteur d'images par seconde.
 
-### Correctif inclus
+### Correctifs inclus
+- En écriture à la main, un « a » avec une petite queue ou une barre un peu longue était lu comme un « q » : réseau réentraîné, et entre deux lettres qui se ressemblent (a/q, i/l, n/h…) c'est le mot qui tranche.
+- Le point du « i » (ou un accent) posé un peu tard ne crée plus une lettre de trop : il corrige la lettre précédente.
 - Avec beaucoup d'objets dans l'inventaire, le bouton « Fabrication » sortait de l'écran : il reste maintenant toujours visible et l'inventaire passe sur plusieurs lignes.

@@ -2,7 +2,7 @@ import { LANGUAGES, LEVELS, WORDS, UI, buildSentence } from './language-engine.j
 import { GameScene } from './scene.js';
 import { NPC_INFO, QUESTS, rollLoot, WORD_EMOJI } from './content.js';
 import { COSTUMES } from './characters.js';
-import { loadModel, recognize } from './handwriting.js';
+import { loadModel, recognize, lateMark, inkBox } from './handwriting.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -1765,8 +1765,11 @@ const endStroke = () => {
   hw.current = null;
   redrawHw();
   // Recognise once the child pauses (time to add a dot or an accent first).
+  // A lone upright stick may become an i: leave more time for the dot.
   clearTimeout(hw.timer);
-  hw.timer = setTimeout(recognizeDrawing, 850);
+  const only = hw.strokes.length === 1 ? inkBox(hw.strokes) : null;
+  const stick = only && only.h > only.w * 3;
+  hw.timer = setTimeout(recognizeDrawing, stick ? 1500 : 850);
 };
 hwCanvas?.addEventListener('pointerup', endStroke);
 hwCanvas?.addEventListener('pointercancel', endStroke);
@@ -1775,8 +1778,23 @@ async function recognizeDrawing() {
   if (!hw.strokes.length || isLocked) return;
   const strokes = hw.strokes;
   hw.strokes = [];
-  const res = await recognize(strokes, lang);
+  // A dot or accent added after the letter was already read: fix that letter instead.
+  const prev = spellInput.value.slice(-1);
+  const fixed = Date.now() - hw.lastAt < 6000 ? lateMark(strokes, hw.lastBox, prev, lang) : null;
+  if (fixed) {
+    deleteLetter();
+    const exp = spellContext?.word?.word[spellInput.value.length];
+    typeLetter(fixed);
+    if (exp === fixed) { speakLetter(fixed); spellTilesEl.children[spellInput.value.length - 1]?.classList.add('tile-good'); }
+    hw.lastAt = 0;
+    $('#hw-alts').replaceChildren();
+    redrawHw();
+    return;
+  }
   const expected = spellContext?.word?.word[spellInput.value.length];
+  const res = await recognize(strokes, lang, expected);
+  hw.lastBox = inkBox(strokes);
+  hw.lastAt = Date.now();
   typeLetter(res.letter);
   // Right letter: say its name and its sound, and make the tile glow.
   if (expected && res.letter === expected) {
@@ -1803,7 +1821,7 @@ async function recognizeDrawing() {
 
 $('#hw-toggle')?.addEventListener('click', () => setInputMode(progress.inputMode === 'draw' ? 'keys' : 'draw'));
 $('#hw-clear')?.addEventListener('click', () => { hw.strokes = []; hw.current = null; clearTimeout(hw.timer); redrawHw(); });
-$('#hw-back')?.addEventListener('click', () => { deleteLetter(); $('#hw-alts').replaceChildren(); redrawHw(); });
+$('#hw-back')?.addEventListener('click', () => { hw.lastAt = 0; deleteLetter(); $('#hw-alts').replaceChildren(); redrawHw(); });
 $('#hw-keyboard')?.addEventListener('click', () => setInputMode('keys'));
 $('#hw-guide')?.addEventListener('click', () => {
   progress.traceGuide = progress.traceGuide === false;
@@ -1816,6 +1834,7 @@ $('#hw-guide')?.addEventListener('click', () => {
 /* ===== SLEEPING IN THE COTTAGE BED ===== */
 function refreshBed(obj = scene3D?.interactables.find((i) => i.kind === 'bed')) {
   if (!obj) return;
+  scene3D.mapPins = [{ x: obj.worldPos.x, z: obj.worldPos.z, text: t.bedPin }];
   const night = (scene3D.night ?? 0) > 0.5;
   scene3D.setSpotMaterial(obj, night ? 'wake' : 'sleep', night ? t.wakeLabel : t.sleepLabel);
 }
