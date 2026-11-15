@@ -71,6 +71,23 @@ export class Terrain {
         this.h[j * SIZE + i] = Math.max(0, Math.min(6, Math.floor(raw / LAYER) * LAYER));
       }
     }
+    // Never more than half a block between neighbours, so you can always walk back to the
+    // village (jumping is for fun, never required). Repeat until nothing changes.
+    for (let pass = 0; pass < 40; pass++) {
+      let changed = false;
+      for (let j = 0; j < SIZE; j++) {
+        for (let i = 0; i < SIZE; i++) {
+          const k = j * SIZE + i;
+          let m = Infinity;
+          if (i > 0) m = Math.min(m, this.h[k - 1]);
+          if (i < SIZE - 1) m = Math.min(m, this.h[k + 1]);
+          if (j > 0) m = Math.min(m, this.h[k - SIZE]);
+          if (j < SIZE - 1) m = Math.min(m, this.h[k + SIZE]);
+          if (this.h[k] > m + LAYER) { this.h[k] = m + LAYER; changed = true; }
+        }
+      }
+      if (!changed) break;
+    }
     // Soften single-cell spikes so hills read as terraces.
     const copy = this.h.slice();
     for (let j = 1; j < SIZE - 1; j++) {

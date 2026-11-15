@@ -10,7 +10,7 @@ import { VillageBuilder, skyTexture } from './village.js';
 import { BLOCKS, blockMat, texBox } from './textures.js';
 import { mergeStatic, LightPool, QualityManager } from './perf.js';
 import { Terrain, STEP_UP } from './terrain.js';
-import { buildMaterialIcon } from './icons.js';
+import { buildMaterialIcon, makeLabelSprite } from './icons.js';
 
 // Each building has its own blocks, roof and trim so the village has variety.
 const HOUSE_STYLES = {
@@ -373,10 +373,18 @@ export class GameScene {
     return obj;
   }
 
-  setSpotMaterial(obj, materialId) {
+  setSpotMaterial(obj, materialId, label) {
     obj.material = materialId;
     obj.iconHolder.clear();
     obj.iconHolder.add(buildMaterialIcon(materialId));
+    if (label) {
+      obj.label?.material.map.dispose();
+      obj.label?.material.dispose();
+      if (obj.label) this.scene.remove(obj.label);
+      obj.label = makeLabelSprite(label);
+      obj.label.userData.dynamic = true;
+      this.scene.add(obj.label);
+    }
   }
 
   // After a successful harvest a world node disappears for a while, then grows back.
@@ -399,7 +407,7 @@ export class GameScene {
       const tex = { iron: 'ironOre', diamond: 'diamondOre', obsidian: 'obsidian' }[kind];
       const block = texBox(this.scene, 0.95, 0.95, 0.95, blockMat(tex), x, y + 0.475, z, { tile: 0.95 });
       block.userData.dynamic = true;
-      this.collidables.push({ x, z, r: 0.55 });
+      this.collidables.push({ x, z, r: 0.5 });
       this._addInteractable({
         kind: 'node', nodeType: 'ore', material: kind, requires: 'pickaxe', block,
         burst: { iron: '#d8a878', diamond: '#5af0e6', obsidian: '#5a3a8a' }[kind],
@@ -410,7 +418,7 @@ export class GameScene {
     const kinds = ['iron', 'diamond', 'iron', 'obsidian', 'iron', 'diamond', 'obsidian'];
     kinds.forEach((k, i) => {
       const a = (i / kinds.length) * Math.PI * 2 + 0.3;
-      ore(q.x + Math.cos(a) * 2.1, q.z + Math.sin(a) * 2.1, k);
+      ore(q.x + Math.cos(a) * 2.7, q.z + Math.sin(a) * 2.7, k);
     });
     ore(-23.5, -7.5, 'iron');
     ore(23.5, 1.5, 'iron');
@@ -1142,8 +1150,19 @@ export class GameScene {
 
   // Player-only blocking: obstacles plus terrain steps too high to walk up.
   _blocked(x, z, y) {
+    if (Math.hypot(x, z) > 42) return true; // edge of the world
     if (this._checkCollision(x, z)) return true;
     return this.terrain.heightAt(x, z) - y > STEP_UP;
+  }
+
+  // Back to the fountain, with the companions.
+  resetPosition() {
+    this.autoWalk = null;
+    this.playerVY = 0;
+    this.player.position.set(0, 0, 4.2);
+    this.player.rotation.y = 0;
+    for (const c of this.companions) c.mesh.position.set(c.offset.x, 0, 4.2 + c.offset.z);
+    this.particleBurst(new THREE.Vector3(0, 1, 4.2), '#ffffff', 20);
   }
 
   jump() {
@@ -1288,6 +1307,7 @@ export class GameScene {
     const p = this.player.position;
     for (const obj of this.interactables) {
       if (!obj.active) {
+        if (obj.label) obj.label.visible = false;
         if (t > obj.respawnAt) {
           obj.active = true;
           obj.iconHolder.visible = true;
@@ -1300,6 +1320,10 @@ export class GameScene {
       const holder = obj.iconHolder;
       holder.rotation.y = t * 1.6 + obj.worldPos.x;
       holder.position.y = obj.worldPos.y + obj.iconY + Math.sin(t * 2.2 + obj.worldPos.z) * 0.12;
+      if (obj.label) {
+        obj.label.visible = true;
+        obj.label.position.set(holder.position.x, holder.position.y - 0.95, holder.position.z);
+      }
       const dist = Math.hypot(obj.worldPos.x - p.x, obj.worldPos.z - p.z);
       const near = dist < obj.reach;
       holder.scale.setScalar(holder.scale.x + ((near ? 1.3 : 1) - holder.scale.x) * 0.15);

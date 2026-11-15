@@ -46,12 +46,12 @@ export function buildMaterialIcon(id) {
       box(g, 0.08, 0.1, 0.08, mat(0xcff0ff, { emissive: 0x9ad8ff, emissiveIntensity: 1 }), 0, 0.38, 0);
       break;
     case 'cloth': {
-      const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.5, 10), mat(0xf3ead6, { roughness: 0.9 }));
-      roll.rotation.z = Math.PI / 2;
-      g.add(roll);
-      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.08, 10), mat(0xc8372d));
-      band.rotation.z = Math.PI / 2;
-      g.add(band);
+      // A spool of thread: wooden ends, red thread wound round, a loose end.
+      const wood = mat(0xb08850, { roughness: 0.8 });
+      for (const y of [-0.17, 0.17]) box(g, 0.3, 0.06, 0.3, wood, 0, y, 0);
+      box(g, 0.22, 0.28, 0.22, mat(0xd8382e, { roughness: 0.9 }));
+      for (const y of [-0.09, 0, 0.09]) box(g, 0.235, 0.02, 0.235, mat(0xa82a22));
+      box(g, 0.03, 0.22, 0.03, mat(0xd8382e), 0.13, -0.22, 0.05);
       break;
     }
     case 'flower':
@@ -84,4 +84,32 @@ export function buildMaterialIcon(id) {
   g.traverse((o) => { if (o.isMesh) { o.castShadow = false; } });
   g.scale.setScalar(2.1);
   return g;
+}
+
+// White pill with the material's name, drawn on a canvas and shown as a camera-facing sprite.
+export function makeLabelSprite(text) {
+  const font = 'bold 44px system-ui, -apple-system, "Segoe UI", sans-serif';
+  const c = document.createElement('canvas');
+  const g = c.getContext('2d');
+  g.font = font;
+  const w = Math.ceil(g.measureText(text).width) + 44;
+  c.width = w;
+  c.height = 72;
+  g.font = font;
+  g.fillStyle = 'rgba(255,255,255,0.92)';
+  const r = 30;
+  g.beginPath();
+  g.moveTo(r, 4); g.lineTo(w - r, 4); g.arc(w - r, 36, 32, -Math.PI / 2, Math.PI / 2); g.lineTo(r, 68); g.arc(r, 36, 32, Math.PI / 2, -Math.PI / 2);
+  g.fill();
+  g.fillStyle = '#1f2a44';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, w / 2, 38);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  sprite.renderOrder = 10;
+  const h = 0.72;
+  sprite.scale.set(h * (w / 72), h, 1);
+  return sprite;
 }

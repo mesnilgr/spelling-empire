@@ -153,6 +153,14 @@ function shuffle(list) {
   return copy;
 }
 
+// Difficulty is part of the world: houses ask level 1, things out in the world level 2,
+// and rare diamond / obsidian ores level 3.
+function levelFor(obj) {
+  if (obj.kind !== 'node') return 'easy';
+  if (obj.material === 'diamond' || obj.material === 'obsidian') return 'challenge';
+  return 'medium';
+}
+
 function wordsForLevel(levelId) {
   return WORDS[lang].filter((w) => w.level === levelId);
 }
@@ -160,7 +168,7 @@ function wordsForLevel(levelId) {
 // Words are served from a shuffled queue: tricky words first, then unmastered, then the rest,
 // so a child meets every word of the level before any repeats.
 let wordQueues = {};
-function pickWord(levelId = game.levelId) {
+function pickWord(levelId = 'easy') {
   const key = `${lang}:${levelId}`;
   if (!wordQueues[key]?.length) {
     const words = shuffle(wordsForLevel(levelId));
@@ -287,6 +295,7 @@ function setLanguage(newLang) {
   lang = newLang; t = UI[lang] ?? UI.en;
   document.documentElement.lang = lang === 'fr' ? 'fr' : 'en-GB';
   chooseVoice(); applyUIText(); saveProgress();
+  refreshSpots();
   if (document.body.dataset.screen === 'parents') renderDashboard();
 }
 
@@ -341,8 +350,15 @@ function init3DScene() {
 // Each house spot shows (and gives) a material picked for the current recipes.
 function refreshSpots() {
   for (const obj of scene3D?.interactables ?? []) {
-    if (obj.kind === 'house') scene3D.setSpotMaterial(obj, pickMaterial(obj.houseType));
+    const id = obj.kind === 'house' ? pickMaterial(obj.houseType) : obj.material;
+    scene3D.setSpotMaterial(obj, id, spotLabel(obj, id));
   }
+}
+
+// Text shown under each floating material: its name, plus the tool needed out in the world.
+function spotLabel(obj, id) {
+  const tool = obj.requires ? ` ${craftable(obj.requires)?.emoji ?? ''}` : '';
+  return `${materialName(id)}${tool}`;
 }
 
 /* ===== SAVED GAME (kept between sessions) ===== */
@@ -381,7 +397,7 @@ function continueGame() {
 
 /* ===== GAME STATE ===== */
 
-function newGame(levelId, { keepSave = false } = {}) {
+function newGame(levelId = 'mixed', { keepSave = false } = {}) {
   if (!keepSave) delete progress.save;
   game = {
     levelId,
@@ -453,8 +469,7 @@ function interactWith(obj) {
 
 function beginMine(mineObj) {
   initAudio();
-  // Houses ask words of the chosen level; things found in the wide world ask level 2.
-  const word = pickWord(mineObj.kind === 'node' ? 'medium' : game.levelId);
+  const word = pickWord(levelFor(mineObj));
   const material = mineObj.material ?? pickMaterial(mineObj.houseType);
   const emoji = MATERIAL_EMOJI[material] ?? '⛏️';
   spellContext = { type: 'mine', mineObj, word, tries: 0, material };
@@ -573,6 +588,8 @@ function renderSpellTiles() {
     return tile;
   });
   spellTilesEl.replaceChildren(...tiles);
+  // "Check" only works once every letter is filled in (no quick empty guesses).
+  spellCheckBtn.disabled = isLocked || spellInput.value.length !== target.length;
 }
 
 function scoreGuess(guess, target) {
@@ -602,8 +619,22 @@ function updateSpellAttempts() {
 function checkSpelling() {
   if (!spellContext || isLocked) return;
   const guess = spellInput.value.trim().toLowerCase();
-  if (!guess) return;
   const target = spellContext.word.word;
+  if (guess.length !== target.length) return;
+  // After three misses the word is shown and must be copied out to close the window.
+  if (spellContext.copyMode) {
+    if (guess === target) {
+      setSpellLocked(true);
+      spellTilesEl.replaceChildren(...scoredTiles(guess, target));
+      handleSpellSuccess();
+    } else {
+      sfxError();
+      setSpellLocked(true);
+      spellTilesEl.replaceChildren(...scoredTiles(guess, target));
+      setTimeout(() => { setSpellLocked(false); spellInput.value = ''; renderSpellTiles(); }, 1200);
+    }
+    return;
+  }
   spellContext.tries += 1;
   setSpellLocked(true);
   spellTilesEl.replaceChildren(...scoredTiles(guess, target));
@@ -616,29 +647,33 @@ function checkSpelling() {
 
 function handleSpellSuccess() {
   const { word, tries, type } = spellContext;
-  const firstTry = tries === 1;
+  const copied = !!spellContext.copyMode;
+  const firstTry = tries === 1 && !copied;
   const wordStr = word.word;
 
-  if (firstTry) {
+  if (copied) {
+    streak = 0;
+  } else if (firstTry) {
     streak += 1;
     if (streak > (progress.bestStreak || 0)) progress.bestStreak = streak;
   } else { streak = 0; }
 
   const streakBonus = streak >= 2 ? Math.min(streak - 1, 3) : 0;
   const baseEarned = firstTry ? FIRST_TRY_STARS : RETRY_STARS;
-  const earned = baseEarned + streakBonus;
+  // Copying the shown word gives the material but no stars.
+  const earned = copied ? 0 : baseEarned + streakBonus;
   progress.stars += earned;
   game.starsEarned += earned;
-  game.wordsSpelled += 1;
+  if (!copied) game.wordsSpelled += 1;
   if (firstTry) { progress.mastered[wordStr] = true; delete progress.difficult[wordStr]; }
-  else { progress.difficult[wordStr] = (progress.difficult[wordStr] ?? 0) + 1; }
+  else if (!copied) { progress.difficult[wordStr] = (progress.difficult[wordStr] ?? 0) + 1; }
 
   sfxMine();
   if (streak >= 2) sfxStreak(streak);
 
   const pos = scene3D?.getPlayerScreenPosition();
   if (pos) {
-    showFloatingText(pos.x, pos.y - 30, `+${earned} ★${streakBonus > 0 ? ` STREAK ${streak}x!` : ''}`, '#ffc233');
+    if (earned > 0) showFloatingText(pos.x, pos.y - 30, `+${earned} ★${streakBonus > 0 ? ` STREAK ${streak}x!` : ''}`, '#ffc233');
   }
 
   // 3D particle burst at mine object or player
@@ -657,13 +692,13 @@ function handleSpellSuccess() {
     const amount = tool && tool.includes('_') ? 2 : 1;
     game.materials[material] = (game.materials[material] ?? 0) + amount;
     if (obj?.kind === 'node') scene3D?.depleteNode(obj);
-    else if (obj) scene3D?.setSpotMaterial(obj, pickMaterial(obj.houseType));
+    else if (obj) { const next = pickMaterial(obj.houseType); scene3D?.setSpotMaterial(obj, next, spotLabel(obj, next)); }
     saveGame();
     const sentence = buildSentence(wordStr, lang);
     spellResultEl.replaceChildren(
-      el('p', 'spell-success', firstTry ? t.perfectSpelling : t.youGotIt),
+      el('p', 'spell-success', copied ? t.copiedWell : firstTry ? t.perfectSpelling : t.youGotIt),
       el('p', 'spell-sentence', sentence),
-      el('p', 'spell-stars', `+${earned} ${earned === 1 ? t.star : t.stars}`),
+      el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`),
       el('p', 'spell-material', `${MATERIAL_EMOJI[material] ?? ''} ${t.gotMaterial}: ${materialName(material)}${amount > 1 ? ` ×${amount}` : ''}`),
     );
     if (streak >= 2) spellResultEl.appendChild(el('p', 'spell-streak-badge', `${streak}x ${t.streakLabel}! +${streakBonus} ${t.bonusStars}`));
@@ -690,21 +725,38 @@ function handleSpellFailure(target) {
   updateStreakDisplay();
   sfxError();
 
+  // Keep the coloured tiles on screen for a moment so the child sees which letters were right,
+  // and so "Check" cannot be hammered.
+  spellCheckBtn.hidden = false;
+  spellContinueBtn.hidden = true;
+  spellCheckBtn.disabled = true;
+  const ctx = spellContext;
   if (spellContext.tries < MAX_TRIES) {
-    setSpellLocked(false);
-    spellInput.value = '';
-    renderSpellTiles();
     spellRevealEl.hidden = true;
     spellResultEl.replaceChildren(el('p', 'spell-hint', t.notQuite));
     spellResultEl.hidden = false;
+    setTimeout(() => {
+      if (spellContext !== ctx) return;
+      setSpellLocked(false);
+      spellInput.value = '';
+      renderSpellTiles();
+    }, 1400);
   } else {
+    spellContext.copyMode = true;
     spellRevealEl.hidden = false;
     revealTiles.replaceChildren(...[...target].map((l) => el('div', 'tile tile-correct', l.toUpperCase())));
     spellResultEl.replaceChildren(
       el('p', 'spell-fail', t.wordWas(target)),
-      el('p', 'spell-fail-detail', t.tryAgain),
+      el('p', 'spell-fail-detail', t.copyIt),
     );
     spellResultEl.hidden = false;
+    speak(target, 0.8);
+    setTimeout(() => {
+      if (spellContext !== ctx) return;
+      setSpellLocked(false);
+      spellInput.value = '';
+      renderSpellTiles();
+    }, 1400);
     if (spellContext.type === 'craft') {
       spellContext.partResults.push({ part: spellContext.currentPart, success: false });
     }
@@ -779,13 +831,18 @@ function finishGame(won) {
 
 function renderMenu() {
   $('#total-stars').textContent = progress.stars;
+  const newBtn = $('#new-game-btn');
+  if (newBtn) {
+    newBtn.textContent = progress.save ? t.newGame : t.play;
+    newBtn.classList.toggle('btn-primary', !progress.save);
+    newBtn.classList.toggle('btn-ghost', !!progress.save);
+  }
   const cont = $('#continue-btn');
   if (cont) {
     const s = progress.save;
     cont.hidden = !s;
     if (s) {
-      const level = LEVELS[lang].find((l) => l.id === s.levelId);
-      cont.textContent = `${t.continueGame} — ${level?.name ?? ''} · ${s.crafted.length}/${CRAFTABLES.length} ${t.objectsCrafted}`;
+      cont.textContent = `${t.continueGame} · ${s.crafted.length}/${CRAFTABLES.length} ${t.objectsCrafted}`;
     }
   }
   const cards = LEVELS[lang].map((level) => {
@@ -850,7 +907,8 @@ function resetProgress() {
 /* ===== KEYBOARD ===== */
 
 function typeLetter(letter) {
-  if (isLocked || spellInput.value.length >= MAX_GUESS_LENGTH) return;
+  const max = spellContext?.word?.word.length ?? MAX_GUESS_LENGTH;
+  if (isLocked || spellInput.value.length >= max) return;
   spellInput.value += letter; sfxType(); renderSpellTiles();
 }
 function deleteLetter() {
@@ -927,10 +985,21 @@ function initInteractButton() {
 
 function bindEvents() {
   $('#brand-btn').addEventListener('click', () => showScreen('menu'));
+  // One "Play" button: no level to pick, difficulty grows as you explore.
+  let newGameArmed = false;
   $('#new-game-btn').addEventListener('click', () => {
     initAudio();
-    $('#difficulty-select').classList.toggle('is-visible');
+    const btn = $('#new-game-btn');
+    if (progress.save && !newGameArmed) {
+      newGameArmed = true;
+      btn.textContent = t.newGameConfirm;
+      setTimeout(() => { newGameArmed = false; renderMenu(); }, 3500);
+      return;
+    }
+    newGameArmed = false;
+    newGame();
   });
+  $('#reset-pos-btn')?.addEventListener('click', () => scene3D?.resetPosition());
   $('#trophy-btn').addEventListener('click', () => showScreen('trophy'));
   $('#trophy-back-btn').addEventListener('click', () => showScreen('menu'));
   $('#help-btn').addEventListener('click', () => showScreen('help'));
