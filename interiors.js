@@ -558,7 +558,7 @@ export function furnishTavern(kit, room, { w, d, wallH, wallT }, api) {
   const inB = -hd + wallT / 2; // inner face of back wall
 
   // Fireplace + cosy corner.
-  kit.fireplace(room, inL, -1.0, Math.PI / 2, { width: 2.6, wallH, chimneyTop: wallH + 2.6 });
+  kit.fireplace(room, inL, -1.0, Math.PI / 2, { width: 2.6, wallH, chimneyTop: wallH + 3.6 });
   api.collider(inL + 0.5, -1.0, 1.25);
   kit.rug(room, inL + 2.7, -1.0, 2.6, 3.6);
   kit.armchair(room, inL + 2.6, -2.35, -0.95, PALETTE.chairRed);

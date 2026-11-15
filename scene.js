@@ -7,6 +7,17 @@ import { PropKit, PALETTE, furnishTavern, seededRandom } from './interiors.js';
 import { createBlockyCharacter, animateCharacter, playAction } from './characters.js';
 import { buildItem, HOLDABLE, buildBoat, buildCabin } from './items.js';
 import { VillageBuilder, skyTexture } from './village.js';
+import { BLOCKS, blockMat, texBox } from './textures.js';
+
+// Each building has its own blocks, roof and trim so the village has variety.
+const HOUSE_STYLES = {
+  tavern: { wall: 'plaster', beams: 'darkOakPlanks', trim: 'darkOakPlanks', corner: 'spruceLog', base: 'cobble', roof: 'roofGreen', ridge: 'darkOakPlanks', shutter: 0x2f5a34, mat: 0x7a2a22 },
+  forge: { wall: 'cobble', trim: 'oakLog', corner: 'oakLog', base: 'mossyCobble', roof: 'roofSlate', ridge: 'cobble', gable: 'oakPlanks', shutter: 0x5a3a24, mat: 0x4a4a4a },
+  shop: { wall: 'oakPlanks', trim: 'spruceLog', corner: 'spruceLog', base: 'cobble', roof: 'roofBlue', ridge: 'sprucePlanks', shutter: 0x2a4f8a, mat: 0x2a4f8a },
+  tower: { wall: 'mossyStoneBricks', trim: 'stoneBricks', corner: 'stoneBricks', base: 'mossyCobble', roof: 'roofPurple', roofStyle: 'pyramid', shutter: 0x4a2f8a, mat: 0x5a3aa8 },
+  cottage: { wall: 'sprucePlanks', trim: 'oakLog', corner: 'oakLog', base: 'cobble', roof: 'thatch', ridge: 'thatch', gable: 'birchPlanks', shutter: 0xc8372d, mat: 0xd8a03a },
+  guild: { wall: 'bricks', beams: null, trim: 'darkOakPlanks', corner: 'stoneBricks', base: 'stoneBricks', roof: 'roofBrown', ridge: 'darkOakPlanks', gable: 'darkOakPlanks', shutter: 0x6a2a22, mat: 0xa8302a },
+};
 
 const TILE = 2;
 const PLAYER_SPEED = 4.5;
@@ -149,7 +160,7 @@ export class GameScene {
     });
     this._buildHouse(12, 6, 0, 'tower', 5, 8, 4, 0x5544aa, 'tower', { roof: 'pyramid', wallH: 4.6 });
     this._buildHouse(0, 14, 0, 'cottage', 6, 4, 4, COLORS.roof, 'cottage');
-    this._buildHouse(-2, -14, 0, 'guild', 8, 5, 5, 0x6a4a2a, 'guild');
+    this._buildHouse(-2, -14, 0, 'guild', 8, 5, 5, 0x6a4a2a, 'guild', { windows: { front: [-1.95, 1.95] } });
 
     // Exterior: ground, paths, fountain, pond, field, trees, lamps, grass.
     this.village = new VillageBuilder(this.scene, this.kit, {
@@ -181,23 +192,26 @@ export class GameScene {
     const house = {
       group, name, type,
       center: new THREE.Vector3(x, 0, z),
-      w, d, rotation, wallH, doorW,
+      w, d, rotation, wallH, doorW, rise: h - wallH,
       cut: 0,
       cutTargets: [],
       roof: null,
       lights: [],
     };
 
-    // Stone foundation slab, then a plank floor on top of it.
-    const stoneMat = kit.mat(0x8f8a84, { roughness: 0.95 });
-    kit.box(group, w + 0.34, 0.1, d + 0.34, stoneMat, 0, 0.04, 0, { cast: false });
+    const style = HOUSE_STYLES[type] ?? HOUSE_STYLES.cottage;
+    house.style = style;
+
+    // Foundation slab (style's base block), then a plank floor on top of it.
+    const baseMat = blockMat(style.base);
+    texBox(group, w + 0.34, 0.1, d + 0.34, baseMat, 0, 0.04, 0, { cast: false });
     kit.plankFloor(group, w - wallT, d - wallT, { seed: hashString(name), y: 0.1, border: true });
 
     // ----- Walls -----
-    const wallMat = kit.mat(PALETTE.plaster, { roughness: 0.92 });
-    const capMat = kit.mat(0x3b2416, { roughness: 0.7 });
+    const wallMat = blockMat(style.wall);
+    const trimMat = blockMat(style.trim);
+    const beamMat = style.beams ? blockMat(style.beams) : null;
     const skirtMat = kit.mat(0x4a2c1a, { roughness: 0.8 });
-    const win = { front: [], back: [], left: [], right: [], ...(opts.windows || {}) };
 
     // A wall is a pivot at floor level holding: `body` (shrinks in cutaway mode),
     // a stone footing (always visible), and `decor` (hidden in cutaway mode).
@@ -210,46 +224,69 @@ export class GameScene {
       seg.add(body);
       const decor = new THREE.Group();
       seg.add(decor);
+      // Which local z side faces outdoors.
+      const out = Math.sign(new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), ry).dot(normal)) || 1;
       const side = (len - doorW) / 2;
       const pieces = door ? [[-(doorW / 2 + side / 2), side], [doorW / 2 + side / 2, side]] : [[0, len]];
       for (const [px, pl] of pieces) {
-        kit.box(body, pl, wallH, wallT, wallMat, px, wallH / 2, 0);
-        kit.box(body, pl, 0.34, wallT + 0.05, skirtMat, px, 0.27, 0, { cast: false });
-        kit.box(body, pl + 0.04, 0.14, wallT + 0.12, capMat, px, wallH + 0.07, 0);
-        kit.box(seg, pl + 0.04, 0.3, wallT + 0.16, stoneMat, px, 0.15, 0, { cast: false });
+        texBox(body, pl, wallH, wallT, wallMat, px, wallH / 2, 0);
+        if (style.wall === 'plaster') kit.box(body, pl, 0.34, wallT + 0.05, skirtMat, px, 0.27, 0, { cast: false });
+        texBox(body, pl + 0.04, 0.2, wallT + 0.14, trimMat, px, wallH + 0.1, 0);
+        texBox(seg, pl + 0.04, 0.42, wallT + 0.18, baseMat, px, 0.21, 0, { cast: false });
+      }
+      // Half-timbering: dark beams on the outside face, skipping doors and windows.
+      if (beamMat) {
+        const openings = [...windows.map((wx) => [wx, 0.62]), ...(door ? [[0, doorW / 2 + 0.2]] : [])];
+        const free = (x) => openings.every(([ox, r]) => Math.abs(x - ox) > r);
+        const zf = out * (wallT / 2 + 0.03);
+        for (let x = -len / 2 + 0.9; x < len / 2 - 0.6; x += 1.25) {
+          if (free(x)) texBox(body, 0.16, wallH - 0.4, 0.07, beamMat, x, wallH / 2 + 0.15, zf, { cast: false });
+        }
+        for (const [px, pl] of pieces) texBox(body, pl, 0.14, 0.07, beamMat, px, 0.92, zf, { cast: false });
+        // Diagonal braces between windows give the classic timber-frame look.
+        for (const [px, pl] of pieces) {
+          if (pl < 1.6) continue;
+          for (const s of [-1, 1]) {
+            const bx = px + s * (pl / 2 - 0.55);
+            if (!free(bx)) continue;
+            texBox(body, 0.12, 1.25, 0.06, beamMat, bx, 1.65, zf, { rz: s * 0.55, cast: false });
+          }
+        }
       }
       if (door) {
-        const doorH = 2.1;
-        kit.box(decor, doorW, wallH - doorH, wallT, wallMat, 0, doorH + (wallH - doorH) / 2, 0);
-        kit.box(decor, doorW + 0.24, 0.18, wallT + 0.1, capMat, 0, doorH + 0.09, 0);
-        kit.box(decor, doorW + 0.04, 0.14, wallT + 0.12, capMat, 0, wallH + 0.07, 0);
-        for (const s of [-1, 1]) kit.box(body, 0.14, doorH, wallT + 0.1, capMat, s * (doorW / 2 + 0.07), doorH / 2, 0);
+        const doorH = 2.15;
+        texBox(decor, doorW, wallH - doorH, wallT, wallMat, 0, doorH + (wallH - doorH) / 2, 0);
+        texBox(decor, doorW + 0.5, 0.24, wallT + 0.16, trimMat, 0, doorH + 0.12, 0);
+        texBox(decor, doorW + 0.04, 0.2, wallT + 0.14, trimMat, 0, wallH + 0.1, 0);
+        for (const s of [-1, 1]) texBox(body, 0.22, doorH, wallT + 0.16, trimMat, s * (doorW / 2 + 0.11), doorH / 2, 0);
       }
       for (const wx of windows) kit.window(decor, wx, 1.55, 0, 0, { t: wallT });
       house.cutTargets.push({ body, decor, normal: normal.clone(), minScale: 0.42 / wallH });
-      return { seg, body, decor };
+      return { seg, body, decor, out };
     };
 
     const sideWin = Math.max(1.1, (halfW - doorW / 2) / 2 + doorW / 2);
+    const frontWindows = opts.windows?.front ?? [-sideWin, sideWin];
     makeWall(w, 0, -halfD, 0, new THREE.Vector3(0, 0, -1), { windows: opts.windows?.back ?? [-w / 4, w / 4] });
     makeWall(d, -halfW, 0, Math.PI / 2, new THREE.Vector3(-1, 0, 0), { windows: opts.windows?.left ?? [0] });
     makeWall(d, halfW, 0, Math.PI / 2, new THREE.Vector3(1, 0, 0), { windows: opts.windows?.right ?? [0] });
-    const front = makeWall(w, 0, halfD, 0, new THREE.Vector3(0, 0, 1), { door: true, windows: opts.windows?.front ?? [-sideWin, sideWin] });
-    void win;
+    const front = makeWall(w, 0, halfD, 0, new THREE.Vector3(0, 0, 1), { door: true, windows: frontWindows });
 
-    // Timber corner posts; each one shrinks with the walls that face the camera.
+    // Log corner posts; each one shrinks with the walls that face the camera.
+    const postMat = blockMat(style.corner ?? style.trim);
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
       const post = new THREE.Group();
       post.position.set(sx * halfW, 0, sz * halfD);
       group.add(post);
       const body = new THREE.Group();
       post.add(body);
-      kit.box(body, wallT + 0.14, wallH + 0.14, wallT + 0.14, capMat, 0, (wallH + 0.14) / 2, 0);
+      texBox(body, wallT + 0.2, wallH + 0.2, wallT + 0.2, postMat, 0, (wallH + 0.2) / 2, 0);
       house.cutTargets.push({ body, decor: new THREE.Group(), normal: new THREE.Vector3(sx, 0, sz).normalize(), minScale: 0.5 / wallH });
     }
 
     // ----- Roof -----
-    house.roof = this._buildRoof(group, w, d, wallH, h - wallH, roofColor, opts.roof ?? 'gable', type);
+    house.roof = this._buildRoof(group, w, d, wallH, h - wallH, style, type);
+    this._decorateExterior(house, front, frontWindows, style);
 
     // Invisible caster: keeps the interior in the roof's shade after the roof is hidden.
     const caster = new THREE.Mesh(
@@ -312,79 +349,194 @@ export class GameScene {
     this.collidables.push({ x: v.x, z: v.z, r });
   }
 
-  // Roof parts get their own materials so one house's roof can fade without touching the others.
-  _buildRoof(group, w, d, wallH, rise, color, style, type) {
+  // Minecraft-style stepped roofs. Each house gets its own material instances so one roof
+  // can fade out (cutaway) without touching the others.
+  _buildRoof(group, w, d, wallH, rise, style, type) {
     const roof = new THREE.Group();
     group.add(roof);
     const mats = [];
-    const mk = (c, extra = {}) => {
-      const m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.72, ...extra });
+    const mk = (texName, extra = {}) => {
+      const m = new THREE.MeshStandardMaterial({ map: BLOCKS[texName](), roughness: 0.85, ...extra });
       mats.push(m);
       return m;
     };
-    const tileMat = mk(color, { flatShading: true });
-    const tileDark = mk(new THREE.Color(color).multiplyScalar(0.72).getHex());
-    const trimMat = mk(0x3b2416);
-    const gableMat = mk(PALETTE.plaster, { roughness: 0.92 });
-    const add = (geo, mat, px, py, pz, rx = 0, ry = 0) => {
-      const m = new THREE.Mesh(geo, mat);
-      m.position.set(px, py, pz);
-      m.rotation.set(rx, ry, 0);
-      m.castShadow = true;
-      m.receiveShadow = true;
-      roof.add(m);
-      return m;
-    };
+    const tile = mk(style.roof);
+    const ridgeMat = mk(style.ridge ?? style.trim);
+    const gableMat = mk(style.gable ?? style.wall);
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0xffd98a, emissive: 0xffb04a, emissiveIntensity: 0.9 });
+    mats.push(glassMat);
+    const top = wallH + 0.2;
 
-    if (style === 'gable') {
-      const o = 0.45;
-      const hd = d / 2;
-      const s = hd + o;
-      const slope = rise / hd;
-      const yLow = wallH + 0.14 - slope * o;
-      const apex = wallH + 0.14 + rise;
-      const len = Math.hypot(s, apex - yLow);
-      const angle = Math.atan2(apex - yLow, s);
-      for (const sgn of [-1, 1]) {
-        const panel = new THREE.Group();
-        panel.position.set(0, (apex + yLow) / 2, (sgn * s) / 2);
-        panel.rotation.x = sgn * angle;
-        roof.add(panel);
-        const slab = new THREE.Mesh(new THREE.BoxGeometry(w + o * 2, 0.16, len), tileMat);
-        slab.castShadow = true;
-        slab.receiveShadow = true;
-        panel.add(slab);
-        // Rows of shingles.
-        const rows = Math.floor(len / 0.38);
-        for (let i = 0; i < rows; i++) {
-          const strip = new THREE.Mesh(new THREE.BoxGeometry(w + o * 2 + 0.02, 0.05, 0.08), tileDark);
-          strip.position.set(0, 0.09, -len / 2 + 0.2 + i * 0.38);
-          panel.add(strip);
+    if (style.roofStyle === 'pyramid') {
+      // Stone battlements, then a stepped pyramid with a glowing orb.
+      const merlonMat = mk(style.wall);
+      const hw = w / 2 + 0.1;
+      const hd = d / 2 + 0.1;
+      for (let x = -hw; x <= hw + 0.01; x += 0.7) {
+        for (const z of [-hd, hd]) texBox(roof, 0.42, 0.45, 0.42, merlonMat, x, top + 0.22, z);
+      }
+      for (let z = -hd + 0.7; z < hd - 0.3; z += 0.7) {
+        for (const x of [-hw, hw]) texBox(roof, 0.42, 0.45, 0.42, merlonMat, x, top + 0.22, z);
+      }
+      const layers = Math.max(4, Math.round(rise / 0.42));
+      const base = Math.max(w, d) - 0.6;
+      for (let i = 0; i < layers; i++) {
+        const s = base * (1 - i / layers) + 0.25;
+        texBox(roof, s, 0.44, s, tile, 0, top + 0.5 + i * 0.42, 0);
+      }
+      const orb = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.32),
+        new THREE.MeshStandardMaterial({ color: 0xc8a8ff, emissive: 0x9a6aff, emissiveIntensity: 2.4, roughness: 0.2 }),
+      );
+      mats.push(orb.material);
+      orb.position.y = top + 0.5 + layers * 0.42 + 0.5;
+      roof.add(orb);
+      this.kit.flames.push({ mesh: orb, base: orb.scale.clone(), y0: orb.position.y, h: 0, phase: 0, speed: 2, small: true });
+      return { group: roof, mats };
+    }
+
+    // Stepped gable roof, ridge along x.
+    const o = 0.45;
+    const hd = d / 2;
+    const s = hd + o;
+    const slope = rise / hd;
+    const run = 0.42;
+    const n = Math.ceil(s / run);
+    const stepH = slope * run;
+    const yLow = top - slope * o;
+    const shell = Math.max(0.22, stepH + 0.12);
+    for (const sgn of [-1, 1]) {
+      for (let i = 0; i < n; i++) {
+        const outer = s - i * run;
+        const inner = Math.max(0, s - (i + 1) * run);
+        const yTop = yLow + (i + 1) * stepH;
+        texBox(roof, w + o * 2, shell, outer - inner + 0.002, tile, 0, yTop - shell / 2, sgn * (outer + inner) / 2, { tile: 0.8 });
+        // Gable end walls under the steps.
+        const zOut = Math.min(outer, hd);
+        const zIn = Math.min(inner, hd);
+        const gh = yTop - shell - top;
+        if (zOut > zIn && gh > 0.02) {
+          for (const sx of [-1, 1]) {
+            texBox(roof, WALL_THICKNESS, gh, zOut - zIn + 0.002, gableMat, sx * (w / 2), top + gh / 2, sgn * (zOut + zIn) / 2, { cast: false });
+          }
         }
       }
-      // Ridge beam and gable ends.
-      add(new THREE.BoxGeometry(w + o * 2 + 0.1, 0.18, 0.26), trimMat, 0, apex + 0.06, 0);
-      const shape = new THREE.Shape();
-      shape.moveTo(-hd, 0);
-      shape.lineTo(hd, 0);
-      shape.lineTo(0, rise);
-      shape.closePath();
-      const gableGeo = new THREE.ExtrudeGeometry(shape, { depth: WALL_THICKNESS, bevelEnabled: false });
-      for (const sgn of [-1, 1]) {
-        add(gableGeo, gableMat, sgn * (w / 2) - WALL_THICKNESS / 2, wallH + 0.14, 0, 0, Math.PI / 2);
-        // Timber trim along the gable edge.
-        for (const e of [-1, 1]) {
-          add(new THREE.BoxGeometry(0.14, 0.14, Math.hypot(hd, rise) + 0.1), trimMat,
-            sgn * (w / 2 + 0.03), wallH + 0.14 + rise / 2, (e * hd) / 2, e * Math.atan2(rise, hd), 0);
-        }
+    }
+    const apex = yLow + n * stepH;
+    texBox(roof, w + o * 2 + 0.1, 0.24, 0.5, ridgeMat, 0, apex + 0.04, 0);
+    // A little lit window in each gable.
+    if (rise > 1.3) {
+      for (const sx of [-1, 1]) {
+        texBox(roof, WALL_THICKNESS + 0.06, 0.5, 0.5, glassMat, sx * (w / 2), top + rise * 0.38, 0, { cast: false });
+        texBox(roof, WALL_THICKNESS + 0.1, 0.08, 0.7, ridgeMat, sx * (w / 2), top + rise * 0.38 - 0.3, 0, { cast: false });
       }
-    } else {
-      // Pyramid roof (tower).
-      const cone = add(new THREE.ConeGeometry(Math.hypot(w, d) / 2 + 0.5, rise, 4), tileMat, 0, wallH + 0.14 + rise / 2, 0, 0, Math.PI / 4);
-      cone.material = tileMat;
-      add(new THREE.CylinderGeometry(0.16, 0.22, 0.3, 6), trimMat, 0, wallH + rise + 0.1, 0);
     }
     return { group: roof, mats };
+  }
+
+  // Shutters, flower boxes, lanterns and a few props that give each building its character.
+  _decorateExterior(house, front, frontWindows, style) {
+    const kit = this.kit;
+    const { group, type, w, d, wallH, doorW } = house;
+    const halfW = w / 2;
+    const halfD = d / 2;
+    const z0 = WALL_THICKNESS / 2 + 0.06; // just outside the front wall (front decor space)
+    const shutterMat = kit.mat(style.shutter ?? 0x3a6a3a, { roughness: 0.8 });
+    const boxMat = blockMat(style.trim === 'stoneBricks' ? 'sprucePlanks' : 'darkOakPlanks');
+    const flowerColors = [0xff5a7a, 0xffd93d, 0xffffff, 0xb07aff, 0xff8a3d];
+
+    for (const wx of frontWindows) {
+      for (const s of [-1, 1]) {
+        kit.box(front.decor, 0.32, 1.15, 0.06, shutterMat, wx + s * 0.66, 1.55, z0, { cast: false });
+        kit.box(front.decor, 0.26, 0.05, 0.07, kit.mat(0x2a2220), wx + s * 0.66, 1.85, z0 + 0.01, { cast: false });
+        kit.box(front.decor, 0.26, 0.05, 0.07, kit.mat(0x2a2220), wx + s * 0.66, 1.25, z0 + 0.01, { cast: false });
+      }
+      // Flower box under the window.
+      texBox(front.decor, 1.05, 0.26, 0.32, boxMat, wx, 0.82, z0 + 0.14, { cast: false });
+      kit.box(front.decor, 0.95, 0.04, 0.24, kit.mat(0x4a3020), wx, 0.96, z0 + 0.14, { cast: false });
+      for (let i = 0; i < 4; i++) {
+        kit.box(front.decor, 0.08, 0.14, 0.08, kit.mat(0x3f8a3a), wx - 0.36 + i * 0.24, 1.03, z0 + 0.14, { cast: false });
+        kit.box(front.decor, 0.13, 0.13, 0.13, kit.mat(flowerColors[(i + Math.round(wx * 3)) % 5], { emissive: flowerColors[(i + 1) % 5], emissiveIntensity: 0.12 }), wx - 0.36 + i * 0.24, 1.15, z0 + 0.14, { cast: false });
+      }
+    }
+    // Wall lanterns either side of the door.
+    for (const s of [-1, 1]) {
+      const lx = s * (doorW / 2 + 0.5);
+      kit.box(front.decor, 0.06, 0.06, 0.3, kit.mat(0x2b2523), lx, 2.15, z0 + 0.12, { cast: false });
+      kit.box(front.decor, 0.2, 0.26, 0.2, kit.glow(0xffc46a, 2), lx, 1.98, z0 + 0.28, { cast: false });
+      kit.box(front.decor, 0.24, 0.05, 0.24, kit.mat(0x2b2523), lx, 2.13, z0 + 0.28, { cast: false });
+    }
+    // Doormat.
+    kit.box(group, doorW * 0.8, 0.03, 0.6, kit.mat(style.mat ?? 0x8a3b2e, { roughness: 1 }), 0, 0.03, halfD + 0.55, { cast: false });
+
+    const ground = (x, z) => new THREE.Vector3(x, 0, z);
+    void ground;
+    if (type === 'shop') {
+      // Striped awning over the shop front and a market stall.
+      const stripes = Math.round((w - 0.6) / 0.5);
+      for (let i = 0; i < stripes; i++) {
+        const x = -(w - 0.6) / 2 + (i + 0.5) * ((w - 0.6) / stripes);
+        const strip = kit.box(front.decor, (w - 0.6) / stripes, 0.06, 1.3, kit.mat(i % 2 ? 0xf3ead6 : 0xc8372d, { roughness: 0.9 }), x, wallH - 0.35, z0 + 0.6);
+        strip.rotation.x = 0.42;
+        kit.box(front.decor, (w - 0.6) / stripes, 0.22, 0.04, kit.mat(i % 2 ? 0xf3ead6 : 0xc8372d), x, wallH - 0.72, z0 + 1.22, { cast: false });
+      }
+      kit.crate(group, halfW - 0.7, halfD + 1.1, 0.55, 0.2);
+      kit.crate(group, halfW - 0.75, halfD + 1.15, 0.4, -0.3, 0.55);
+      for (let i = 0; i < 5; i++) kit.sphere(group, 0.09, kit.mat(i % 2 ? 0xd8382e : 0x7ac142), halfW - 0.85 + i * 0.07, 0.62, halfD + 1.05 + (i % 2) * 0.1);
+      kit.barrel(group, -halfW + 0.6, 0, halfD + 0.9, { r: 0.3, h: 0.7 });
+      this._addLocalCollider(group, halfW - 0.7, halfD + 1.1, 0.5);
+      this._addLocalCollider(group, -halfW + 0.6, halfD + 0.9, 0.4);
+    } else if (type === 'forge') {
+      // Anvil, log pile and a water trough outside the smithy.
+      const ax = halfW - 0.9;
+      const az = halfD + 1.3;
+      const iron = kit.mat(0x3a3a40, { metalness: 0.6, roughness: 0.4 });
+      texBox(group, 0.5, 0.35, 0.5, blockMat('oakLog'), ax, 0.18, az);
+      kit.box(group, 0.3, 0.2, 0.25, iron, ax, 0.45, az);
+      kit.box(group, 0.7, 0.16, 0.32, iron, ax, 0.62, az);
+      kit.box(group, 0.2, 0.1, 0.2, iron, ax + 0.42, 0.62, az, { ry: 0.0 });
+      this._addLocalCollider(group, ax, az, 0.45);
+      const logs = blockMat('oakLog');
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 3 - i; j++) texBox(group, 0.3, 0.3, 1.1, logs, -halfW + 0.55 + j * 0.32 + i * 0.16, 0.15 + i * 0.28, halfD + 1.0);
+      this._addLocalCollider(group, -halfW + 0.85, halfD + 1.0, 0.6);
+      texBox(group, 1.2, 0.45, 0.55, blockMat('sprucePlanks'), -halfW - 0.75, 0.22, 0.5);
+      const water = new THREE.MeshStandardMaterial({ color: 0x4aa3d8, emissive: 0x1a5a8a, emissiveIntensity: 0.3, roughness: 0.1 });
+      kit.box(group, 1.0, 0.04, 0.4, water, -halfW - 0.75, 0.43, 0.5, { cast: false });
+      this._addLocalCollider(group, -halfW - 0.75, 0.5, 0.5);
+    } else if (type === 'tower') {
+      kit.banner(front.decor, -1.4, wallH - 0.3, z0, 0, { color: 0x5a3aa8, emblem: 0xf2c84b });
+      kit.banner(front.decor, 1.4, wallH - 0.3, z0, 0, { color: 0x5a3aa8, emblem: 0xf2c84b });
+      // Glowing runes on the doorstep.
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        kit.box(group, 0.16, 0.03, 0.16, kit.glow(0x9a6aff, 1.6), Math.cos(a) * 0.7, 0.04, halfD + 1.1 + Math.sin(a) * 0.4, { ry: a, cast: false });
+      }
+    } else if (type === 'cottage') {
+      // Cobblestone chimney up the side wall and a flower bed.
+      const cx = -halfW - 0.4;
+      const ch = house.wallH + house.rise + 1.0;
+      texBox(group, 0.7, ch, 0.8, blockMat('cobble'), cx, ch / 2, -0.4);
+      texBox(group, 0.82, 0.18, 0.92, blockMat('stoneBricks'), cx, ch + 0.09, -0.4);
+      this._addLocalCollider(group, cx, -0.4, 0.45);
+      this.chimneys ??= [];
+      this.chimneys.push(new THREE.Vector3(group.position.x + cx, ch + 0.3, group.position.z - 0.4));
+      for (let i = 0; i < 9; i++) {
+        const x = -halfW + 0.4 + i * ((w - 0.8) / 8);
+        if (Math.abs(x) < doorW / 2 + 0.3) continue;
+        kit.box(group, 0.1, 0.22, 0.1, kit.mat(0x3f8a3a), x, 0.11, halfD + 0.45, { cast: false });
+        kit.box(group, 0.16, 0.16, 0.16, kit.mat(flowerColors[i % 5]), x, 0.28, halfD + 0.45, { cast: false });
+      }
+    } else if (type === 'guild') {
+      kit.banner(front.decor, -halfW + 0.62, wallH - 0.2, z0, 0, { color: 0xa8302a, emblem: 0xf2c84b });
+      kit.banner(front.decor, halfW - 0.62, wallH - 0.2, z0, 0, { color: 0xa8302a, emblem: 0xf2c84b });
+      const steps = blockMat('stoneBricks');
+      texBox(group, doorW + 1.0, 0.16, 0.5, steps, 0, 0.08, halfD + 0.4, { cast: false });
+      texBox(group, doorW + 0.6, 0.1, 0.35, steps, 0, 0.21, halfD + 0.3, { cast: false });
+    } else if (type === 'tavern') {
+      kit.barrel(group, halfW - 0.6, 0, halfD + 0.7, { r: 0.3, h: 0.72 });
+      kit.barrel(group, halfW - 1.25, 0, halfD + 0.65, { r: 0.28, h: 0.66 });
+      this._addLocalCollider(group, halfW - 0.9, halfD + 0.7, 0.55);
+    }
   }
 
   _dressTavernExterior(group, frontDecor, halfW, halfD) {
@@ -415,7 +567,7 @@ export class GameScene {
     const stoneMat = new THREE.MeshStandardMaterial({ color: COLORS.stone, roughness: 0.7 });
 
     if (type === 'forge') {
-      this.kit.fireplace(group, 0, -halfD + WALL_THICKNESS / 2, 0, { width: 1.8, chimneyTop: WALL_HEIGHT + 2.2, seed: 21 });
+      this.kit.fireplace(group, 0, -halfD + WALL_THICKNESS / 2, 0, { width: 1.8, chimneyTop: WALL_HEIGHT + 3.4, seed: 21 });
       // Anvil
       const anvilGeo = new THREE.BoxGeometry(0.5, 0.4, 0.3);
       const anvil = new THREE.Mesh(anvilGeo, stoneMat);
