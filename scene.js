@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { SIGNS, MIMOTS, PAGE_SPOT } from './story.js';
+import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
 import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -201,6 +203,7 @@ export class GameScene {
     this.village.build();
     this._buildResourceNodes();
     this._buildMagic();
+    this._buildStory();
   }
 
   _insideAnyHouse(x, z, margin = 0.6) {
@@ -521,6 +524,109 @@ export class GameScene {
 
     // Pond: draw water at its edge.
     this._addInteractable({ kind: 'node', nodeType: 'water', material: 'water', worldPos: new THREE.Vector3(-13.4, 0, -13.9), iconY: 1.1, reach: 1.4 });
+  }
+
+  /* ===== STORY: signs, Mimots, the torn page ===== */
+  _buildStory() {
+    const h = (x, z) => this.terrain.heightAt(x, z);
+    for (const sg of SIGNS) {
+      const house = this.houses.find((hh) => hh.name === sg.house);
+      if (!house) continue;
+      const x = house.center.x + Math.min(1.9, house.w / 2 - 0.6), z = house.center.z + house.d / 2 + 0.75;
+      const sign = buildSign();
+      sign.position.set(x, h(x, z), z);
+      sign.userData.dynamic = true;
+      this.scene.add(sign);
+      this.collidables.push({ x, z, r: 0.18 });
+      this._addInteractable({ kind: 'sign', signHouse: sg.house, block: sign, sign, worldPos: new THREE.Vector3(x, h(x, z), z + 0.4), iconY: 2.4, reach: 1.7, hitRadius: 0.9 });
+    }
+    this.mimots = MIMOTS.map((m) => {
+      const group = buildMimot(m.color);
+      group.position.set(m.x, h(m.x, m.z), m.z);
+      group.userData.dynamic = true;
+      this.scene.add(group);
+      const obj = this._addInteractable({ kind: 'mimot', mimotId: m.id, block: group, worldPos: group.position.clone(), iconY: 1.6, reach: 1.6, hitRadius: 0.8 });
+      return { def: m, group, obj, target: new THREE.Vector3(m.x, 0, m.z), wait: Math.random() * 2, hop: Math.random() * 6 };
+    });
+    const pg = buildPage();
+    pg.position.set(PAGE_SPOT.x, h(PAGE_SPOT.x, PAGE_SPOT.z), PAGE_SPOT.z);
+    pg.userData.dynamic = true;
+    pg.visible = false;
+    this.scene.add(pg);
+    this.pageObj = this._addInteractable({ kind: 'page', block: pg, worldPos: pg.position.clone(), iconY: 1.7, reach: 1.6, hitRadius: 0.8 });
+    this.pageObj.active = false;
+    this.pageObj.iconHolder.visible = false;
+  }
+  setSignWord(houseName, text) {
+    const o = this.interactables.find((i) => i.kind === 'sign' && i.signHouse === houseName);
+    if (o) setSignText(o.sign, text);
+    return o;
+  }
+  // Show or hide a story thing (inactive things never respawn on their own).
+  setStoryActive(obj, on) {
+    if (!obj) return;
+    obj.active = on;
+    obj.respawnAt = undefined;
+    if (obj.block) obj.block.visible = on;
+    obj.iconHolder.visible = on;
+    if (!on && obj.labelEl) obj.labelEl.style.display = 'none';
+  }
+  setMimotLetter(id, letter) {
+    const m = this.mimots?.find((mm) => mm.def.id === id);
+    if (!m) return;
+    const pos = m.group.position.clone();
+    const rot = m.group.rotation.y;
+    this.scene.remove(m.group);
+    m.group = buildMimot(m.def.color, letter);
+    m.group.position.copy(pos); m.group.rotation.y = rot;
+    m.group.userData.dynamic = true;
+    m.group.visible = m.obj.active;
+    this.scene.add(m.group);
+    m.obj.block = m.group;
+  }
+  // The Mimot jumps for joy and vanishes in sparkles.
+  tameMimot(id) {
+    const m = this.mimots?.find((mm) => mm.def.id === id);
+    if (!m) return;
+    this.particleBurst(m.group.position.clone().add(new THREE.Vector3(0, 0.6, 0)), '#ffe08a', 30);
+    this.setStoryActive(m.obj, false);
+  }
+  _tickStory(dt, elapsed) {
+    for (const m of this.mimots ?? []) {
+      if (!m.obj.active) continue;
+      const g = m.group;
+      // Wander around home: pick a spot, hop there, wait a little.
+      if (m.wait > 0) m.wait -= dt;
+      else {
+        const dx = m.target.x - g.position.x, dz = m.target.z - g.position.z;
+        const d = Math.hypot(dx, dz);
+        if (d < 0.1) {
+          m.wait = 1 + Math.random() * 2.5;
+          const a = Math.random() * Math.PI * 2, r = Math.random() * 2.2;
+          const tx = m.def.x + Math.cos(a) * r, tz = m.def.z + Math.sin(a) * r;
+          if (!this._checkCollision(tx, tz) && !this._insideAnyHouse?.(tx, tz, 0.6)) m.target.set(tx, 0, tz);
+        } else {
+          const sp = Math.min(d, dt * 1.1);
+          g.position.x += (dx / d) * sp; g.position.z += (dz / d) * sp;
+          g.rotation.y = this._lerpAngle(g.rotation.y, Math.atan2(dx, dz), 0.2);
+          m.hop += dt * 9;
+        }
+      }
+      // Turn towards the hero when close.
+      const pdx = this.player.position.x - g.position.x, pdz = this.player.position.z - g.position.z;
+      if (Math.hypot(pdx, pdz) < 3) g.rotation.y = this._lerpAngle(g.rotation.y, Math.atan2(pdx, pdz), 0.1);
+      const ground = this.terrain.heightAt(g.position.x, g.position.z);
+      g.position.y = ground + Math.abs(Math.sin(m.hop)) * 0.18;
+      g.userData.body.scale.y = 1.35 * (1 + Math.sin(elapsed * 3 + m.def.x) * 0.04);
+      m.obj.worldPos.set(g.position.x, ground, g.position.z);
+      m.obj.iconHolder.position.x = g.position.x; m.obj.iconHolder.position.z = g.position.z;
+      m.obj.hit.position.set(g.position.x, ground + m.obj.iconY - 0.35, g.position.z);
+    }
+    if (this.pageObj?.active) {
+      const sh = this.pageObj.block.userData.sheet;
+      sh.position.y = 0.9 + Math.sin(elapsed * 2) * 0.1;
+      sh.rotation.y = elapsed * 0.8;
+    }
   }
 
   /* ===== WORD MAGIC ===== */
@@ -1851,6 +1957,7 @@ export class GameScene {
 
     this._updateDayNight(dt);
     this._tickMagic(dt, elapsed);
+    this._tickStory(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

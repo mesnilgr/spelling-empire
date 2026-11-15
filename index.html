@@ -346,7 +346,21 @@
       </main>
     </div>
     <script type="module" src="./game.js"></script>
-    <!-- Age picker (first game, and in the parents' corner) -->
+    <!-- Story dialogue (read aloud) -->
+  <div class="dialog-overlay" id="dialog" hidden>
+    <div class="dialog-box card">
+      <div class="dialog-portrait" id="dialog-portrait">🧙</div>
+      <div class="dialog-body">
+        <div class="dialog-name" id="dialog-name"></div>
+        <p class="dialog-text" id="dialog-text"></p>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost btn-small" id="dialog-repeat" type="button" aria-label="Repeat">🔊</button>
+        <button class="btn btn-primary" id="dialog-next" type="button">▶</button>
+      </div>
+    </div>
+  </div>
+  <!-- Age picker (first game, and in the parents' corner) -->
   <div class="modal-overlay age-overlay" id="age-modal" hidden>
     <div class="modal card age-card">
       <h2 data-i18n="ageQuestion">How old are you?</h2>

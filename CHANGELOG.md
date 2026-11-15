@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.3.0 — Le village qui oubliait ses mots (chapitre 1)
+
+- **Une histoire commence.** Au début d'une partie, le conteur explique que les mots se sont envolés du village. Tous les dialogues sont lus à voix haute, avec un bouton 🔊 pour réécouter.
+- **Bandeau d'objectif** en haut de l'écran (chapitre et objectif), et une ⭐ sur la minicarte qui montre où aller.
+- **Chapitre 1, « Les panneaux effacés » :**
+  1. parler à Alaric, qui confie le grimoire (les sorts se débloquent à ce moment-là) ;
+  2. réécrire le nom de 3 maisons sur leur panneau (taverne, forge, tour ; à 5 ans, la première lettre) ;
+  3. apprivoiser le premier **Mimot**, une petite créature-mot, près de la fontaine ;
+  4. ramasser une page arrachée, écrite d'une main mystérieuse…
+- **Mimots :** 4 Mimots se promènent dans le village, avec la première lettre de leur mot sur le ventre. On écrit leur mot pour les apprivoiser. Leur nombre est indiqué dans l'album.
+- Le chapitre 2 (la forêt) est annoncé : il arrive avec la carte agrandie.
+
 ## v1.2.0 — La magie des mots
 
 - **Grimoire 🔮** : 8 sorts. Le mot à écrire dépend de l'âge : la première lettre à 5 ans (« P comme pont »), un mot simple à 6 ans (« lune » pour Lumière), le mot entier à 7 et 8 ans.
