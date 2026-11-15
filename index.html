@@ -233,6 +233,11 @@
             <button class="btn btn-ghost btn-small" id="parents-back-btn" type="button" data-i18n="menu">Menu</button>
           </div>
           <p class="lede" data-i18n="parentsLede"></p>
+          <section class="card section dash-age">
+            <h2 data-i18n="ageTitle">Age</h2>
+            <div class="age-buttons age-buttons-small" id="dash-age"></div>
+            <p class="note" id="dash-age-note"></p>
+          </section>
           <div class="stat-grid stat-grid-4" id="dash-summary"></div>
           <section class="card section">
             <h2 data-i18n="activity14">Activity</h2>
@@ -333,5 +338,13 @@
       </main>
     </div>
     <script type="module" src="./game.js"></script>
-  </body>
+    <!-- Age picker (first game, and in the parents' corner) -->
+  <div class="modal-overlay age-overlay" id="age-modal" hidden>
+    <div class="modal card age-card">
+      <h2 data-i18n="ageQuestion">How old are you?</h2>
+      <p class="lede" data-i18n="ageLede"></p>
+      <div class="age-buttons" id="age-buttons"></div>
+    </div>
+  </div>
+</body>
 </html>

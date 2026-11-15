@@ -1,4 +1,4 @@
-import { LANGUAGES, LEVELS, WORDS, UI, buildSentence } from './language-engine.js';
+import { LANGUAGES, LEVELS, WORDS, UI, buildSentence, AGE_LADDER, AGE_START, AGES } from './language-engine.js';
 
 let pass = 0;
 let fail = 0;
@@ -286,6 +286,26 @@ for (const w of WORDS.en.filter(x => x.level === 'easy').map(x => x.word)) {
 for (const w of WORDS.en.filter(x => x.level === 'medium').map(x => x.word)) {
   assert(/[aeiou][^aeiou]e$/.test(w), `en/medium "${w}": magic e`);
 }
+
+// 10d. Age lists: 5 ans = single letters, consonant+vowel syllables, short simple words
+for (const w of WORDS.fr.filter((x) => x.level === 'letters')) {
+  assert(w.word.length === 1 && w.say, `fr/letters "${w.word}": one letter with a spoken prompt`);
+}
+for (const w of WORDS.fr.filter((x) => x.level === 'syllables')) {
+  assert(/^[bcdfjklmnprstvz][aeiouy]$/.test(w.word) && w.say, `fr/syllables "${w.word}": consonant + vowel with a prompt`);
+}
+for (const w of WORDS.fr.filter((x) => x.level === 'gs').map((x) => x.word)) {
+  assert(!w.endsWith('e') && !/[stdxpgz]$/.test(w) && !FR_COMPLEX.test(w), `fr/gs "${w}": short, every letter heard`);
+  assert(!/[éèêàùçâîôû]/.test(w), `fr/gs "${w}": no accent for 5-year-olds`);
+}
+for (const l of ['fr', 'en']) {
+  for (const lvl of AGE_LADDER[l]) assert(LEVELS[l].some((x) => x.id === lvl), `${l}: ladder level ${lvl} is described`);
+  for (const a of AGES) {
+    const i = AGE_START[l][a];
+    assert(i >= 0 && i + 2 < AGE_LADDER[l].length + 1, `${l}: age ${a} starts on the ladder`);
+  }
+}
+assert(AGE_START.fr[5] < AGE_START.fr[6] && AGE_START.fr[6] < AGE_START.fr[7] && AGE_START.fr[7] < AGE_START.fr[8], 'fr: older children start higher');
 
 // 10c. Every word has a real example sentence that uses it
 for (const l of ['en', 'fr']) {

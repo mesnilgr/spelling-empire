@@ -1,4 +1,4 @@
-import { LANGUAGES, LEVELS, WORDS, UI, buildSentence } from './language-engine.js';
+import { LANGUAGES, LEVELS, WORDS, UI, buildSentence, AGE_LADDER, AGE_START, AGES } from './language-engine.js';
 import { GameScene } from './scene.js';
 import { NPC_INFO, QUESTS, rollLoot, WORD_EMOJI } from './content.js';
 import { COSTUMES } from './characters.js';
@@ -164,10 +164,62 @@ function shuffle(list) {
 
 // Difficulty is part of the world: houses ask level 1, things out in the world level 2,
 // and rare diamond / obsidian ores level 3.
-function levelFor(obj) {
-  if (obj.kind !== 'node' || obj.decor || obj.nodeType === 'fish') return 'easy';
-  if (obj.material === 'diamond' || obj.material === 'obsidian') return 'challenge';
-  return 'medium';
+function tierFor(obj) {
+  if (obj.kind !== 'node' || obj.decor || obj.nodeType === 'fish') return 0;
+  if (obj.material === 'diamond' || obj.material === 'obsidian') return 2;
+  return 1;
+}
+function levelFor(obj) { return levelAt(tierFor(obj)); }
+
+/* ===== AGE: which word lists a child gets ===== */
+// The age picks a starting rung on the ladder; every rung the child has mastered (90 % of its
+// words spelled right first time) is skipped, so the words grow with them (at most two rungs).
+function ladderStart() {
+  const ladder = AGE_LADDER[lang] ?? AGE_LADDER.fr;
+  let start = AGE_START[lang]?.[progress.age ?? 6] ?? 0;
+  for (let k = 0; k < 2 && start < ladder.length - 1; k++) {
+    const words = wordsForLevel(ladder[start]);
+    const done = words.filter((w) => progress.mastered[w.word]).length;
+    if (words.length && done / words.length >= 0.9) start += 1; else break;
+  }
+  return start;
+}
+function levelAt(tier) {
+  const ladder = AGE_LADDER[lang] ?? AGE_LADDER.fr;
+  return ladder[Math.min(ladderStart() + tier, ladder.length - 1)];
+}
+// Levels that belong to this child (album, parents' table): from the age's rung to two above the current one.
+function childLevels() {
+  const ladder = AGE_LADDER[lang] ?? AGE_LADDER.fr;
+  const a = AGE_START[lang]?.[progress.age ?? 6] ?? 0;
+  return ladder.slice(a, Math.min(ladder.length, ladderStart() + 3));
+}
+// Helps that suit each age (the parents can still change them).
+function applyAgeDefaults(age) {
+  progress.traceGuide = age <= 6;
+  if (age === 5) progress.inputMode = 'draw';
+}
+function setAge(age, { defaults = true } = {}) {
+  const changed = progress.age !== age;
+  progress.age = age;
+  if (changed && defaults) applyAgeDefaults(age);
+  wordQueues = {};
+  saveProgress();
+  if (changed) refreshSpots?.();
+}
+function ageButtons(container, onPick) {
+  container.replaceChildren(...AGES.map((a) => {
+    const b = el('button', `age-btn${progress.age === a ? ' is-on' : ''}`);
+    b.type = 'button';
+    b.append(document.createTextNode(String(a)), el('small', '', t.ageYears));
+    b.addEventListener('click', () => onPick(a));
+    return b;
+  }));
+}
+function askAge(then) {
+  ageButtons($('#age-buttons'), (a) => { setAge(a); $('#age-modal').hidden = true; then?.(); });
+  $('#age-modal').hidden = false;
+  speak(t.ageQuestion, 0.9);
 }
 
 function wordsForLevel(levelId) {
@@ -585,7 +637,7 @@ function beginMine(mineObj) {
   saveProgress();
   $('#spell-title').textContent = `${emoji} ${t.mineTitle}`;
   setTimeout(() => { hw.strokes = []; hw.current = null; hw.misses = 0; hw.forceGuide = false; hwFeedback(); $('#hw-alts')?.replaceChildren(); setInputMode(progress.inputMode ?? 'keys'); }, 0);
-  $('#spell-instruction').textContent = t.mineInstruction;
+  $('#spell-instruction').textContent = word.level === 'letters' ? t.mineInstructionLetter : word.level === 'syllables' ? t.mineInstructionSyllable : t.mineInstruction;
   $('#spell-emoji').textContent = emoji;
   $('#spell-emoji').hidden = false;
   spellInput.value = '';
@@ -597,7 +649,7 @@ function beginMine(mineObj) {
   updateSpellAttempts();
   $('#spell-modal').hidden = false;
   setSpellLocked(false);
-  speak(word.word, 0.9);
+  speak(word.say ?? word.word, 0.9);
 }
 
 /* ===== CRAFTING ===== */
@@ -1137,7 +1189,7 @@ function bindEvents() {
       return;
     }
     newGameArmed = false;
-    newGame();
+    if (!progress.age) askAge(() => newGame()); else newGame();
   });
   $('#reset-pos-btn')?.addEventListener('click', () => scene3D?.resetPosition());
   $('#craft-open-btn')?.addEventListener('click', () => { renderCraftMenu(); $('#craft-drawer').hidden = false; });
@@ -1157,8 +1209,8 @@ function bindEvents() {
   $('#reset-btn').addEventListener('click', resetProgress);
   $('#spell-check-btn').addEventListener('click', checkSpelling);
   $('#spell-continue-btn').addEventListener('click', onSpellContinue);
-  $('#spell-listen-btn').addEventListener('click', () => { if (spellContext) speak(spellContext.word.word, 0.9); });
-  $('#spell-slow-btn').addEventListener('click', () => { if (spellContext) speak(spellContext.word.word, 0.6); });
+  $('#spell-listen-btn').addEventListener('click', () => { if (spellContext) speak(spellContext.word.say ?? spellContext.word.word, 0.9); });
+  $('#spell-slow-btn').addEventListener('click', () => { if (spellContext) speak(spellContext.word.say ?? spellContext.word.word, 0.6); });
   spellInput.addEventListener('input', renderSpellTiles);
 
   document.addEventListener('keydown', (event) => {
@@ -1246,6 +1298,9 @@ function dashMessage(text) {
 }
 
 function renderDashboard() {
+  ageButtons($('#dash-age'), (a) => { setAge(a); renderDashboard(); });
+  const startLevel = LEVELS[lang].find((l) => l.id === levelAt(0));
+  $('#dash-age-note').textContent = progress.age ? t.ageNote(progress.age, startLevel?.name ?? '') : '';
   const stats = Object.values(progress.wordStats ?? {});
   const seen = stats.filter((s) => s.seen > 0 || s.correct + s.wrong > 0);
   const attempts = stats.reduce((n, s) => n + s.correct + s.wrong, 0);
@@ -1294,8 +1349,11 @@ function renderDashboardTable() {
   const sort = $('#dash-sort').value || 'hardest';
   const showUnseen = $('#dash-unseen').checked;
   const rows = [];
+  const listed = new Set();
   for (const w of WORDS[lang]) {
     if (level !== 'all' && w.level !== level) continue;
+    if (listed.has(w.word)) continue;
+    listed.add(w.word);
     const s = progress.wordStats?.[`${lang}:${w.word}`];
     const met = s && (s.seen > 0 || s.correct + s.wrong > 0);
     if (!met && !showUnseen) continue;
@@ -1350,7 +1408,7 @@ function initDashboard() {
   const fillSelects = () => {
     const lv = levelSel.value || 'all';
     const so = sortSel.value || 'hardest';
-    levelSel.replaceChildren(...[['all', t.filterAll], ...['easy', 'medium', 'challenge'].map((l) => [l, t.levelNames?.[l] ?? l])].map(([v, label]) => {
+    levelSel.replaceChildren(...[['all', t.filterAll], ...LEVELS[lang].map((l) => [l.id, l.name])].map(([v, label]) => {
       const o = el('option', '', label); o.value = v; return o;
     }));
     sortSel.replaceChildren(...[['hardest', t.sortHardest], ['recent', t.sortRecent], ['alpha', t.sortAlpha]].map(([v, label]) => {
@@ -1643,14 +1701,17 @@ function renderWardrobe() {
 
 /* ===== WORD ALBUM ===== */
 function renderAlbum() {
-  const words = WORDS[lang];
-  const got = words.filter((w) => progress.mastered[w.word]).length;
-  $('#album-lede').textContent = t.albumLede(got, words.length);
-  const sections = ['easy', 'medium', 'challenge'].map((lvl) => {
+  const levels = childLevels();
+  const words = WORDS[lang].filter((w) => levels.includes(w.level));
+  const unique = [...new Set(words.map((w) => w.word))];
+  const got = unique.filter((w) => progress.mastered[w]).length;
+  $('#album-lede').textContent = t.albumLede(got, unique.length);
+  const sections = levels.map((lvl) => {
     const list = words.filter((w) => w.level === lvl);
     const sec = el('section', 'card section');
     const n = list.filter((w) => progress.mastered[w.word]).length;
-    sec.append(el('h2', '', `${t.levelNames?.[lvl] ?? lvl} · ${n}/${list.length}`));
+    const name = LEVELS[lang].find((l) => l.id === lvl)?.name ?? t.levelNames?.[lvl] ?? lvl;
+    sec.append(el('h2', '', `${name} · ${n}/${list.length}`));
     const grid = el('div', 'album-grid');
     for (const w of list) {
       const has = progress.mastered[w.word];
@@ -1790,6 +1851,8 @@ function acceptHwLetter(letter) {
   speakLetter(letter);
   spellTilesEl.children[spellInput.value.length - 1]?.classList.add('tile-good');
   hwFeedback();
+  // Every drawn letter is already checked: a finished word validates itself.
+  if (spellContext?.word && spellInput.value.length === spellContext.word.word.length) setTimeout(() => checkSpelling(), 1300);
 }
 // The drawing lacks only a mark the expected letter needs (e for é, a stick for i).
 function needsMark(got, expected) {

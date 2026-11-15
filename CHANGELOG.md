@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.0 — Les âges
+
+- **Choix de l'âge (5, 6, 7 ou 8 ans)** au premier lancement, modifiable dans l'espace parents.
+- **Des mots pour chaque âge**, calés sur l'école :
+  - 5 ans (grande section) : lettres (« La lettre èm… comme dans maman »), syllabes (ma, lo, ri), petits mots (lama, kiwi, pyjama) ;
+  - 6 ans (CP) : mots simples, puis e muet et sons à plusieurs lettres ;
+  - 7 ans (CE1) : sons complexes, lettres muettes, consonnes doubles ;
+  - 8 ans (CE2) : accents, ç, g doux, gu, ph, -tion (forêt, garçon, dauphin), puis mots irréguliers (femme, monsieur, beaucoup).
+- Comme avant, les maisons donnent les mots les plus faciles de l'âge, l'extérieur le niveau au-dessus, le diamant et l'obsidienne le niveau encore au-dessus.
+- **Le jeu grandit avec l'enfant :** quand 90 % d'une liste est réussie du premier coup, il passe à la suivante.
+- **Aides selon l'âge :** modèle grisé activé à 5 et 6 ans, mode écriture par défaut à 5 ans.
+- En mode écriture, un mot terminé se valide tout seul, puisque chaque lettre est déjà vérifiée.
+- L'album des mots et le tableau des parents montrent les listes de l'âge de l'enfant.
+
 ## v1.0.0 — 15 novembre 2026
 
 Première version jouable d'**Empire des Mots / Spelling Empires**, un jeu d'orthographe bilingue (français / anglais) dans un village en blocs, pensé pour l'iPad.
