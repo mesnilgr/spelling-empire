@@ -158,6 +158,18 @@ export const BLOCKS = {
   mossyStoneBricks: () => makeTexture('mossyStoneBricks', stoneBricks(0x9a9a9a, true)),
   bricks: () => makeTexture('bricks', bricks(0xa8483a)),
   plaster: () => makeTexture('plaster', plaster(0xf1e8d6)),
+  ironOre: () => makeTexture('ironOre', (g, rnd) => {
+    cobble(0x8a8a8a)(g, rnd);
+    for (const [x, y] of [[3, 3], [10, 2], [6, 8], [12, 10], [2, 12], [9, 13]]) { px(g, x, y, '#d8a878', 2, 2); px(g, x, y, '#f0c898'); }
+  }),
+  diamondOre: () => makeTexture('diamondOre', (g, rnd) => {
+    cobble(0x8a8a8a)(g, rnd);
+    for (const [x, y] of [[2, 3], [11, 4], [6, 9], [12, 12], [3, 12]]) { px(g, x, y, '#3ad8d0', 2, 2); px(g, x + 1, y, '#bafff8'); }
+  }),
+  obsidian: () => makeTexture('obsidian', (g, rnd) => {
+    noise(g, 0x1e1428, 0.5, rnd);
+    for (let i = 0; i < 14; i++) px(g, Math.floor(rnd() * S), Math.floor(rnd() * S), rnd() > 0.5 ? '#5a3a8a' : '#3a2458', 2, 1);
+  }),
   roofRed: () => makeTexture('roofRed', shingles(0xa8402e)),
   roofBlue: () => makeTexture('roofBlue', shingles(0x3e5f98)),
   roofGreen: () => makeTexture('roofGreen', shingles(0x3f7a44)),

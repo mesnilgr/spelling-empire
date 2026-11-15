@@ -240,6 +240,7 @@ export function createBlockyCharacter(specOrName) {
   }
 
   root.userData = {
+    dynamic: true,
     walkPhase: 0,
     isMoving: false,
     action: null,

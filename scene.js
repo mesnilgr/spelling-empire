@@ -8,6 +8,9 @@ import { createBlockyCharacter, animateCharacter, playAction } from './character
 import { buildItem, HOLDABLE, buildBoat, buildCabin } from './items.js';
 import { VillageBuilder, skyTexture } from './village.js';
 import { BLOCKS, blockMat, texBox } from './textures.js';
+import { mergeStatic, LightPool, QualityManager } from './perf.js';
+import { Terrain, STEP_UP } from './terrain.js';
+import { buildMaterialIcon } from './icons.js';
 
 // Each building has its own blocks, roof and trim so the village has variety.
 const HOUSE_STYLES = {
@@ -93,13 +96,19 @@ export class GameScene {
     this._initWorld();
     this._initPlayer();
     this._initComposer();
+    this.lightPool = new LightPool(this.scene, 4);
+    this.torchLight = new THREE.PointLight(0xff9a40, 0, 7, 1.4);
+    this.scene.add(this.torchLight);
+    if (!new URLSearchParams(location.search).has('nomerge')) this._optimizeStatic();
+    this.quality = new QualityManager(this);
     this._bindEvents();
     this._animate();
   }
 
   _initRenderer() {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // No MSAA: post-processing renders off-screen anyway; quality is handled by QualityManager.
+    this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(1);
     this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
@@ -162,14 +171,22 @@ export class GameScene {
     this._buildHouse(0, 14, 0, 'cottage', 6, 4, 4, COLORS.roof, 'cottage');
     this._buildHouse(-2, -14, 0, 'guild', 8, 5, 5, 0x6a4a2a, 'guild', { windows: { front: [-1.95, 1.95] } });
 
+    // Terraced hills around the village (flat where buildings, pond and paths are).
+    this.terrain = new Terrain(this.scene, {
+      flat: (x, z) => this._insideAnyHouse(x, z, 2.5) || Math.hypot(x + 16, z + 16) < 5.5,
+    });
+    this.terrain.build();
+
     // Exterior: ground, paths, fountain, pond, field, trees, lamps, grass.
     this.village = new VillageBuilder(this.scene, this.kit, {
+      heightAt: (x, z) => this.terrain.heightAt(x, z),
       houses: this.houses,
       collidables: this.collidables,
       waterMats: this.waterMats,
       insideAnyHouse: (x, z, m) => this._insideAnyHouse(x, z, m),
     });
     this.village.build();
+    this._buildResourceNodes();
   }
 
   _insideAnyHouse(x, z, margin = 0.6) {
@@ -312,28 +329,23 @@ export class GameScene {
       });
       this._dressTavernExterior(group, front.decor, halfW, halfD);
     } else {
-      const light = new THREE.PointLight(0xffb45c, 5, Math.max(w, d) * 1.8, 1.5);
-      light.position.set(0, wallH - 0.5, 0);
-      group.add(light);
-      kit.lights.push({ light, base: 5, amp: 0.03, speed: 3, phase: Math.random() * 10 });
+      kit.pointLight(group, 0xffb45c, 5, Math.max(w, d) * 1.8, 1.5, 0, wallH - 0.5, 0, { amp: 0.03, speed: 3 });
       this._addFurniture(group, type, w, d, halfW, halfD);
     }
     house.lights = kit.lights.slice(lightsBefore);
 
     this._addSign(group, name, -halfW - 0.4, -halfD - 0.4);
 
-    // Mining spot in the middle of the room.
-    const spotMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.5 });
-    const spot = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.05, 20), spotMat);
-    spot.position.set(0, 0.15, 0);
+    // Mining spot in the middle of the room: a glowing rune on the floor with the
+    // material it gives spinning above it (tap it to mine).
+    const spotMat = new THREE.MeshStandardMaterial({ color: 0xffd36a, emissive: 0xffaa33, emissiveIntensity: 0.8, transparent: true, opacity: 0.85 });
+    const spot = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 6, 24), spotMat);
+    spot.rotation.x = -Math.PI / 2;
+    spot.position.set(0, 0.16, 0);
     group.add(spot);
-    this.interactables.push({
-      mesh: spot,
-      worldPos: new THREE.Vector3(x, 0.18, z),
-      type: 'mine',
-      name,
-      houseType: type,
-      glow: spotMat,
+    this._addInteractable({
+      kind: 'house', name, houseType: type, mesh: spot, glow: spotMat,
+      worldPos: new THREE.Vector3(x, 0.18, z), iconY: 1.25, reach: 1.6,
     });
 
     // Collision: wall segments only, with a gap for the door.
@@ -342,6 +354,92 @@ export class GameScene {
     this.houses.push(house);
     this.scene.add(group);
     return group;
+  }
+
+  // Something the player can mine: an invisible tap target, a spinning icon and (for nodes) a block.
+  _addInteractable(spec) {
+    const obj = { active: true, reach: 1.8, iconY: 1.3, ...spec };
+    obj.iconHolder = new THREE.Group();
+    obj.iconHolder.position.copy(obj.worldPos).add(new THREE.Vector3(0, obj.iconY, 0));
+    obj.iconHolder.userData.dynamic = true;
+    this.scene.add(obj.iconHolder);
+    obj.hit = new THREE.Mesh(new THREE.SphereGeometry(obj.hitRadius ?? 0.95, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
+    obj.hit.position.copy(obj.iconHolder.position);
+    obj.hit.position.y -= 0.35;
+    obj.hit.userData = { dynamic: true, interactable: obj };
+    this.scene.add(obj.hit);
+    if (obj.material) this.setSpotMaterial(obj, obj.material);
+    this.interactables.push(obj);
+    return obj;
+  }
+
+  setSpotMaterial(obj, materialId) {
+    obj.material = materialId;
+    obj.iconHolder.clear();
+    obj.iconHolder.add(buildMaterialIcon(materialId));
+  }
+
+  // After a successful harvest a world node disappears for a while, then grows back.
+  depleteNode(obj, seconds = 40) {
+    if (obj.kind !== 'node') return;
+    obj.active = false;
+    obj.respawnAt = this.clock.elapsedTime + seconds;
+    obj.iconHolder.visible = false;
+    if (obj.block) {
+      this.particleBurst(obj.block.getWorldPosition(new THREE.Vector3()), obj.burst ?? '#9a9792', 26);
+      obj.block.visible = false;
+    }
+  }
+
+  // Ores in the quarry and the hills, the wheat field, trees, a flower meadow and the pond.
+  _buildResourceNodes() {
+    const h = (x, z) => this.terrain.heightAt(x, z);
+    const ore = (x, z, kind) => {
+      const y = h(x, z);
+      const tex = { iron: 'ironOre', diamond: 'diamondOre', obsidian: 'obsidian' }[kind];
+      const block = texBox(this.scene, 0.95, 0.95, 0.95, blockMat(tex), x, y + 0.475, z, { tile: 0.95 });
+      block.userData.dynamic = true;
+      this.collidables.push({ x, z, r: 0.55 });
+      this._addInteractable({
+        kind: 'node', nodeType: 'ore', material: kind, requires: 'pickaxe', block,
+        burst: { iron: '#d8a878', diamond: '#5af0e6', obsidian: '#5a3a8a' }[kind],
+        worldPos: new THREE.Vector3(x, y, z), iconY: 1.55, reach: 1.5,
+      });
+    };
+    const q = this.terrain.quarry;
+    const kinds = ['iron', 'diamond', 'iron', 'obsidian', 'iron', 'diamond', 'obsidian'];
+    kinds.forEach((k, i) => {
+      const a = (i / kinds.length) * Math.PI * 2 + 0.3;
+      ore(q.x + Math.cos(a) * 2.1, q.z + Math.sin(a) * 2.1, k);
+    });
+    ore(-23.5, -7.5, 'iron');
+    ore(23.5, 1.5, 'iron');
+
+    // Wheat field (needs the scythe).
+    this._addInteractable({
+      kind: 'node', nodeType: 'wheat', material: 'wheat', requires: 'scythe',
+      worldPos: new THREE.Vector3(8, 0, 14.1), iconY: 1.5, reach: 3.3, hitRadius: 1.3,
+    });
+    // A few trees near the village (need the axe).
+    for (const t of (this.village.treeSpots ?? []).slice(0, 5)) {
+      this._addInteractable({
+        kind: 'node', nodeType: 'tree', material: 'wood', requires: 'axe',
+        worldPos: new THREE.Vector3(t.x, t.y, t.z), iconY: 3.6 * t.scale, reach: 1.6, hitRadius: 1.2,
+      });
+    }
+    // Flower meadow.
+    const mx = -9.5, mz = -18.5;
+    const colors = [0xff6b9d, 0xffd93d, 0xffffff, 0xb07aff, 0xff8a3d];
+    for (let i = 0; i < 26; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(Math.random()) * 1.6;
+      const fx = mx + Math.cos(a) * r, fz = mz + Math.sin(a) * r;
+      this.kit.box(this.scene, 0.04, 0.3, 0.04, this.kit.mat(0x3f8a3a), fx, 0.15, fz, { cast: false });
+      this.kit.box(this.scene, 0.16, 0.16, 0.16, this.kit.mat(colors[i % 5], { emissive: colors[i % 5], emissiveIntensity: 0.15 }), fx, 0.36, fz, { cast: false });
+    }
+    this._addInteractable({ kind: 'node', nodeType: 'flower', material: 'flower', worldPos: new THREE.Vector3(mx, 0, mz), iconY: 1.4, reach: 1.9, hitRadius: 1.2 });
+    // Pond: draw water at its edge.
+    this._addInteractable({ kind: 'node', nodeType: 'water', material: 'water', worldPos: new THREE.Vector3(-13.4, 0, -13.9), iconY: 1.1, reach: 1.4 });
   }
 
   _addLocalCollider(group, lx, lz, r) {
@@ -753,7 +851,8 @@ export class GameScene {
   }
 
   // Plays the item's animation and effect. Returns true if the item was used.
-  useItem(id) {
+  useItem(fullId) {
+    const id = fullId.split('_')[0];
     const spec = HOLDABLE[id];
     if (!spec || this.player.userData.action) return false;
     playAction(this.player, spec.action, spec.duration);
@@ -766,7 +865,9 @@ export class GameScene {
       return p;
     };
     const at = (ms, fn) => setTimeout(fn, ms);
-    if (id === 'sword') {
+    if (id === 'axe' || id === 'scythe' || id === 'hammer') {
+      at(200, () => { this.particleBurst(front(), id === 'scythe' ? '#e2c25a' : '#c8a070', 16); this.screenShake(0.06); });
+    } else if (id === 'sword') {
       at(180, () => { this.particleBurst(front(), '#e8f2ff', 22); this.screenShake(0.08); });
     } else if (id === 'pickaxe') {
       at(200, () => {
@@ -853,12 +954,32 @@ export class GameScene {
     window.addEventListener('keydown', this._onKeyDown);
     window.addEventListener('keyup', this._onKeyUp);
     window.addEventListener('resize', this._onResize);
+    this._onPointer = (e) => this._onPointerDown(e);
+    this.renderer.domElement.addEventListener('pointerdown', this._onPointer);
   }
 
   setJoystick(x, y) {
     this.joystick.x = x;
     this.joystick.y = y;
     this.joystick.active = x !== 0 || y !== 0;
+  }
+
+  // Merge static meshes by material to cut draw calls (big win on older iPads).
+  _optimizeStatic() {
+    for (const f of this.kit.flames) f.mesh.userData.dynamic = true;
+    for (const i of this.interactables) if (i.mesh) i.mesh.userData.dynamic = true;
+    let removed = 0;
+    for (const h of this.houses) {
+      for (const t of h.cutTargets) {
+        t.body.userData.dynamic = true;
+        t.decor.userData.dynamic = true;
+        removed += mergeStatic(t.body) + mergeStatic(t.decor);
+      }
+      h.roof.group.userData.dynamic = true;
+      removed += mergeStatic(h.roof.group);
+    }
+    removed += mergeStatic(this.scene);
+    this.mergedMeshes = removed;
   }
 
   resize() {
@@ -920,8 +1041,9 @@ export class GameScene {
       if (this.keys['d'] || this.keys['arrowright']) mx += 1;
     }
 
-    const len = Math.hypot(mx, mz);
+    let len = Math.hypot(mx, mz);
     if (len > 0) {
+      this.autoWalk = null; // manual control cancels walking to a tapped object
       mx /= len; mz /= len;
       // Input is screen-relative: rotate it by the camera yaw so "up" walks away from the camera.
       const cy = Math.cos(CAM_YAW);
@@ -929,11 +1051,34 @@ export class GameScene {
       const wx = mx * cy + mz * sy;
       const wz = -mx * sy + mz * cy;
       mx = wx; mz = wz;
+    } else if (this.autoWalk) {
+      // Walk on our own towards a tapped object, then interact with it.
+      const aw = this.autoWalk;
+      const dx = aw.target.worldPos.x - this.player.position.x;
+      const dz = aw.target.worldPos.z - this.player.position.z;
+      const dist = Math.hypot(dx, dz);
+      aw.time += dt;
+      if (dist < aw.reach) {
+        this.autoWalk = null;
+        this.player.rotation.y = Math.atan2(dx, dz);
+        this.onInteractObject?.(aw.target);
+      } else if (aw.time > 7) {
+        this.autoWalk = null;
+      } else {
+        mx = dx / dist; mz = dz / dist; len = 1;
+      }
+    }
+    if (len > 0) {
       const speed = PLAYER_SPEED * (this.speedBoostUntil > this.clock.elapsedTime ? 1.6 : 1);
-      const nx = this.player.position.x + mx * speed * dt;
-      const nz = this.player.position.z + mz * speed * dt;
-      if (!this._checkCollision(nx, this.player.position.z)) this.player.position.x = nx;
-      if (!this._checkCollision(this.player.position.x, nz)) this.player.position.z = nz;
+      const p = this.player.position;
+      const nx = p.x + mx * speed * dt;
+      const nz = p.z + mz * speed * dt;
+      const before = p.clone();
+      if (!this._blocked(nx, p.z, p.y)) p.x = nx;
+      if (!this._blocked(p.x, nz, p.y)) p.z = nz;
+      // Stuck while auto-walking (wall in the way): give up.
+      if (this.autoWalk && before.distanceToSquared(p) < 1e-6) this.autoWalk.stuck = (this.autoWalk.stuck ?? 0) + dt;
+      if (this.autoWalk?.stuck > 0.6) this.autoWalk = null;
 
       // Face direction
       const targetAngle = Math.atan2(mx, mz);
@@ -944,6 +1089,21 @@ export class GameScene {
       this.player.userData.isMoving = false;
     }
 
+
+    // Gravity, jumping and stepping up terraces.
+    {
+      const p = this.player.position;
+      this.playerVY = (this.playerVY ?? 0) - 24 * dt;
+      p.y += this.playerVY * dt;
+      const ground = this.terrain.heightAt(p.x, p.z);
+      if (p.y <= ground) {
+        p.y = ground;
+        this.playerVY = 0;
+        this.onGround = true;
+      } else {
+        this.onGround = p.y - ground < 0.02;
+      }
+    }
 
     // Companions follow
     for (const c of this.companions) {
@@ -958,8 +1118,8 @@ export class GameScene {
         const side = c.offset.x > 0 ? 0.6 : -0.6;
         const tx = p.x + back.x + side * Math.cos(this.player.rotation.y);
         const tz = p.z + back.z - side * Math.sin(this.player.rotation.y);
-        if (!this._checkCollision(tx, tz)) { c.mesh.position.set(tx, 0, tz); }
-        else { c.mesh.position.set(p.x + back.x * 0.5, 0, p.z + back.z * 0.5); }
+        if (!this._checkCollision(tx, tz)) { c.mesh.position.set(tx, p.y, tz); }
+        else { c.mesh.position.set(p.x + back.x * 0.5, p.y, p.z + back.z * 0.5); }
         this.particleBurst(new THREE.Vector3(c.mesh.position.x, 0.8, c.mesh.position.z), '#ffffff', 8);
         dist = 0;
       }
@@ -975,6 +1135,45 @@ export class GameScene {
       } else {
         c.mesh.userData.isMoving = false;
       }
+      const gy = this.terrain.heightAt(c.mesh.position.x, c.mesh.position.z);
+      c.mesh.position.y += (gy - c.mesh.position.y) * Math.min(1, dt * 12);
+    }
+  }
+
+  // Player-only blocking: obstacles plus terrain steps too high to walk up.
+  _blocked(x, z, y) {
+    if (this._checkCollision(x, z)) return true;
+    return this.terrain.heightAt(x, z) - y > STEP_UP;
+  }
+
+  jump() {
+    if (!this.onGround) return false;
+    this.playerVY = 8.2;
+    this.onGround = false;
+    return true;
+  }
+
+  // Tap/click on an object in the 3D view: walk to it, then interact.
+  _onPointerDown(event) {
+    if (!this.onInteractObject) return;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    this.raycaster ??= new THREE.Raycaster();
+    this.raycaster.setFromCamera(ndc, this.camera);
+    const targets = this.interactables.filter((i) => i.hit && i.active !== false).map((i) => i.hit);
+    const hits = this.raycaster.intersectObjects(targets, false);
+    if (!hits.length) return;
+    const obj = hits[0].object.userData.interactable;
+    const d = Math.hypot(obj.worldPos.x - this.player.position.x, obj.worldPos.z - this.player.position.z);
+    const reach = obj.reach ?? 1.8;
+    if (d < reach + 0.3) {
+      this.player.rotation.y = Math.atan2(obj.worldPos.x - this.player.position.x, obj.worldPos.z - this.player.position.z);
+      this.onInteractObject(obj);
+    } else {
+      this.autoWalk = { target: obj, reach, time: 0 };
     }
   }
 
@@ -999,7 +1198,7 @@ export class GameScene {
     const k = 1 - Math.pow(0.001, dt);
     this.camTarget.x += (tx - this.camTarget.x) * k;
     this.camTarget.z += (tz - this.camTarget.z) * k;
-    this.camTarget.y = 0.6;
+    this.camTarget.y += (this.player.position.y + 0.6 - this.camTarget.y) * k;
     const horiz = Math.cos(elev) * dist;
     const goal = new THREE.Vector3(
       this.camTarget.x + Math.sin(CAM_YAW) * horiz,
@@ -1084,16 +1283,28 @@ export class GameScene {
 
   _updateInteractables() {
     this.nearbyInteractable = null;
-    let minDist = 2.0;
+    const t = this.clock.elapsedTime;
+    let minDist = Infinity;
+    const p = this.player.position;
     for (const obj of this.interactables) {
-      const dist = this.player.position.distanceTo(obj.worldPos);
-      if (dist < minDist) {
-        minDist = dist;
-        this.nearbyInteractable = obj;
+      if (!obj.active) {
+        if (t > obj.respawnAt) {
+          obj.active = true;
+          obj.iconHolder.visible = true;
+          if (obj.block) { obj.block.visible = true; obj.block.scale.setScalar(0.01); }
+        }
+        continue;
       }
-      // Pulse glow
-      const pulse = 0.3 + Math.sin(this.clock.elapsedTime * 3) * 0.2;
-      obj.glow.emissiveIntensity = 0.3 + pulse;
+      if (obj.block && obj.block.scale.x < 1) obj.block.scale.setScalar(Math.min(1, obj.block.scale.x + 0.04));
+      // Spin and bob the icon; the hit target follows it.
+      const holder = obj.iconHolder;
+      holder.rotation.y = t * 1.6 + obj.worldPos.x;
+      holder.position.y = obj.worldPos.y + obj.iconY + Math.sin(t * 2.2 + obj.worldPos.z) * 0.12;
+      const dist = Math.hypot(obj.worldPos.x - p.x, obj.worldPos.z - p.z);
+      const near = dist < obj.reach;
+      holder.scale.setScalar(holder.scale.x + ((near ? 1.3 : 1) - holder.scale.x) * 0.15);
+      if (near && dist < minDist) { minDist = dist; this.nearbyInteractable = obj; }
+      if (obj.glow) obj.glow.emissiveIntensity = 0.6 + Math.sin(t * 3) * 0.3;
     }
   }
 
@@ -1106,9 +1317,11 @@ export class GameScene {
   particleBurst(worldPos, color, count = 25) {
     const c = new THREE.Color(color);
     for (let i = 0; i < count; i++) {
-      const geo = new THREE.SphereGeometry(0.05 + Math.random() * 0.05, 6, 5);
+      // Little voxel cubes (shared geometry, one cheap material each for the fade-out).
+      this.particleGeo ??= new THREE.BoxGeometry(0.12, 0.12, 0.12);
       const mat = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 1 });
-      const p = new THREE.Mesh(geo, mat);
+      const p = new THREE.Mesh(this.particleGeo, mat);
+      p.rotation.set(Math.random() * 3, Math.random() * 3, 0);
       p.position.copy(worldPos);
       const angle = Math.random() * Math.PI * 2;
       const speed = 1.5 + Math.random() * 2.5;
@@ -1143,7 +1356,9 @@ export class GameScene {
 
   _animate() {
     this.animationId = requestAnimationFrame(() => this._animate());
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    const rawDt = this.clock.getDelta();
+    const dt = Math.min(rawDt, 0.05);
+    this.quality?.tick(rawDt);
     const elapsed = this.clock.elapsedTime;
 
     this._updatePlayer(dt);
@@ -1160,8 +1375,11 @@ export class GameScene {
       const n = Math.sin(elapsed * fl.speed + fl.phase);
       fl.mesh.scale.y = fl.base.y * (1 + n * 0.2);
     }
-    const torchLight = this.heldItem?.userData.light;
-    if (torchLight) torchLight.intensity = 4 * (torchLight.userData.boost ?? 1) * (1 + Math.sin(elapsed * 13) * 0.12);
+    const torchAnchor = this.heldItem?.userData.light;
+    if (torchAnchor) {
+      torchAnchor.getWorldPosition(this.torchLight.position);
+      this.torchLight.intensity = 4 * (torchAnchor.userData.boost ?? 1) * (1 + Math.sin(elapsed * 13) * 0.12);
+    } else this.torchLight.intensity = 0;
     if (this.growing?.length) {
       for (const f of this.growing) f.scale.setScalar(Math.min(1, f.scale.x + dt * 2.5));
       this.growing = this.growing.filter((f) => f.scale.x < 1);
@@ -1185,7 +1403,6 @@ export class GameScene {
       p.scale.setScalar(Math.max(0.01, ud.life));
       if (ud.life <= 0) {
         this.scene.remove(p);
-        p.geometry.dispose();
         p.material.dispose();
         this.particles.splice(i, 1);
       }
@@ -1200,13 +1417,15 @@ export class GameScene {
     }
     for (const l of this.kit.lights) {
       const n = Math.sin(elapsed * l.speed + l.phase) * 0.6 + Math.sin(elapsed * l.speed * 2.3 + l.phase) * 0.4;
-      l.light.intensity = l.base * (1 + n * l.amp) * (l.houseFactor ?? 1);
+      l.current = l.base * (1 + n * l.amp) * (l.houseFactor ?? 1);
     }
+    this.lightPool.update(this.kit.lights, this.camTarget);
 
     // Water shimmer
     for (const m of this.waterMats) m.opacity = 0.65 + Math.sin(elapsed * 2) * 0.08;
 
-    this.composer.render();
+    if (this.quality?.current.bloom) this.composer.render();
+    else this.renderer.render(this.scene, this.camera);
   }
 
   dispose() {

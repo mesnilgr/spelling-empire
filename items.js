@@ -22,6 +22,9 @@ const GOLD = 0xe2b440;
 // How each item is held and used. `upright` items stay vertical in the hand.
 export const HOLDABLE = {
   pickaxe: { action: 'swing', duration: 0.45, upright: false },
+  axe: { action: 'swing', duration: 0.45, upright: false },
+  scythe: { action: 'swing', duration: 0.5, upright: false },
+  hammer: { action: 'swing', duration: 0.4, upright: false },
   sword: { action: 'swing', duration: 0.4, upright: false },
   torch: { action: 'raise', duration: 1.1, upright: true },
   wand: { action: 'raise', duration: 0.9, upright: false },
@@ -29,7 +32,17 @@ export const HOLDABLE = {
   bread: { action: 'drink', duration: 1.0, upright: true },
 };
 
-export function buildItem(id) {
+// Head/blade colours for each tier of tool.
+const TIERS = {
+  iron: { main: IRON, edge: 0xe8eef4, dark: 0x7a7f86, emissive: 0x000000, glow: 0 },
+  diamond: { main: 0x4ee8e0, edge: 0xb8fff8, dark: 0x1aa8a0, emissive: 0x1ac8c0, glow: 0.45 },
+  obsidian: { main: 0x2a1a3a, edge: 0x7a4ac8, dark: 0x140c1e, emissive: 0x5a2aa8, glow: 0.55 },
+};
+
+export function buildItem(fullId) {
+  const [id, tierName = 'iron'] = fullId.split('_');
+  const tier = TIERS[tierName] ?? TIERS.iron;
+  const metal = (c) => ({ metalness: tierName === 'iron' ? 0.6 : 0.3, roughness: 0.3, emissive: tier.emissive, emissiveIntensity: tier.glow, color: c });
   const g = new THREE.Group();
   const flames = [];
   let light = null;
@@ -38,21 +51,49 @@ export function buildItem(id) {
     box(g, 0.07, 0.24, 0.07, WOOD_DARK, 0, 0.0, 0);
     box(g, 0.1, 0.07, 0.1, GOLD, 0, -0.14, 0, { metalness: 0.6, roughness: 0.3 });
     box(g, 0.34, 0.07, 0.1, GOLD, 0, 0.15, 0, { metalness: 0.6, roughness: 0.3 });
-    box(g, 0.11, 0.7, 0.04, 0xd8e4f0, 0, 0.53, 0, { metalness: 0.8, roughness: 0.2, emissive: 0x3a6a9a, emissiveIntensity: 0.25 });
-    box(g, 0.07, 0.08, 0.04, 0xd8e4f0, 0, 0.92, 0, { metalness: 0.8, roughness: 0.2 });
-    box(g, 0.03, 0.62, 0.045, 0x8aa4bc, 0, 0.53, 0, { metalness: 0.8, roughness: 0.25 });
+    const blade = tierName === 'iron' ? 0xd8e4f0 : tier.main;
+    box(g, 0.11, 0.7, 0.04, blade, 0, 0.53, 0, { ...metal(blade), emissive: tierName === 'iron' ? 0x3a6a9a : tier.emissive, emissiveIntensity: tierName === 'iron' ? 0.25 : tier.glow });
+    box(g, 0.07, 0.08, 0.04, blade, 0, 0.92, 0, metal(blade));
+    box(g, 0.03, 0.62, 0.045, tierName === 'iron' ? 0x8aa4bc : tier.edge, 0, 0.53, 0, metal(tier.edge));
   } else if (id === 'pickaxe') {
     box(g, 0.07, 0.85, 0.07, WOOD, 0, 0.3, 0);
+    // Head turned a quarter turn around the handle, so in the hand the picks point up and down
+    // and the strike comes down onto the block.
     const head = new THREE.Group();
     head.position.y = 0.68;
+    head.rotation.y = Math.PI / 2;
     g.add(head);
-    box(head, 0.2, 0.12, 0.1, 0x7a7f86, 0, 0, 0, { metalness: 0.5, roughness: 0.4 });
+    box(head, 0.2, 0.12, 0.1, tier.dark, 0, 0, 0, metal(tier.dark));
     for (const s of [-1, 1]) {
-      const arm = box(head, 0.28, 0.09, 0.08, IRON, s * 0.22, -0.03, 0, { metalness: 0.6, roughness: 0.35 });
+      const arm = box(head, 0.28, 0.09, 0.08, tier.main, s * 0.22, -0.03, 0, metal(tier.main));
       arm.rotation.z = s * -0.28;
-      const tip = box(head, 0.1, 0.07, 0.07, 0xe8eef4, s * 0.38, -0.1, 0, { metalness: 0.7, roughness: 0.3 });
+      const tip = box(head, 0.1, 0.07, 0.07, tier.edge, s * 0.38, -0.1, 0, metal(tier.edge));
       tip.rotation.z = s * -0.6;
     }
+  } else if (id === 'axe') {
+    box(g, 0.07, 0.8, 0.07, WOOD, 0, 0.28, 0);
+    const head = new THREE.Group();
+    head.position.y = 0.6;
+    head.rotation.y = Math.PI / 2;
+    g.add(head);
+    box(head, 0.12, 0.16, 0.1, tier.dark, 0, 0, 0, metal(tier.dark));
+    box(head, 0.22, 0.3, 0.06, tier.main, 0.15, -0.02, 0, metal(tier.main));
+    box(head, 0.05, 0.34, 0.065, tier.edge, 0.27, -0.02, 0, metal(tier.edge));
+  } else if (id === 'scythe') {
+    box(g, 0.06, 1.0, 0.06, WOOD, 0, 0.38, 0);
+    box(g, 0.05, 0.05, 0.18, WOOD_DARK, 0, 0.35, 0.09);
+    const blade = new THREE.Group();
+    blade.position.set(0, 0.86, 0);
+    g.add(blade);
+    for (let k = 0; k < 5; k++) {
+      const seg = box(blade, 0.16, 0.05, 0.04, k === 4 ? tier.edge : tier.main, 0.08 + k * 0.13, -k * k * 0.012, 0, metal(tier.main));
+      seg.rotation.z = -k * 0.12;
+    }
+  } else if (id === 'hammer') {
+    box(g, 0.07, 0.7, 0.07, WOOD, 0, 0.24, 0);
+    box(g, 0.36, 0.18, 0.18, 0x6a6e76, 0, 0.62, 0, { metalness: 0.6, roughness: 0.35 });
+    box(g, 0.06, 0.2, 0.2, 0x9aa0a8, 0.19, 0.62, 0, { metalness: 0.6, roughness: 0.3 });
+    box(g, 0.06, 0.2, 0.2, 0x9aa0a8, -0.19, 0.62, 0, { metalness: 0.6, roughness: 0.3 });
   } else if (id === 'torch') {
     box(g, 0.07, 0.5, 0.07, WOOD, 0, 0.12, 0);
     box(g, 0.12, 0.1, 0.12, 0x2b2523, 0, 0.4, 0);
@@ -64,7 +105,8 @@ export function buildItem(id) {
       g.add(f);
       flames.push({ mesh: f, base: f.scale.clone(), y0: f.position.y, h, phase: i * 2, speed: 12 + i * 3 });
     });
-    light = new THREE.PointLight(0xff9a40, 4, 7, 1.4);
+    // Anchor only: the scene owns one permanent torch light and moves it here each frame.
+    light = new THREE.Object3D();
     light.position.y = 0.6;
     g.add(light);
   } else if (id === 'wand') {

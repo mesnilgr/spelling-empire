@@ -97,6 +97,7 @@ export class VillageBuilder {
     for (const p of this.paths ?? []) {
       if (Math.abs(x - p.x) < p.w / 2 + margin * 0.6 && Math.abs(z - p.z) < p.d / 2 + margin * 0.6) return true;
     }
+    if (Math.hypot(x - 22, z + 22) < 11) return true; // quarry and its rocky hill
     return Math.hypot(x, z) < 3.2; // fountain plaza
   }
 
@@ -225,6 +226,7 @@ export class VillageBuilder {
       const jet = this.box(g, 0.08, 0.5, 0.08, jetMat, Math.cos(a) * 0.45, 1.05, Math.sin(a) * 0.45, { cast: false });
       jet.rotation.z = Math.cos(a) * 0.5;
       jet.rotation.x = -Math.sin(a) * 0.5;
+      jet.userData.dynamic = true;
       this.fountainJets.push(jet);
     }
     this.ctx.collidables.push({ x: 0, z: 0, r: 1.9 });
@@ -306,7 +308,7 @@ export class VillageBuilder {
 
   voxelTree(x, z, scale, variant) {
     const g = new THREE.Group();
-    g.position.set(x, 0, z);
+    g.position.set(x, this.ctx.heightAt(x, z), z);
     g.scale.setScalar(scale);
     g.rotation.y = this.rnd() * Math.PI;
     this.scene.add(g);
@@ -333,6 +335,7 @@ export class VillageBuilder {
       }
     }
     this.ctx.collidables.push({ x, z, r: 0.4 * scale });
+    return g;
   }
 
   buildTrees() {
@@ -341,16 +344,22 @@ export class VillageBuilder {
       [-8, 17.5], [-17, 16.5], [13, 18], [17, 14], [-24, 12], [24, -16],
       [-6, -20], [4, -20], [-10, -22], [10, -22], [15, -3], [-20, -21], [20, 19],
     ];
+    this.treeSpots = [];
     for (const [x, z] of fixed) {
       if (this.blocked(x, z, 1.2)) continue;
-      this.voxelTree(x, z, 0.85 + this.rnd() * 0.35, this.rnd() < 0.3 ? 'pine' : 'oak');
+      const scale = 0.85 + this.rnd() * 0.35;
+      this.voxelTree(x, z, scale, this.rnd() < 0.3 ? 'pine' : 'oak');
+      this.treeSpots.push({ x, z, y: this.ctx.heightAt(x, z), scale });
     }
+    // Trees closest to the village square first (used as wood nodes).
+    this.treeSpots.sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z));
     // A forest ring frames the village.
     for (let i = 0; i < 46; i++) {
       const a = (i / 46) * Math.PI * 2 + this.rnd() * 0.08;
       const rad = 27 + this.rnd() * 6;
       const x = Math.cos(a) * rad;
       const z = Math.sin(a) * rad;
+      if (Math.hypot(x - 22, z + 22) < 11) continue; // keep the quarry clear
       this.voxelTree(x, z, 0.9 + this.rnd() * 0.5, this.rnd() < 0.45 ? 'pine' : 'oak');
     }
   }
@@ -377,13 +386,14 @@ export class VillageBuilder {
       const x = (r() - 0.5) * 50;
       const z = (r() - 0.5) * 50;
       if (this.blocked(x, z, 1.0)) continue;
+      const y0 = this.ctx.heightAt(x, z);
       if (r() < 0.5) {
         const s = 0.4 + r() * 0.5;
-        this.box(this.scene, s, s * 0.6, s * 0.9, this.mats.stone, x, s * 0.3, z, { ry: r() * Math.PI });
+        this.box(this.scene, s, s * 0.6, s * 0.9, this.mats.stone, x, y0 + s * 0.3, z, { ry: r() * Math.PI });
       } else {
         const s = 0.6 + r() * 0.5;
-        this.box(this.scene, s, s * 0.75, s, bush, x, s * 0.37, z, { ry: r() * Math.PI });
-        this.box(this.scene, s * 0.6, s * 0.5, s * 0.6, bush, x + s * 0.4, s * 0.25, z + s * 0.2, { ry: r() * Math.PI });
+        this.box(this.scene, s, s * 0.75, s, bush, x, y0 + s * 0.37, z, { ry: r() * Math.PI });
+        this.box(this.scene, s * 0.6, s * 0.5, s * 0.6, bush, x + s * 0.4, y0 + s * 0.25, z + s * 0.2, { ry: r() * Math.PI });
       }
     }
   }
@@ -397,17 +407,19 @@ export class VillageBuilder {
       const x = (r() - 0.5) * 56;
       const z = (r() - 0.5) * 56;
       if (this.blocked(x, z, 0.5)) continue;
-      blades.push([x, z, 0.12 + r() * 0.22]);
-      if (r() < 0.07) flowers.push([x + 0.1, z + 0.1, Math.floor(r() * 5)]);
+      const y0 = this.ctx.heightAt(x, z);
+      if (this.ctx.heightAt(x + 0.1, z + 0.1) !== y0) continue; // not on a terrace edge
+      blades.push([x, z, 0.12 + r() * 0.22, y0]);
+      if (r() < 0.07) flowers.push([x + 0.1, z + 0.1, Math.floor(r() * 5), y0]);
     }
     const m4 = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const grassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
     const grass = new THREE.InstancedMesh(this.unitBox, grassMat, blades.length);
     const c = new THREE.Color();
-    blades.forEach(([x, z, h], i) => {
+    blades.forEach(([x, z, h, y0], i) => {
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), r() * Math.PI);
-      m4.compose(new THREE.Vector3(x, h / 2, z), q, new THREE.Vector3(0.05, h, 0.05));
+      m4.compose(new THREE.Vector3(x, y0 + h / 2, z), q, new THREE.Vector3(0.05, h, 0.05));
       grass.setMatrixAt(i, m4);
       c.set(GRASS[Math.floor(r() * GRASS.length)]).multiplyScalar(0.95 + r() * 0.2);
       grass.setColorAt(i, c);
@@ -416,15 +428,15 @@ export class VillageBuilder {
 
     const petals = [0xff6b9d, 0xffd93d, 0xffffff, 0xb07aff, 0xff8a3d];
     const flowerMesh = new THREE.InstancedMesh(this.unitBox, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, emissive: 0x222222 }), flowers.length);
-    flowers.forEach(([x, z, k], i) => {
-      m4.compose(new THREE.Vector3(x, 0.26, z), q.identity(), new THREE.Vector3(0.12, 0.12, 0.12));
+    flowers.forEach(([x, z, k, y0], i) => {
+      m4.compose(new THREE.Vector3(x, y0 + 0.26, z), q.identity(), new THREE.Vector3(0.12, 0.12, 0.12));
       flowerMesh.setMatrixAt(i, m4);
       flowerMesh.setColorAt(i, c.set(petals[k]));
     });
     this.scene.add(flowerMesh);
     const stems = new THREE.InstancedMesh(this.unitBox, this.mats.leavesDark, flowers.length);
-    flowers.forEach(([x, z], i) => {
-      m4.compose(new THREE.Vector3(x, 0.11, z), q.identity(), new THREE.Vector3(0.035, 0.22, 0.035));
+    flowers.forEach(([x, z, , y0], i) => {
+      m4.compose(new THREE.Vector3(x, y0 + 0.11, z), q.identity(), new THREE.Vector3(0.035, 0.22, 0.035));
       stems.setMatrixAt(i, m4);
     });
     this.scene.add(stems);

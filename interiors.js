@@ -80,6 +80,16 @@ export class PropKit {
     return this.mats.get(key);
   }
 
+  // Virtual light: a placeholder the scene's LightPool maps onto a few real PointLights.
+  pointLight(parent, color, intensity, distance, decay, x, y, z, { amp = 0.05, speed = 5 } = {}) {
+    const o = new THREE.Object3D();
+    o.position.set(x, y, z);
+    o.userData.spec = { color, intensity, distance, decay };
+    parent.add(o);
+    this.lights.push({ light: o, base: intensity, amp, speed, phase: Math.random() * 10 });
+    return o;
+  }
+
   glow(color, intensity = 2.5) {
     return this.mat(color, { emissive: color, emissiveIntensity: intensity, roughness: 0.4 });
   }
@@ -269,10 +279,7 @@ export class PropKit {
       this.sphere(g, 0.035, ember, (rnd() - 0.5) * open * 0.8, 0.15, zc + (rnd() - 0.3) * 0.3, { cast: false });
     }
 
-    const light = new THREE.PointLight(0xff8a3a, 12, 12, 1.4);
-    light.position.set(0, 0.85, depth + 0.6);
-    g.add(light);
-    this.lights.push({ light, base: 12, amp: 0.18, speed: 13, phase: rnd() * 10 });
+    this.pointLight(g, 0xff8a3a, 12, 12, 1.4, 0, 0.85, depth + 0.6, { amp: 0.18, speed: 13 });
     return g;
   }
 
@@ -503,10 +510,7 @@ export class PropKit {
       const a = (i / candles) * Math.PI * 2;
       this.candle(g, Math.cos(a) * r, 0.02, Math.sin(a) * r, { h: 0.12 });
     }
-    const light = new THREE.PointLight(0xffb060, 11, 13, 1.3);
-    light.position.set(0, -0.2, 0);
-    g.add(light);
-    this.lights.push({ light, base: 11, amp: 0.08, speed: 7, phase: Math.random() * 10 });
+    this.pointLight(g, 0xffb060, 11, 13, 1.3, 0, -0.2, 0, { amp: 0.08, speed: 7 });
     return g;
   }
 
@@ -583,10 +587,7 @@ export function furnishTavern(kit, room, { w, d, wallH, wallT }, api) {
   kit.barrel(room, rackX - 0.3, 0.76, inB + 0.55, { r: 0.26, h: 0.66, lying: true, ry: Math.PI / 2 });
   api.collider(rackX, inB + 0.6, 0.9);
   api.character('barkeep', barX + 0.4, inB + 0.6, 0); // barkeep behind the counter
-  const barLight = new THREE.PointLight(0xffa64d, 6, 7, 1.5);
-  barLight.position.set(barX, 2.1, barZ + 0.4);
-  room.add(barLight);
-  kit.lights.push({ light: barLight, base: 6, amp: 0.05, speed: 5, phase: 1 });
+  kit.pointLight(room, 0xffa64d, 6, 7, 1.5, barX, 2.1, barZ + 0.4, { amp: 0.05, speed: 5 });
 
   // Long table with cloth, right-front.
   kit.longTable(room, 3.4, 1.9, { length: 3.0 });

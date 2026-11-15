@@ -1256,3 +1256,15 @@ body:has(.modal-overlay:not([hidden])) .touch-controls { display: none; }
   box-shadow: 0 6px 0 #d99a12; cursor: pointer; touch-action: manipulation;
 }
 .use-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #d99a12; }
+
+/* Jump button, locked recipes */
+.jump-btn {
+  width: 70px; height: 70px; border-radius: 50%;
+  border: 3px solid #5a8ad8; background: #e8f0ff; color: #2a5aa8;
+  font-size: 2rem; font-weight: 900; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 5px 0 #5a8ad8; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.jump-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #5a8ad8; }
+.craft-card.is-locked { opacity: 0.55; }
+.craft-requires { font-size: 0.75rem; font-weight: 800; color: #7a4ac8; }
+#continue-btn { order: -1; }

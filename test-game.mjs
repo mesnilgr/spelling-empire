@@ -247,14 +247,13 @@ assert(UI.fr.streakMaster !== undefined, 'fr: streakMaster exists');
 assert(UI.en.streakText !== undefined, 'en: streakText exists');
 assert(UI.fr.streakText !== undefined, 'fr: streakText exists');
 
-// 9. French sentence grammar
-for (let i = 0; i < 20; i++) {
-  const word = WORDS.fr[Math.floor(Math.random() * WORDS.fr.length)].word;
-  const sentence = buildSentence(word, 'fr');
-  assert(sentence.includes('Un ') || sentence.includes('Une '), `fr sentence: has article: "${sentence}"`);
-  assert(sentence.includes('« '), `fr sentence: has guillemets: "${sentence}"`);
-  assert(sentence.includes('parce qu\'') || sentence.includes('parce que '), `fr sentence: has parce que: "${sentence}"`);
-  // Un/Une don't elide in French; only le/la/que do. No bad elision check needed for articles.
+// 9. Example sentences are real sentences: capital letter, final punctuation, no placeholders
+for (const l of ['en', 'fr']) {
+  for (const w of WORDS[l]) {
+    const s = buildSentence(w.word, l);
+    assert(/^[A-ZÀ-Ý]/.test(s), `${l} "${w.word}": sentence starts with a capital`);
+    assert(/[.!?]$/.test(s), `${l} "${w.word}": sentence ends with punctuation`);
+  }
 }
 
 // 10. Enemy taunts exist in both languages
@@ -277,15 +276,23 @@ for (const w of frEasy) {
   assert(!/[cg][eéiy]/.test(w), `fr/easy "${w}": no soft c/g`);
 }
 for (const w of frMedium) {
-  assert(w.endsWith('e'), `fr/medium "${w}": ends with a mute e`);
-  assert(!FR_COMPLEX.test(w), `fr/medium "${w}": otherwise simple sounds`);
-  assert(!/[cg][eéiy]/.test(w), `fr/medium "${w}": no soft c/g`);
+  // Level 2: a final mute e, or a sound written with several letters (ch, ou, on, an/en, in/ain/ein, au/eau, oi, gn).
+  assert(/e$|ch|ou|on|om|an|am|en|em|in|ain|ein|au|eau|oi|gn/.test(w), `fr/medium "${w}": mute e or multi-letter sound`);
+  assert(!/ph|qu|ill|ss|tt|mm|pp|rr/.test(w), `fr/medium "${w}": no level-3 traps`);
 }
 for (const w of WORDS.en.filter(x => x.level === 'easy').map(x => x.word)) {
   assert(/^[^aeiou][aeiou][^aeiouwy]$/.test(w) || w === 'yes', `en/easy "${w}": consonant-vowel-consonant`);
 }
 for (const w of WORDS.en.filter(x => x.level === 'medium').map(x => x.word)) {
   assert(/[aeiou][^aeiou]e$/.test(w), `en/medium "${w}": magic e`);
+}
+
+// 10c. Every word has a real example sentence that uses it
+for (const l of ['en', 'fr']) {
+  for (const w of WORDS[l]) {
+    const sentence = buildSentence(w.word, l);
+    assert(sentence.toLowerCase().includes(w.word.slice(0, -1).toLowerCase()), `${l} "${w.word}" has an example sentence using it`);
+  }
 }
 
 // 11. Level word counts

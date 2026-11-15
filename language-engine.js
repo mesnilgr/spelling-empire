@@ -13,14 +13,14 @@ export const LANGUAGES = {
 
 export const LEVELS = {
   en: [
-    { id: 'easy', name: 'Easy', blurb: 'Short words to build your empire' },
-    { id: 'medium', name: 'Medium', blurb: 'Trickier words, bigger rewards' },
-    { id: 'challenge', name: 'Challenge', blurb: 'Hard spellings for mighty warriors' },
+    { id: 'easy', name: 'Easy', blurb: 'Three-letter words, one letter one sound' },
+    { id: 'medium', name: 'Medium', blurb: 'The silent “magic e” (cake, bike)' },
+    { id: 'challenge', name: 'Challenge', blurb: 'Common words with tricky spellings' },
   ],
   fr: [
-    { id: 'easy', name: 'Facile', blurb: 'Des mots courts pour construire ton empire' },
-    { id: 'medium', name: 'Moyen', blurb: 'Des mots plus difficiles, plus de récompenses' },
-    { id: 'challenge', name: 'Défi', blurb: 'Des mots difficiles pour les grands guerriers' },
+    { id: 'easy', name: 'Facile', blurb: 'Mots simples : chaque lettre se prononce (vélo, domino)' },
+    { id: 'medium', name: 'Moyen', blurb: 'e muet et sons à plusieurs lettres : ch, ou, on, an, in, eau, oi, gn' },
+    { id: 'challenge', name: 'Défi', blurb: 'Lettres muettes et pièges (escargot, grenouille)' },
   ],
 };
 
@@ -56,102 +56,207 @@ export const WORDS = {
     { word: 'numéro', level: 'easy' }, { word: 'zéro', level: 'easy' }, { word: 'midi', level: 'easy' }, { word: 'mardi', level: 'easy' },
     { word: 'samedi', level: 'easy' }, { word: 'animal', level: 'easy' }, { word: 'canari', level: 'easy' }, { word: 'sofa', level: 'easy' },
 
-    // Moyen — mêmes sons simples, mais avec un « e » muet final (pirate, tomate).
-    { word: 'pirate', level: 'medium' }, { word: 'tomate', level: 'medium' }, { word: 'salade', level: 'medium' }, { word: 'malade', level: 'medium' },
-    { word: 'banane', level: 'medium' }, { word: 'cabane', level: 'medium' }, { word: 'limonade', level: 'medium' }, { word: 'tulipe', level: 'medium' },
-    { word: 'olive', level: 'medium' }, { word: 'lune', level: 'medium' }, { word: 'plume', level: 'medium' }, { word: 'école', level: 'medium' },
-    { word: 'table', level: 'medium' }, { word: 'livre', level: 'medium' }, { word: 'arbre', level: 'medium' }, { word: 'porte', level: 'medium' },
-    { word: 'robe', level: 'medium' }, { word: 'carte', level: 'medium' }, { word: 'pile', level: 'medium' }, { word: 'vitamine', level: 'medium' },
+    // Niveau 2 — e muet final, et sons écrits avec plusieurs lettres :
+    // Le e muet à la fin
+    { word: 'tomate', level: 'medium' }, { word: 'pirate', level: 'medium' }, { word: 'salade', level: 'medium' }, { word: 'banane', level: 'medium' },
+    { word: 'cabane', level: 'medium' }, { word: 'école', level: 'medium' }, { word: 'table', level: 'medium' }, { word: 'livre', level: 'medium' },
+    { word: 'arbre', level: 'medium' }, { word: 'porte', level: 'medium' },
+    // /ʃ/ ch
+    { word: 'chemin', level: 'medium' }, { word: 'chat', level: 'medium' }, { word: 'cheval', level: 'medium' }, { word: 'vache', level: 'medium' },
+    { word: 'chaise', level: 'medium' },
+    // /u/ ou
+    { word: 'mouton', level: 'medium' }, { word: 'loup', level: 'medium' }, { word: 'poule', level: 'medium' }, { word: 'soupe', level: 'medium' },
+    { word: 'route', level: 'medium' },
+    // /ɔ̃/ on
+    { word: 'cochon', level: 'medium' }, { word: 'savon', level: 'medium' }, { word: 'bonbon', level: 'medium' }, { word: 'melon', level: 'medium' },
+    // /ɑ̃/ an, en
+    { word: 'enfant', level: 'medium' }, { word: 'maman', level: 'medium' }, { word: 'lampe', level: 'medium' }, { word: 'pantalon', level: 'medium' },
+    { word: 'dimanche', level: 'medium' },
+    // /ɛ̃/ in, ain, ein
+    { word: 'jardin', level: 'medium' }, { word: 'lapin', level: 'medium' }, { word: 'matin', level: 'medium' }, { word: 'sapin', level: 'medium' },
+    { word: 'pain', level: 'medium' }, { word: 'main', level: 'medium' }, { word: 'bain', level: 'medium' }, { word: 'plein', level: 'medium' },
+    { word: 'peinture', level: 'medium' },
+    // /o/ au, eau
+    { word: 'bateau', level: 'medium' }, { word: 'auto', level: 'medium' }, { word: 'chapeau', level: 'medium' }, { word: 'cadeau', level: 'medium' },
+    { word: 'château', level: 'medium' }, { word: 'gâteau', level: 'medium' },
+    // /wa/ oi
+    { word: 'voiture', level: 'medium' }, { word: 'roi', level: 'medium' }, { word: 'étoile', level: 'medium' }, { word: 'poire', level: 'medium' },
+    { word: 'armoire', level: 'medium' },
+    // /ɲ/ gn
+    { word: 'montagne', level: 'medium' }, { word: 'champignon', level: 'medium' }, { word: 'campagne', level: 'medium' }, { word: 'ligne', level: 'medium' },
 
-    // Défi — sons à plusieurs lettres (on, an, ou, ch, eau, gn…) et lettres finales muettes.
-    { word: 'maison', level: 'challenge' }, { word: 'bateau', level: 'challenge' }, { word: 'chocolat', level: 'challenge' }, { word: 'mouton', level: 'challenge' },
-    { word: 'lapin', level: 'challenge' }, { word: 'jardin', level: 'challenge' }, { word: 'enfant', level: 'challenge' }, { word: 'oiseau', level: 'challenge' },
-    { word: 'cheval', level: 'challenge' }, { word: 'montagne', level: 'challenge' }, { word: 'gâteau', level: 'challenge' }, { word: 'château', level: 'challenge' },
-    { word: 'grenouille', level: 'challenge' }, { word: 'papillon', level: 'challenge' }, { word: 'éléphant', level: 'challenge' }, { word: 'escargot', level: 'challenge' },
-    { word: 'chapeau', level: 'challenge' }, { word: 'poisson', level: 'challenge' }, { word: 'crayon', level: 'challenge' }, { word: 'fourmi', level: 'challenge' },
+    // Niveau 3 — lettres muettes, consonnes doubles, ill, s qui chante [z], c et g doux.
+    { word: 'escargot', level: 'challenge' }, { word: 'éléphant', level: 'challenge' }, { word: 'papillon', level: 'challenge' }, { word: 'grenouille', level: 'challenge' },
+    { word: 'poisson', level: 'challenge' }, { word: 'oiseau', level: 'challenge' }, { word: 'maison', level: 'challenge' }, { word: 'chocolat', level: 'challenge' },
+    { word: 'citron', level: 'challenge' }, { word: 'girafe', level: 'challenge' }, { word: 'hibou', level: 'challenge' }, { word: 'feuille', level: 'challenge' },
+    { word: 'abeille', level: 'challenge' }, { word: 'perroquet', level: 'challenge' }, { word: 'écureuil', level: 'challenge' }, { word: 'hérisson', level: 'challenge' },
+    { word: 'fraise', level: 'challenge' }, { word: 'cerise', level: 'challenge' }, { word: 'framboise', level: 'challenge' }, { word: 'parapluie', level: 'challenge' },
   ],
 };
 
-const SENTENCES = {
-  en: {
-    subjects: ['wizard', 'owl', 'penguin', 'granny', 'pirate', 'dragon', 'robot', 'hedgehog', 'chef', 'grandad', 'unicorn', 'monkey'],
-    adjectives: ['purple', 'wobbly', 'sparkly', 'fluffy', 'giggly', 'bouncy', 'sleepy', 'spotty', 'tiny', 'enormous', 'sticky', 'stripy'],
-    places: ['in the bath', 'on the moon', 'under the table', 'behind the sofa', 'at the bus stop', 'in the garden shed', 'on the roof'],
-    reasons: [
-      'it had found a magic spoon',
-      'the sky was wearing socks',
-      'the biscuits were singing',
-      'it was raining custard',
-      'the owl had lost its hat',
-    ],
-    template: (article, adj, subject, word, place, reason) =>
-      `${article} ${adj} ${subject} used "${word}" ${place} because ${reason}!`,
-  },
+// One short, meaningful example sentence per word (read aloud after a correct spelling).
+export const EXAMPLES = {
   fr: {
-    subjects: [
-      { word: 'magicien', gender: 'm' }, { word: 'hibou', gender: 'm' },
-      { word: 'pingouin', gender: 'm' }, { word: 'mamie', gender: 'f' },
-      { word: 'pirate', gender: 'm' }, { word: 'dragon', gender: 'm' },
-      { word: 'robot', gender: 'm' }, { word: 'hérisson', gender: 'm' },
-      { word: 'chef', gender: 'm' }, { word: 'papi', gender: 'm' },
-      { word: 'licorne', gender: 'f' }, { word: 'singe', gender: 'm' },
-      { word: 'sorcière', gender: 'f' }, { word: 'fée', gender: 'f' },
-      { word: 'crocodile', gender: 'm' }, { word: 'tortue', gender: 'f' },
-    ],
-    adjectives: [
-      { m: 'violet', f: 'violette' },
-      { m: 'bancale', f: 'bancale' },
-      { m: 'brillant', f: 'brillante' },
-      { m: 'rigolo', f: 'rigolote' },
-      { m: 'rebondissant', f: 'rebondissante' },
-      { m: 'endormi', f: 'endormie' },
-      { m: 'minuscule', f: 'minuscule' },
-      { m: 'énorme', f: 'énorme' },
-      { m: 'collant', f: 'collante' },
-      { m: 'timide', f: 'timide' },
-      { m: 'farceur', f: 'farceuse' },
-      { m: 'courageux', f: 'courageuse' },
-    ],
-    places: [
-      'dans son bain', 'sur la Lune', 'sous une table', 'derrière le canapé',
-      "à l'arrêt de bus", 'dans le cabanon du jardin', 'sur le toit',
-      'dans la cuisine', 'sous un arbre', 'en haut d\'une montagne',
-    ],
-    reasons: [
-      'il avait trouvé une cuillère magique',
-      'le ciel portait des chaussettes',
-      'les biscuits chantaient une chanson',
-      'il pleuvait de la soupe',
-      'le hibou avait perdu son chapeau',
-      'la lune avait les yeux qui piquent',
-      'un escargot lui avait fait un clin d\'œil',
-    ],
-    template: (adj, subject, word, place, reason) => {
-      const article = subject.gender === 'm' ? 'Un' : 'Une';
-      const adjForm = adj[subject.gender];
-      const elided = reason.startsWith('il') || reason.startsWith('un') || reason.startsWith('en')
-        ? `qu'${reason}` : `que ${reason}`;
-      return `${article} ${subject.word} ${adjForm} a utilisé « ${word} » ${place} parce ${elided} !`;
-    },
+    "ami": "Léo est mon ami.",
+    "papa": "Papa lit une histoire.",
+    "vélo": "Je roule à vélo dans le parc.",
+    "moto": "La moto fait beaucoup de bruit.",
+    "radio": "Mamie écoute la radio.",
+    "piano": "Ma sœur joue du piano.",
+    "lavabo": "Je me lave les mains au lavabo.",
+    "domino": "On joue aux dominos après le dîner.",
+    "judo": "Le mercredi, je fais du judo.",
+    "café": "Papa boit un café le matin.",
+    "bébé": "Le bébé dort dans son lit.",
+    "télé": "On regarde un dessin animé à la télé.",
+    "numéro": "Quel est ton numéro préféré ?",
+    "zéro": "Un, deux, trois… on compte à partir de zéro !",
+    "midi": "À midi, on mange à la cantine.",
+    "mardi": "Mardi, c’est le jour de la piscine.",
+    "samedi": "Samedi, on va au marché.",
+    "animal": "Le chat est mon animal préféré.",
+    "canari": "Le canari chante dans sa cage.",
+    "sofa": "Le chien dort sur le sofa.",
+    "tomate": "La tomate est rouge et ronde.",
+    "pirate": "Le pirate cherche un trésor.",
+    "salade": "Je mange de la salade verte.",
+    "banane": "Le singe adore la banane.",
+    "cabane": "On a construit une cabane dans l’arbre.",
+    "école": "Je vais à l’école à pied.",
+    "table": "Le repas est servi sur la table.",
+    "livre": "J’ouvre mon livre à la page dix.",
+    "arbre": "L’oiseau fait son nid dans l’arbre.",
+    "porte": "Ferme la porte, s’il te plaît.",
+    "chemin": "Ce chemin mène à la forêt.",
+    "chat": "Le chat boit du lait.",
+    "cheval": "Le cheval galope dans le pré.",
+    "vache": "La vache donne du lait.",
+    "chaise": "Assieds-toi sur la chaise.",
+    "mouton": "Le mouton a une laine toute douce.",
+    "loup": "Le loup hurle à la lune.",
+    "poule": "La poule pond un œuf.",
+    "soupe": "La soupe est bien chaude.",
+    "route": "La voiture roule sur la route.",
+    "cochon": "Le cochon se roule dans la boue.",
+    "savon": "Je me lave les mains avec du savon.",
+    "bonbon": "Ce bonbon est à la fraise.",
+    "melon": "En été, on mange du melon.",
+    "enfant": "L’enfant joue au ballon.",
+    "maman": "Maman me fait un câlin.",
+    "lampe": "J’allume la lampe pour lire.",
+    "pantalon": "Mon pantalon est bleu.",
+    "dimanche": "Dimanche, on se repose.",
+    "jardin": "Les fleurs poussent dans le jardin.",
+    "lapin": "Le lapin mange une carotte.",
+    "matin": "Le matin, je prends mon petit-déjeuner.",
+    "sapin": "À Noël, on décore le sapin.",
+    "pain": "Le boulanger fait du bon pain.",
+    "main": "Je lève la main pour parler.",
+    "bain": "Le soir, je prends un bain.",
+    "plein": "Mon verre est plein d’eau.",
+    "peinture": "Je fais de la peinture avec mes doigts.",
+    "bateau": "Le bateau navigue sur la mer.",
+    "auto": "L’auto rouge est garée devant la maison.",
+    "chapeau": "Le magicien sort un lapin de son chapeau.",
+    "cadeau": "J’ai reçu un cadeau pour mon anniversaire.",
+    "château": "Le roi habite dans un château.",
+    "gâteau": "On mange un gâteau au chocolat.",
+    "voiture": "Papa conduit la voiture.",
+    "roi": "Le roi porte une couronne.",
+    "étoile": "Le soir, je regarde une étoile briller.",
+    "poire": "La poire est un fruit sucré.",
+    "armoire": "Mes habits sont rangés dans l’armoire.",
+    "montagne": "Il y a de la neige sur la montagne.",
+    "champignon": "On a trouvé un champignon dans la forêt.",
+    "campagne": "Mamie habite à la campagne.",
+    "ligne": "Trace une ligne avec ta règle.",
+    "escargot": "L’escargot avance tout doucement.",
+    "éléphant": "L’éléphant a une longue trompe.",
+    "papillon": "Le papillon se pose sur une fleur.",
+    "grenouille": "La grenouille saute dans la mare.",
+    "poisson": "Le poisson nage dans l’eau.",
+    "oiseau": "L’oiseau chante dans l’arbre.",
+    "maison": "Ma maison a un toit rouge.",
+    "chocolat": "J’adore le chocolat chaud.",
+    "citron": "Le citron est très acide.",
+    "girafe": "La girafe a un très long cou.",
+    "hibou": "Le hibou se réveille la nuit.",
+    "feuille": "En automne, la feuille tombe de l’arbre.",
+    "abeille": "L’abeille fabrique du miel.",
+    "perroquet": "Le perroquet répète ce qu’on dit.",
+    "écureuil": "L’écureuil cache des noisettes.",
+    "hérisson": "Le hérisson a des piquants.",
+    "fraise": "La fraise est rouge et sucrée.",
+    "cerise": "La cerise pousse sur le cerisier.",
+    "framboise": "Je cueille une framboise.",
+    "parapluie": "Prends ton parapluie, il pleut !"
+  },
+  en: {
+    "cat": "The cat is asleep on the mat.",
+    "dog": "My dog likes to run in the park.",
+    "sun": "The sun is hot today.",
+    "big": "An elephant is very big.",
+    "run": "I can run very fast.",
+    "hat": "Put on your hat, it is cold.",
+    "red": "A strawberry is red.",
+    "bed": "I go to bed at eight.",
+    "map": "We look at the map to find the way.",
+    "win": "I hope our team will win.",
+    "top": "The cat is on top of the box.",
+    "box": "The toys are in the box.",
+    "pen": "I write with a blue pen.",
+    "cup": "I drink milk from a cup.",
+    "bus": "We go to school by bus.",
+    "leg": "I hurt my leg playing football.",
+    "pig": "The pig rolls in the mud.",
+    "hot": "The soup is too hot.",
+    "sit": "Please sit on the chair.",
+    "yes": "Yes, I would like some cake.",
+    "cake": "We had cake at the party.",
+    "bike": "I ride my bike to school.",
+    "home": "It is time to go home.",
+    "cube": "An ice cube is very cold.",
+    "time": "What time is it?",
+    "name": "My name is on my bag.",
+    "like": "I like to read books.",
+    "make": "Let’s make a sandcastle.",
+    "came": "Grandma came to see us.",
+    "five": "I have five fingers on each hand.",
+    "game": "This game is fun!",
+    "lake": "Ducks swim on the lake.",
+    "nose": "The clown has a red nose.",
+    "rope": "We skip with a rope.",
+    "tube": "The toothpaste is in a tube.",
+    "kite": "My kite flies high in the sky.",
+    "bone": "The dog has a bone.",
+    "ride": "Can I ride the pony?",
+    "smile": "Give me a big smile!",
+    "plane": "The plane flies over the clouds.",
+    "because": "I stay inside because it is raining.",
+    "would": "Would you like some juice?",
+    "could": "Could you help me, please?",
+    "friend": "My friend is coming to play.",
+    "their": "The children took their coats.",
+    "through": "The train goes through the tunnel.",
+    "always": "I always brush my teeth.",
+    "beautiful": "What a beautiful rainbow!",
+    "people": "Lots of people are at the park.",
+    "school": "We learn to read at school.",
+    "laugh": "The joke made me laugh.",
+    "enough": "I have had enough to eat.",
+    "said": "Mum said it is time for bed.",
+    "again": "Can we play again?",
+    "water": "Plants need water to grow.",
+    "colour": "Blue is my favourite colour.",
+    "island": "The pirates landed on an island.",
+    "knight": "The knight rides a white horse.",
+    "castle": "The queen lives in a castle.",
+    "tomorrow": "Tomorrow is my birthday."
   },
 };
 
-const pick = (list, rng) => list[Math.floor(rng() * list.length)];
-
-export function buildSentence(word, lang = 'en', rng = Math.random) {
-  const s = SENTENCES[lang] ?? SENTENCES.en;
-  const subject = pick(s.subjects, rng);
-  const adj = pick(s.adjectives, rng);
-  const place = pick(s.places, rng);
-  const reason = pick(s.reasons, rng);
-  let sentence;
-  if (lang === 'fr') {
-    sentence = s.template(adj, subject, word, place, reason);
-  } else {
-    const article = /^[aeiou]/i.test(adj) ? 'an' : 'a';
-    sentence = s.template(article, adj, subject, word, place, reason);
-  }
-  return sentence.charAt(0).toUpperCase() + sentence.slice(1);
+export function buildSentence(word, lang = 'en') {
+  return EXAMPLES[lang]?.[word] ?? (lang === 'fr' ? `Bravo, tu as écrit « ${word} » !` : `Well done, you spelled “${word}”!`);
 }
 
 export const UI = {
@@ -162,6 +267,10 @@ export const UI = {
     trophyRoom: 'My Trophy Room',
     inventory: 'Inventory',
     useItem: 'Use',
+    needTool: 'You need',
+    requires: 'Needs',
+    continueGame: 'Continue my game',
+    objectsCrafted: 'objects',
     equipHint: 'Tap an object to hold it, then the round button to use it.',
     parents: 'Parents’ corner',
     parentsTitle: 'Parents’ corner',
@@ -228,8 +337,10 @@ export const UI = {
     back: 'Back',
     helpSteps: [
       'Walk around the village with the joystick (touch) or WASD / arrow keys. Your two companions follow you!',
-      'Walk into a building: the roof disappears so you can see inside. Find the glowing orange spot.',
-      'Stand on the glowing spot and press the mine button. Listen to the word and type it. Spell it right to win a material!',
+      'Walk into a building: the roof disappears so you can see inside. The material you can win spins above the glowing ring — tap it!',
+      'Your hero walks to it, then listen to the word and type it. Spell it right to win the material!',
+      'Out in the world you can also mine ores in the quarry (pickaxe), cut wheat (scythe), chop trees (axe), pick flowers and draw water. These ask level-2 words.',
+      'Press the jump button (or the space bar) to climb the terraces in the hills.',
       'Each building gives different materials. When you have enough, tap a craft card to build the object.',
       'Crafted objects go in your hands: pick one in the inventory and press the round button to use it (pickaxe, sword, torch, wand, potion, bread). The house and the boat appear in the village!',
       'Craft all the objects to win!',
@@ -275,6 +386,10 @@ export const UI = {
     trophyRoom: 'Mon Trophée',
     inventory: 'Inventaire',
     useItem: 'Utiliser',
+    needTool: 'Il te faut',
+    requires: 'Il faut',
+    continueGame: 'Continuer ma partie',
+    objectsCrafted: 'objets',
     equipHint: 'Touche un objet pour le prendre en main, puis le bouton rond pour l’utiliser.',
     parents: 'Espace parents',
     parentsTitle: 'Espace parents',
@@ -341,8 +456,10 @@ export const UI = {
     back: 'Retour',
     helpSteps: [
       'Promène-toi dans le village avec le joystick (tactile) ou les touches WASD/flèches. Tu as deux compagnons qui te suivent !',
-      'Entre dans un bâtiment : le toit disparaît pour voir à l\'intérieur. Trouve le spot orange brillant.',
-      'Place-toi sur le spot et appuie sur le bouton miner. Écoute le mot et écris-le. Bien écrit, il te rapporte un matériau !',
+      'Entre dans un bâtiment : le toit disparaît pour voir à l\'intérieur. Le matériau à gagner tourne au-dessus de l\'anneau brillant : touche-le !',
+      'Ton héros y va tout seul. Écoute le mot et écris-le : bien écrit, il te rapporte le matériau !',
+      'Dans le monde, tu peux aussi miner des minerais dans la carrière (pioche), faucher le blé (faux), couper des arbres (hache), cueillir des fleurs et puiser de l\'eau. Là, les mots sont de niveau 2.',
+      'Appuie sur le bouton saut (ou la barre d\'espace) pour grimper les terrasses des collines.',
       'Chaque bâtiment donne des matériaux différents. Quand tu en as assez, touche une carte pour fabriquer l\'objet.',
       'Les objets fabriqués vont dans tes mains : choisis-en un dans l’inventaire et appuie sur le bouton rond pour l’utiliser (pioche, épée, torche, baguette, potion, pain). La maison et le bateau apparaissent dans le village !',
       'Fabrique tous les objets pour gagner !',
