@@ -104,6 +104,13 @@ export class GameScene {
     this.scene.add(this.torchLight);
     if (!new URLSearchParams(location.search).has('nomerge')) this._optimizeStatic();
     this.quality = new QualityManager(this);
+    // ?fps in the address shows a small frame counter (to check smoothness on the iPad).
+    if (new URLSearchParams(location.search).has('fps')) {
+      this.fpsEl = document.createElement('div');
+      this.fpsEl.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;padding:4px 8px;border-radius:8px;background:rgba(0,0,0,.65);color:#7CFC8A;font:700 13px/1.2 ui-monospace,monospace;pointer-events:none';
+      document.body.appendChild(this.fpsEl);
+      this._fps = { n: 0, t: performance.now() };
+    }
     this._bindEvents();
     this._animate();
   }
@@ -1635,6 +1642,15 @@ export class GameScene {
     const rawDt = this.clock.getDelta();
     const dt = Math.min(rawDt, 0.05);
     if (this.mode === 'paused') return; // a page covers the world: don't spend battery
+    if (this.fpsEl) {
+      this._fps.n++;
+      const now = performance.now();
+      if (now - this._fps.t > 1000) {
+        const info = this.renderer.info.render;
+        this.fpsEl.textContent = `${Math.round((this._fps.n * 1000) / (now - this._fps.t))} fps · q${this.quality.level} · ${info.calls} calls`;
+        this._fps = { n: 0, t: now };
+      }
+    }
     this.quality?.tick(rawDt);
     const elapsed = this.clock.elapsedTime;
 

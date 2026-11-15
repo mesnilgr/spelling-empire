@@ -104,8 +104,11 @@
 
           <!-- Inventory bar along the bottom of the game screen -->
           <div class="hud-panel inventory-bar" id="inventory-panel">
-            <div class="materials-display" id="materials-display"></div>
-            <div class="equip-bar" id="equip-bar" hidden></div>
+            <!-- Only the materials and objects scroll; the Crafting button always stays visible. -->
+            <div class="inv-scroll" id="inv-scroll">
+              <div class="materials-display" id="materials-display"></div>
+              <div class="equip-bar" id="equip-bar" hidden></div>
+            </div>
             <button class="craft-open-btn" id="craft-open-btn" type="button">⚒️ <span data-i18n="craftMenu">Crafting</span> <span class="craft-badge" id="craft-badge" hidden>0</span></button>
           </div>
 

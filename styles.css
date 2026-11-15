@@ -1551,3 +1551,34 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .hw-buttons { display: flex; gap: 8px; margin-top: auto; flex-wrap: wrap; }
 .hw-toggle { font-size: 1.2rem; }
 @media (max-width: 560px) { .hw-panel { flex-direction: column; align-items: center; } .hw-pad { width: min(260px, 80vw); } }
+
+/* Inventory bar: scrolling list on the left, Crafting button pinned on the right. */
+.inventory-bar { overflow: hidden; }
+.inv-scroll {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+}
+.inv-scroll::-webkit-scrollbar { display: none; }
+.inv-scroll .materials-display { flex: 0 0 auto; flex-wrap: nowrap; gap: 6px; }
+.inv-scroll .equip-bar { flex: 0 0 auto; flex-wrap: nowrap; margin: 0; padding: 0 0 0 10px; border-top: 0; border-left: 1.5px solid var(--hud-line); }
+.craft-open-btn { margin-left: 0; flex-shrink: 0; }
+
+/* Items wrap onto extra rows instead of hiding off to the side. */
+.inv-scroll { flex-wrap: wrap; overflow-x: hidden; overflow-y: auto; max-height: 96px; mask-image: none; -webkit-mask-image: none; align-content: center; row-gap: 6px; }
+.inv-scroll .materials-display { flex-wrap: wrap; }
+.inv-scroll .equip-bar { flex-wrap: wrap; }
+.inventory-bar { align-items: center; }
+/* Portrait: use the full width, just above the joystick and buttons. */
+@media (orientation: portrait) {
+  .inventory-bar {
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(max(16px, env(safe-area-inset-bottom)) + 136px);
+  }
+  #screen-game .interact-hint { bottom: 250px; }
+}
+.inv-scroll .materials-display { flex: 1 1 100%; min-width: 0; }
+.inv-scroll .equip-bar { flex: 1 1 100%; border-left: 0; padding-left: 0; }
+.inv-scroll { max-height: min(38vh, 210px); }
