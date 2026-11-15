@@ -1137,3 +1137,16 @@ p { margin: 0; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Joystick and mine button float over the game so they are always on screen (iPad). */
+.touch-controls {
+  position: fixed;
+  left: max(20px, env(safe-area-inset-left));
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  margin: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+.touch-controls > * { pointer-events: auto; }
+body[data-screen]:not([data-screen="game"]) .touch-controls { display: none; }

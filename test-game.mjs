@@ -265,6 +265,29 @@ const ENEMY_TAUNTS = {
 assert(ENEMY_TAUNTS.en.length >= 4, 'en: enough taunts');
 assert(ENEMY_TAUNTS.fr.length >= 4, 'fr: enough taunts');
 
+// 10b. Word lists follow the level rules the parents asked for
+// Nasal vowels only count before a consonant or at the end ("a-mi" is simple, "lapin" is not).
+const FR_COMPLEX = /((on|om|an|am|en|em|in|im|un|um)([^aeiouéèêy]|$)|ou|oi|au|eau|ch|gn|ph|qu|ai|ei|eu|ill|ss|ll|tt|mm|nn|pp|rr)/;
+const frEasy = WORDS.fr.filter(w => w.level === 'easy').map(w => w.word);
+const frMedium = WORDS.fr.filter(w => w.level === 'medium').map(w => w.word);
+for (const w of frEasy) {
+  assert(!w.endsWith('e'), `fr/easy "${w}": no final mute e`);
+  assert(!/[stdxpgz]$/.test(w), `fr/easy "${w}": no silent final consonant`);
+  assert(!FR_COMPLEX.test(w), `fr/easy "${w}": only simple one-letter sounds`);
+  assert(!/[cg][eéiy]/.test(w), `fr/easy "${w}": no soft c/g`);
+}
+for (const w of frMedium) {
+  assert(w.endsWith('e'), `fr/medium "${w}": ends with a mute e`);
+  assert(!FR_COMPLEX.test(w), `fr/medium "${w}": otherwise simple sounds`);
+  assert(!/[cg][eéiy]/.test(w), `fr/medium "${w}": no soft c/g`);
+}
+for (const w of WORDS.en.filter(x => x.level === 'easy').map(x => x.word)) {
+  assert(/^[^aeiou][aeiou][^aeiouwy]$/.test(w) || w === 'yes', `en/easy "${w}": consonant-vowel-consonant`);
+}
+for (const w of WORDS.en.filter(x => x.level === 'medium').map(x => x.word)) {
+  assert(/[aeiou][^aeiou]e$/.test(w), `en/medium "${w}": magic e`);
+}
+
 // 11. Level word counts
 for (const lang of ['en', 'fr']) {
   for (const level of LEVELS[lang]) {

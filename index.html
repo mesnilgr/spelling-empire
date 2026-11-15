@@ -8,6 +8,10 @@
     <meta name="description" content="Spelling Empires: explore a fantasy village, mine materials by spelling words, and craft magical objects. An RPG spelling adventure for young learners." />
     <title>Spelling Empires</title>
     <link rel="stylesheet" href="./styles.css" />
+    <!-- Lets the unbuilt source run directly on GitHub Pages (main / root): bare "three" imports resolve to vendor/three. Vite bundles its own copy. -->
+    <script type="importmap">
+      { "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/examples/jsm/" } }
+    </script>
   </head>
   <body data-screen="menu">
     <div class="app">

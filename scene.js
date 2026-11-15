@@ -3,12 +3,24 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { PropKit, PALETTE, furnishTavern, seededRandom } from './interiors.js';
 
 const TILE = 2;
 const PLAYER_SPEED = 4.5;
 const COMPANION_SPEED = 4.0;
 const PLAYER_RADIUS = 0.35;
-const WALL_HEIGHT = 2.4;
+const WALL_HEIGHT = 2.6;
+const WALL_THICKNESS = 0.26;
+// Camera looks at the village from a corner, like a classic isometric RPG.
+const CAM_YAW = 0.7;
+
+function hashString(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+const lerp = (a, b, t) => a + (b - a) * t;
 const FLOOR_Y = 0;
 
 const COLORS = {
@@ -52,8 +64,13 @@ export class GameScene {
     this.shakeIntensity = 0;
     this.shakeDecay = 0;
     this.cameraAngle = 0;
-    this.fadeTargets = [];
-    this.fireMeshes = [];
+    this.houses = [];
+    this.npcs = [];
+    this.waterMats = [];
+    this.kit = new PropKit();
+    this.interiorFactor = 0;
+    this.activeHouse = null;
+    this.camTarget = new THREE.Vector3(0, 0.6, 4);
 
     this._initRenderer();
     this._initScene();
@@ -85,17 +102,20 @@ export class GameScene {
 
   _initCamera() {
     const aspect = this.container.clientWidth / this.container.clientHeight;
-    this.camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 200);
-    this.camera.position.set(0, 16, 14);
-    this.camera.lookAt(0, 0, -1);
+    this.camera = new THREE.PerspectiveCamera(38, aspect, 0.1, 200);
+    this.camera.position.set(Math.sin(CAM_YAW) * 15, 21, 4 + Math.cos(CAM_YAW) * 15);
+    this.camera.lookAt(0, 0.6, 4);
   }
 
   _initLights() {
-    const ambient = new THREE.AmbientLight(0xd7e7ef, 0.72);
+    // Late-afternoon light: warm low sun, soft sky fill.
+    const ambient = new THREE.AmbientLight(0xfff1dc, 0.55);
     this.scene.add(ambient);
+    this.ambient = ambient;
 
-    const sun = new THREE.DirectionalLight(0xffe1b2, 1.35);
-    sun.position.set(15, 25, 10);
+    const sun = new THREE.DirectionalLight(0xffd6a0, 1.7);
+    sun.position.set(-14, 24, 12);
+    this.sun = sun;
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -30;
@@ -107,8 +127,10 @@ export class GameScene {
     sun.shadow.bias = -0.0005;
     this.scene.add(sun);
 
-    const hemi = new THREE.HemisphereLight(0xb0d0ff, 0x4a6a3a, 0.3);
+    const hemi = new THREE.HemisphereLight(0xbfd8ff, 0x4a6a3a, 0.45);
     this.scene.add(hemi);
+    this.hemi = hemi;
+    this.lightBase = { ambient: ambient.intensity, sun: sun.intensity, hemi: hemi.intensity };
   }
 
   // ===== WORLD BUILDING =====
@@ -116,18 +138,27 @@ export class GameScene {
   _initWorld() {
     this._buildGround();
     this._buildPaths();
-    this._buildTrees();
-    this._buildFlowers();
     this._buildPond();
     this._buildFountain();
 
     // Buildings — placed around the village, doors face +Z (toward camera)
     this._buildHouse(-10, -6, 0, 'blacksmith', 7, 5, 5, COLORS.roof, 'forge');
     this._buildHouse(8, -8, 0, 'shop', 7, 5, 5, COLORS.roofBlue, 'shop');
-    this._buildHouse(-12, 8, 0, 'tavern', 9, 5, 6, COLORS.roofGreen, 'tavern');
-    this._buildHouse(12, 6, 0, 'tower', 5, 8, 4, 0x5544aa, 'tower');
+    // The tavern is the reference interior: big room, taller walls, fully furnished.
+    this._buildHouse(-13, 7, 0, 'tavern', 15, 5.8, 11, COLORS.roofGreen, 'tavern', {
+      wallH: 3.0,
+      windows: { back: [], left: [], right: [-2.2, 2.2], front: [-4.6, 4.6] },
+    });
+    this._buildHouse(12, 6, 0, 'tower', 5, 8, 4, 0x5544aa, 'tower', { roof: 'pyramid', wallH: 4.6 });
     this._buildHouse(0, 14, 0, 'cottage', 6, 4, 4, COLORS.roof, 'cottage');
     this._buildHouse(-2, -14, 0, 'guild', 8, 5, 5, 0x6a4a2a, 'guild');
+
+    this._buildTrees();
+    this._buildFlowers();
+  }
+
+  _insideAnyHouse(x, z, margin = 0.6) {
+    return this.houses.some((h) => Math.abs(x - h.center.x) < h.w / 2 + margin && Math.abs(z - h.center.z) < h.d / 2 + margin);
   }
 
   _buildGround() {
@@ -176,7 +207,7 @@ export class GameScene {
 
   _buildTrees() {
     const treePositions = [
-      [-18, -10], [-20, 5], [-22, -2], [18, -12], [20, 8], [22, -4],
+      [-18, -10], [-24, 3], [-22, -2], [18, -12], [20, 8], [22, -4],
       [-8, 14], [-15, 16], [10, 16], [16, 14], [-24, 12], [24, -16],
       [-4, -20], [4, -20], [-10, -22], [10, -22],
     ];
@@ -204,6 +235,7 @@ export class GameScene {
       const z = (Math.random() - 0.5) * 50;
       if (Math.abs(x) < 3 && Math.abs(z) < 14) continue;
       if (Math.abs(z) < 3 && Math.abs(x) < 14) continue;
+      if (this._insideAnyHouse(x, z)) continue;
       const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
       const geo = new THREE.SphereGeometry(0.08, 6, 5);
       const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.1 });
@@ -224,6 +256,7 @@ export class GameScene {
       color: COLORS.water, roughness: 0.1, metalness: 0.5,
       transparent: true, opacity: 0.8,
     });
+    this.waterMats.push(mat);
     const pond = new THREE.Mesh(geo, mat);
     pond.rotation.x = -Math.PI / 2;
     pond.position.set(-16, 0.03, -16);
@@ -255,6 +288,7 @@ export class GameScene {
 
     const waterGeo = new THREE.CylinderGeometry(1.0, 1.0, 0.3, 16);
     const waterMat = new THREE.MeshStandardMaterial({ color: COLORS.water, transparent: true, opacity: 0.7, roughness: 0.1 });
+    this.waterMats.push(waterMat);
     const water = new THREE.Mesh(waterGeo, waterMat);
     water.position.y = 0.35;
     group.add(water);
@@ -274,168 +308,130 @@ export class GameScene {
     this.collidables.push({ x: 0, z: 0, r: 1.6 });
   }
 
-  _buildHouse(x, z, rotation, name, w, h, d, roofColor, type) {
+  _buildHouse(x, z, rotation, name, w, h, d, roofColor, type, opts = {}) {
+    const kit = this.kit;
+    const wallH = opts.wallH ?? WALL_HEIGHT;
+    const wallT = WALL_THICKNESS;
+    const doorW = opts.doorW ?? 1.6;
     const group = new THREE.Group();
     group.position.set(x, 0, z);
     group.rotation.y = rotation;
     group.userData.houseBounds = { x, z, w, d, rotation };
-
     const halfW = w / 2;
     const halfD = d / 2;
+    const lightsBefore = kit.lights.length;
 
-    // Floor
-    const floorGeo = new THREE.BoxGeometry(w, 0.1, d);
-    const floorMat = new THREE.MeshStandardMaterial({ color: COLORS.wood, roughness: 0.8 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.position.y = 0.05;
-    floor.receiveShadow = true;
-    group.add(floor);
+    const house = {
+      group, name, type,
+      center: new THREE.Vector3(x, 0, z),
+      w, d, rotation, wallH, doorW,
+      cut: 0,
+      cutTargets: [],
+      roof: null,
+      lights: [],
+    };
 
-    // Individual floor boards give the interiors the warm, hand-built look of a tavern.
-    const boardMat = new THREE.MeshStandardMaterial({ color: 0xa77a4b, roughness: 0.9 });
-    const boardCount = Math.max(4, Math.floor(d));
-    for (let i = 0; i < boardCount; i++) {
-      const boardGeo = new THREE.BoxGeometry(w - 0.18, 0.035, 0.035);
-      const board = new THREE.Mesh(boardGeo, boardMat);
-      board.position.set(0, 0.12, -halfD + 0.18 + i * ((d - 0.36) / (boardCount - 1)));
-      board.receiveShadow = true;
-      group.add(board);
+    // Stone foundation slab, then a plank floor on top of it.
+    const stoneMat = kit.mat(0x8f8a84, { roughness: 0.95 });
+    kit.box(group, w + 0.34, 0.1, d + 0.34, stoneMat, 0, 0.04, 0, { cast: false });
+    kit.plankFloor(group, w - wallT, d - wallT, { seed: hashString(name), y: 0.1, border: true });
+
+    // ----- Walls -----
+    const wallMat = kit.mat(PALETTE.plaster, { roughness: 0.92 });
+    const capMat = kit.mat(0x3b2416, { roughness: 0.7 });
+    const skirtMat = kit.mat(0x4a2c1a, { roughness: 0.8 });
+    const win = { front: [], back: [], left: [], right: [], ...(opts.windows || {}) };
+
+    // A wall is a pivot at floor level holding: `body` (shrinks in cutaway mode),
+    // a stone footing (always visible), and `decor` (hidden in cutaway mode).
+    const makeWall = (len, cx, cz, ry, normal, { door = false, windows = [] } = {}) => {
+      const seg = new THREE.Group();
+      seg.position.set(cx, 0, cz);
+      seg.rotation.y = ry;
+      group.add(seg);
+      const body = new THREE.Group();
+      seg.add(body);
+      const decor = new THREE.Group();
+      seg.add(decor);
+      const side = (len - doorW) / 2;
+      const pieces = door ? [[-(doorW / 2 + side / 2), side], [doorW / 2 + side / 2, side]] : [[0, len]];
+      for (const [px, pl] of pieces) {
+        kit.box(body, pl, wallH, wallT, wallMat, px, wallH / 2, 0);
+        kit.box(body, pl, 0.34, wallT + 0.05, skirtMat, px, 0.27, 0, { cast: false });
+        kit.box(body, pl + 0.04, 0.14, wallT + 0.12, capMat, px, wallH + 0.07, 0);
+        kit.box(seg, pl + 0.04, 0.3, wallT + 0.16, stoneMat, px, 0.15, 0, { cast: false });
+      }
+      if (door) {
+        const doorH = 2.1;
+        kit.box(decor, doorW, wallH - doorH, wallT, wallMat, 0, doorH + (wallH - doorH) / 2, 0);
+        kit.box(decor, doorW + 0.24, 0.18, wallT + 0.1, capMat, 0, doorH + 0.09, 0);
+        kit.box(decor, doorW + 0.04, 0.14, wallT + 0.12, capMat, 0, wallH + 0.07, 0);
+        for (const s of [-1, 1]) kit.box(body, 0.14, doorH, wallT + 0.1, capMat, s * (doorW / 2 + 0.07), doorH / 2, 0);
+      }
+      for (const wx of windows) kit.window(decor, wx, 1.55, 0, 0, { t: wallT });
+      house.cutTargets.push({ body, decor, normal: normal.clone(), minScale: 0.42 / wallH });
+      return { seg, body, decor };
+    };
+
+    const sideWin = Math.max(1.1, (halfW - doorW / 2) / 2 + doorW / 2);
+    makeWall(w, 0, -halfD, 0, new THREE.Vector3(0, 0, -1), { windows: opts.windows?.back ?? [-w / 4, w / 4] });
+    makeWall(d, -halfW, 0, Math.PI / 2, new THREE.Vector3(-1, 0, 0), { windows: opts.windows?.left ?? [0] });
+    makeWall(d, halfW, 0, Math.PI / 2, new THREE.Vector3(1, 0, 0), { windows: opts.windows?.right ?? [0] });
+    const front = makeWall(w, 0, halfD, 0, new THREE.Vector3(0, 0, 1), { door: true, windows: opts.windows?.front ?? [-sideWin, sideWin] });
+    void win;
+
+    // Timber corner posts; each one shrinks with the walls that face the camera.
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const post = new THREE.Group();
+      post.position.set(sx * halfW, 0, sz * halfD);
+      group.add(post);
+      const body = new THREE.Group();
+      post.add(body);
+      kit.box(body, wallT + 0.14, wallH + 0.14, wallT + 0.14, capMat, 0, (wallH + 0.14) / 2, 0);
+      house.cutTargets.push({ body, decor: new THREE.Group(), normal: new THREE.Vector3(sx, 0, sz).normalize(), minScale: 0.5 / wallH });
     }
 
-    // Walls — each wall is tracked for transparency
-    const wallMat = new THREE.MeshStandardMaterial({ color: COLORS.wall, roughness: 0.85, side: THREE.DoubleSide });
-    const walls = [];
+    // ----- Roof -----
+    house.roof = this._buildRoof(group, w, d, wallH, h - wallH, roofColor, opts.roof ?? 'gable', type);
 
-    // Back wall (south, -Z — the side facing away from camera)
-    const backWall = this._makeWall(w, WALL_HEIGHT, wallMat);
-    backWall.position.set(0, WALL_HEIGHT / 2, -halfD);
-    group.add(backWall);
-    walls.push({ mesh: backWall, isBack: true });
+    // Invisible caster: keeps the interior in the roof's shade after the roof is hidden.
+    const caster = new THREE.Mesh(
+      new THREE.BoxGeometry(w + 0.6, 0.12, d + 0.6),
+      new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }),
+    );
+    caster.position.y = wallH + 0.25;
+    caster.castShadow = true;
+    group.add(caster);
 
-    // Left wall
-    const leftWall = this._makeWall(d, WALL_HEIGHT, wallMat);
-    leftWall.position.set(-halfW, WALL_HEIGHT / 2, 0);
-    leftWall.rotation.y = Math.PI / 2;
-    group.add(leftWall);
-    walls.push({ mesh: leftWall, isBack: false });
-
-    // Right wall
-    const rightWall = this._makeWall(d, WALL_HEIGHT, wallMat);
-    rightWall.position.set(halfW, WALL_HEIGHT / 2, 0);
-    rightWall.rotation.y = Math.PI / 2;
-    group.add(rightWall);
-    walls.push({ mesh: rightWall, isBack: false });
-
-    // Front wall with door gap (on +Z side, facing the camera)
-    const doorWidth = 1.2;
-    const segWidth = (w - doorWidth) / 2;
-    const frontLeft = this._makeWall(segWidth, WALL_HEIGHT, wallMat);
-    frontLeft.position.set(-(doorWidth / 2 + segWidth / 2), WALL_HEIGHT / 2, halfD);
-    group.add(frontLeft);
-    walls.push({ mesh: frontLeft, isBack: false });
-
-    const frontRight = this._makeWall(segWidth, WALL_HEIGHT, wallMat);
-    frontRight.position.set(doorWidth / 2 + segWidth / 2, WALL_HEIGHT / 2, halfD);
-    group.add(frontRight);
-    walls.push({ mesh: frontRight, isBack: false });
-
-    // Door (top piece)
-    const doorTopGeo = new THREE.BoxGeometry(doorWidth, WALL_HEIGHT - 1.6, 0.08);
-    const doorMat = new THREE.MeshStandardMaterial({ color: COLORS.door, roughness: 0.7 });
-    const doorTop = new THREE.Mesh(doorTopGeo, doorMat);
-    doorTop.position.set(0, 1.6 + (WALL_HEIGHT - 1.6) / 2, halfD);
-    group.add(doorTop);
-
-    // Windows
-    const winMat = new THREE.MeshStandardMaterial({ color: COLORS.window, emissive: 0x224466, emissiveIntensity: 0.3, transparent: true, opacity: 0.7 });
-    const winPositions = [
-      { x: -halfW + 0.8, z: -halfD + 0.02, ry: 0, w: 1, h: 0.7 },
-      { x: halfW - 0.8, z: -halfD + 0.02, ry: 0, w: 1, h: 0.7 },
-      { x: -halfW + 0.8, z: halfD - 0.02, ry: 0, w: 1, h: 0.7 },
-      { x: halfW - 0.8, z: halfD - 0.02, ry: 0, w: 1, h: 0.7 },
-    ];
-    for (const wp of winPositions) {
-      const winGeo = new THREE.BoxGeometry(wp.w, wp.h, 0.05);
-      const win = new THREE.Mesh(winGeo, winMat);
-      win.position.set(wp.x, 1.3, wp.z);
-      group.add(win);
+    // ----- Interior -----
+    if (type === 'tavern') {
+      furnishTavern(kit, group, { w, d, wallH, wallT }, {
+        collider: (lx, lz, r) => this._addLocalCollider(group, lx, lz, r),
+        character: (color, lx, lz, ry) => {
+          const npc = this._createCharacter(color);
+          npc.position.set(lx, 0.1, lz);
+          npc.rotation.y = ry;
+          group.add(npc);
+          this.npcs.push(npc);
+          this._addLocalCollider(group, lx, lz, 0.4);
+        },
+      });
+      this._dressTavernExterior(group, front.decor, halfW, halfD);
+    } else {
+      const light = new THREE.PointLight(0xffb45c, 5, Math.max(w, d) * 1.8, 1.5);
+      light.position.set(0, wallH - 0.5, 0);
+      group.add(light);
+      kit.lights.push({ light, base: 5, amp: 0.03, speed: 3, phase: Math.random() * 10 });
+      this._addFurniture(group, type, w, d, halfW, halfD);
     }
+    house.lights = kit.lights.slice(lightsBefore);
 
-    // Roof
-    const roofGeo = new THREE.ConeGeometry(Math.max(w, d) * 0.78, h - WALL_HEIGHT, 4);
-    const roofMat = new THREE.MeshStandardMaterial({
-      color: roofColor,
-      roughness: 0.62,
-      metalness: 0.05,
-      emissive: new THREE.Color(roofColor).multiplyScalar(0.08),
-      flatShading: true,
-      side: THREE.DoubleSide,
-    });
-    const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = WALL_HEIGHT + (h - WALL_HEIGHT) / 2;
-    roof.rotation.y = Math.PI / 4;
-    roof.castShadow = true;
-    roof.renderOrder = 2;
-    group.add(roof);
-    walls.push({ mesh: roof, isRoof: true });
+    this._addSign(group, name, -halfW - 0.4, -halfD - 0.4);
 
-    const roofCapGeo = new THREE.CylinderGeometry(0.16, 0.22, 0.16, 6);
-    const roofCapMat = new THREE.MeshStandardMaterial({ color: 0xf4c978, roughness: 0.45, emissive: 0x6b421c, emissiveIntensity: 0.25 });
-    const roofCap = new THREE.Mesh(roofCapGeo, roofCapMat);
-    roofCap.position.y = h;
-    roofCap.castShadow = true;
-    group.add(roofCap);
-
-    const eaveMat = new THREE.MeshStandardMaterial({ color: 0x4c3025, roughness: 0.82 });
-    const eave = new THREE.Mesh(new THREE.BoxGeometry(w + 0.45, 0.14, d + 0.45), eaveMat);
-    eave.position.y = WALL_HEIGHT - 0.05;
-    eave.castShadow = true;
-    group.add(eave);
-    walls.push({ mesh: eave, isRoof: true });
-
-    // For tower, add a second floor
-    if (type === 'tower') {
-      const upperRoofGeo = new THREE.ConeGeometry(w * 0.5, 1.5, 4);
-      const upperRoof = new THREE.Mesh(upperRoofGeo, roofMat);
-      upperRoof.position.y = h + 0.75;
-      upperRoof.rotation.y = Math.PI / 4;
-      group.add(upperRoof);
-      upperRoof.renderOrder = 2;
-      walls.push({ mesh: upperRoof, isRoof: true });
-
-      const upperWalls = new THREE.BoxGeometry(w * 0.7, 1.5, d * 0.7);
-      const upperWallMesh = new THREE.Mesh(upperWalls, wallMat);
-      upperWallMesh.position.y = h - 0.25;
-      group.add(upperWallMesh);
-      walls.push({ mesh: upperWallMesh, isBack: true });
-
-      // Add interior floor for second story
-      const intFloorGeo = new THREE.BoxGeometry(w * 0.7, 0.08, d * 0.7);
-      const intFloor = new THREE.Mesh(intFloorGeo, floorMat);
-      intFloor.position.y = h - 1;
-      group.add(intFloor);
-    }
-
-    // Warm interior light makes the building readable when the roof fades
-    const interiorLight = new THREE.PointLight(0xffb45c, 1.35, Math.max(w, d) * 2.8, 2);
-    interiorLight.position.set(0, 2.1, 0);
-    group.add(interiorLight);
-
-    const doorwayLight = new THREE.PointLight(0xff8a3d, 0.8, 4, 2);
-    doorwayLight.position.set(0, 1.45, halfD + 0.25);
-    group.add(doorwayLight);
-
-    // Interior furniture based on type
-    this._addFurniture(group, type, w, d, halfW, halfD);
-
-    // Roof sign post outside (on the back/side, away from the door)
-    this._addSign(group, name, -halfW - 0.3, -halfD - 0.3);
-
-    // Mining spot inside
-    const spotGeo = new THREE.CylinderGeometry(0.3, 0.35, 0.15, 8);
+    // Mining spot in the middle of the room.
     const spotMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.5 });
-    const spot = new THREE.Mesh(spotGeo, spotMat);
-    spot.position.set(0, 0.18, 0);
+    const spot = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.05, 20), spotMat);
+    spot.position.set(0, 0.15, 0);
     group.add(spot);
     this.interactables.push({
       mesh: spot,
@@ -446,34 +442,119 @@ export class GameScene {
       glow: spotMat,
     });
 
-    // Register walls for transparency — store house bounds for containment check
-    for (const wall of walls) {
-      this.fadeTargets.push({
-        mesh: wall.mesh,
-        houseGroup: group,
-        houseCenter: new THREE.Vector3(x, 0, z),
-        houseW: w,
-        houseD: d,
-        houseRotation: rotation,
-        isRoof: wall.isRoof === true,
-        isBack: wall.isBack,
-      });
-    }
+    // Collision: wall segments only, with a gap for the door.
+    this.collidables.push({ type: 'houseWall', x, z, rotation, halfW, halfD, doorHalf: doorW / 2 });
 
-    // Collision: wall segments only (not a full circle), so player can walk through the door
-    const doorHalf = 0.6;
-    this.collidables.push({ type: 'houseWall', x, z, rotation, halfW, halfD, doorHalf });
-
+    this.houses.push(house);
     this.scene.add(group);
     return group;
   }
 
-  _makeWall(w, h, mat) {
-    const geo = new THREE.BoxGeometry(w, h, 0.12);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    return mesh;
+  _addLocalCollider(group, lx, lz, r) {
+    const v = new THREE.Vector3(lx, 0, lz).applyAxisAngle(new THREE.Vector3(0, 1, 0), group.rotation.y).add(group.position);
+    this.collidables.push({ x: v.x, z: v.z, r });
+  }
+
+  // Roof parts get their own materials so one house's roof can fade without touching the others.
+  _buildRoof(group, w, d, wallH, rise, color, style, type) {
+    const roof = new THREE.Group();
+    group.add(roof);
+    const mats = [];
+    const mk = (c, extra = {}) => {
+      const m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.72, ...extra });
+      mats.push(m);
+      return m;
+    };
+    const tileMat = mk(color, { flatShading: true });
+    const tileDark = mk(new THREE.Color(color).multiplyScalar(0.72).getHex());
+    const trimMat = mk(0x3b2416);
+    const gableMat = mk(PALETTE.plaster, { roughness: 0.92 });
+    const add = (geo, mat, px, py, pz, rx = 0, ry = 0) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(px, py, pz);
+      m.rotation.set(rx, ry, 0);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      roof.add(m);
+      return m;
+    };
+
+    if (style === 'gable') {
+      const o = 0.45;
+      const hd = d / 2;
+      const s = hd + o;
+      const slope = rise / hd;
+      const yLow = wallH + 0.14 - slope * o;
+      const apex = wallH + 0.14 + rise;
+      const len = Math.hypot(s, apex - yLow);
+      const angle = Math.atan2(apex - yLow, s);
+      for (const sgn of [-1, 1]) {
+        const panel = new THREE.Group();
+        panel.position.set(0, (apex + yLow) / 2, (sgn * s) / 2);
+        panel.rotation.x = sgn * angle;
+        roof.add(panel);
+        const slab = new THREE.Mesh(new THREE.BoxGeometry(w + o * 2, 0.16, len), tileMat);
+        slab.castShadow = true;
+        slab.receiveShadow = true;
+        panel.add(slab);
+        // Rows of shingles.
+        const rows = Math.floor(len / 0.38);
+        for (let i = 0; i < rows; i++) {
+          const strip = new THREE.Mesh(new THREE.BoxGeometry(w + o * 2 + 0.02, 0.05, 0.08), tileDark);
+          strip.position.set(0, 0.09, -len / 2 + 0.2 + i * 0.38);
+          panel.add(strip);
+        }
+      }
+      // Ridge beam and gable ends.
+      add(new THREE.BoxGeometry(w + o * 2 + 0.1, 0.18, 0.26), trimMat, 0, apex + 0.06, 0);
+      const shape = new THREE.Shape();
+      shape.moveTo(-hd, 0);
+      shape.lineTo(hd, 0);
+      shape.lineTo(0, rise);
+      shape.closePath();
+      const gableGeo = new THREE.ExtrudeGeometry(shape, { depth: WALL_THICKNESS, bevelEnabled: false });
+      for (const sgn of [-1, 1]) {
+        add(gableGeo, gableMat, sgn * (w / 2) - WALL_THICKNESS / 2, wallH + 0.14, 0, 0, Math.PI / 2);
+        // Timber trim along the gable edge.
+        for (const e of [-1, 1]) {
+          add(new THREE.BoxGeometry(0.14, 0.14, Math.hypot(hd, rise) + 0.1), trimMat,
+            sgn * (w / 2 + 0.03), wallH + 0.14 + rise / 2, (e * hd) / 2, e * Math.atan2(rise, hd), 0);
+        }
+      }
+    } else {
+      // Pyramid roof (tower).
+      const cone = add(new THREE.ConeGeometry(Math.hypot(w, d) / 2 + 0.5, rise, 4), tileMat, 0, wallH + 0.14 + rise / 2, 0, 0, Math.PI / 4);
+      cone.material = tileMat;
+      add(new THREE.CylinderGeometry(0.16, 0.22, 0.3, 6), trimMat, 0, wallH + rise + 0.1, 0);
+    }
+    return { group: roof, mats };
+  }
+
+  _dressTavernExterior(group, frontDecor, halfW, halfD) {
+    const kit = this.kit;
+    // Hanging sign over the door (part of the façade, hidden in cutaway mode).
+    kit.box(frontDecor, 0.08, 0.08, 0.9, kit.mat(0x2b2523, { metalness: 0.5 }), 1.3, 2.55, 0.5);
+    kit.box(frontDecor, 0.9, 0.55, 0.06, kit.mat(0x7a4a26), 1.3, 2.15, 0.85);
+    kit.box(frontDecor, 0.36, 0.3, 0.07, kit.mat(PALETTE.rugGold, { metalness: 0.3, roughness: 0.5 }), 1.3, 2.15, 0.86);
+    // Bench, plants and a lamp post by the entrance.
+    const wood = kit.mat(PALETTE.wood);
+    const dark = kit.mat(PALETTE.woodDark);
+    const bench = kit.group(group, -3.4, halfD + 1.0);
+    kit.box(bench, 1.8, 0.08, 0.4, wood, 0, 0.45, 0);
+    for (const s of [-1, 1]) kit.box(bench, 0.08, 0.42, 0.34, dark, s * 0.75, 0.21, 0);
+    this._addLocalCollider(group, -3.4, halfD + 1.0, 0.6);
+    kit.plant(group, -1.25, halfD + 0.55);
+    kit.plant(group, 1.25, halfD + 0.55);
+    const lamp = kit.group(group, 2.6, halfD + 1.4);
+    kit.box(lamp, 0.12, 2.4, 0.12, kit.mat(0x2b2523, { metalness: 0.4 }), 0, 1.2, 0);
+    kit.box(lamp, 0.5, 0.07, 0.07, kit.mat(0x2b2523, { metalness: 0.4 }), 0.22, 2.35, 0);
+    kit.box(lamp, 0.2, 0.28, 0.2, kit.glow(0xffc46a, 2.2), 0.42, 2.12, 0);
+    this._addLocalCollider(group, 2.6, halfD + 1.4, 0.25);
+    // Stepping stones from the door.
+    const rnd = seededRandom(11);
+    for (let i = 0; i < 4; i++) {
+      kit.box(group, 0.7 + rnd() * 0.3, 0.05, 0.5, kit.mat(0x9a948c, { roughness: 1 }), (rnd() - 0.5) * 0.4, 0.03, halfD + 0.6 + i * 0.75, { ry: rnd() * 0.4, cast: false });
+    }
   }
 
   _addFurniture(group, type, w, d, halfW, halfD) {
@@ -482,7 +563,7 @@ export class GameScene {
     const stoneMat = new THREE.MeshStandardMaterial({ color: COLORS.stone, roughness: 0.7 });
 
     if (type === 'forge') {
-      this._addFireplace(group, halfW, halfD, 1.4);
+      this.kit.fireplace(group, 0, -halfD + WALL_THICKNESS / 2, 0, { width: 1.8, chimneyTop: WALL_HEIGHT + 2.2, seed: 21 });
       // Anvil
       const anvilGeo = new THREE.BoxGeometry(0.5, 0.4, 0.3);
       const anvil = new THREE.Mesh(anvilGeo, stoneMat);
@@ -517,46 +598,6 @@ export class GameScene {
           item.position.set(-0.6 + j * 0.6, 0.92 + i * 0.5, 1.8);
           group.add(item);
         }
-      }
-    } else if (type === 'tavern') {
-      this._addFireplace(group, halfW, halfD, 1.8);
-      this._addRug(group, 0, 0.12, 0x8f2e2e, 3.8, 2.5);
-      this._addBarrels(group, halfW, halfD);
-      // Tables
-      for (let i = 0; i < 2; i++) {
-        const tableGeo = new THREE.BoxGeometry(0.8, 0.05, 0.8);
-        const table = new THREE.Mesh(tableGeo, woodMat);
-        table.position.set(-1.5 + i * 2.5, 0.5, 0.5);
-        table.castShadow = true;
-        group.add(table);
-        // Legs
-        for (const lx of [-0.3, 0.3]) {
-          for (const lz of [-0.3, 0.3]) {
-            const legGeo = new THREE.BoxGeometry(0.08, 0.5, 0.08);
-            const leg = new THREE.Mesh(legGeo, woodDarkMat);
-            leg.position.set(-1.5 + i * 2.5 + lx, 0.25, 0.5 + lz);
-            group.add(leg);
-          }
-        }
-        // Chair
-        const chairGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-        const chair = new THREE.Mesh(chairGeo, woodDarkMat);
-        chair.position.set(-1.5 + i * 2.5, 0.15, 1.2);
-        group.add(chair);
-      }
-      // Bar
-      const barGeo = new THREE.BoxGeometry(2.8, 0.6, 0.4);
-      const bar = new THREE.Mesh(barGeo, woodDarkMat);
-      bar.position.set(0, 0.3, -2.1);
-      bar.castShadow = true;
-      group.add(bar);
-      const shelf = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 0.35), woodMat);
-      shelf.position.set(0, 1.5, -2.25);
-      group.add(shelf);
-      for (let i = 0; i < 5; i++) {
-        const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.18, 8), new THREE.MeshStandardMaterial({ color: [0xe9c46a, 0xf4a261, 0xe76f51][i % 3] }));
-        mug.position.set(-1.1 + i * 0.55, 1.65, -2.25);
-        group.add(mug);
       }
     } else if (type === 'tower') {
       // Bookshelves
@@ -637,64 +678,6 @@ export class GameScene {
     }
   }
 
-  _addFireplace(group, halfW, halfD, width) {
-    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x55443c, roughness: 0.95 });
-    const sootMat = new THREE.MeshStandardMaterial({ color: 0x211c1b, roughness: 1 });
-    const fireMat = new THREE.MeshStandardMaterial({ color: 0xff9d28, emissive: 0xff4b0b, emissiveIntensity: 2.2 });
-    const hearth = new THREE.Mesh(new THREE.BoxGeometry(width + 0.5, 0.18, 0.8), stoneMat);
-    hearth.position.set(0, 0.1, -halfD + 0.42);
-    hearth.castShadow = true;
-    group.add(hearth);
-    const opening = new THREE.Mesh(new THREE.BoxGeometry(width, 1.15, 0.35), sootMat);
-    opening.position.set(0, 0.72, -halfD + 0.28);
-    group.add(opening);
-    for (const x of [-width / 2 - 0.12, width / 2 + 0.12]) {
-      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.45, 0.45), stoneMat);
-      pillar.position.set(x, 0.78, -halfD + 0.28);
-      pillar.castShadow = true;
-      group.add(pillar);
-    }
-    const mantel = new THREE.Mesh(new THREE.BoxGeometry(width + 0.55, 0.2, 0.55), stoneMat);
-    mantel.position.set(0, 1.52, -halfD + 0.28);
-    mantel.castShadow = true;
-    group.add(mantel);
-    const fire = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.7, 7), fireMat);
-    fire.position.set(0, 0.58, -halfD + 0.03);
-    group.add(fire);
-    const fireLight = new THREE.PointLight(0xff6b22, 2.2, 7, 2);
-    fireLight.position.set(0, 0.9, -halfD + 0.1);
-    group.add(fireLight);
-    this.fireMeshes.push({ mesh: fire, light: fireLight, phase: Math.random() * Math.PI * 2 });
-  }
-
-  _addRug(group, x, y, color, width, depth) {
-    const rugMat = new THREE.MeshStandardMaterial({ color, roughness: 1 });
-    const rug = new THREE.Mesh(new THREE.BoxGeometry(width, 0.04, depth), rugMat);
-    rug.position.set(x, y, 0.2);
-    rug.receiveShadow = true;
-    group.add(rug);
-    const border = new THREE.Mesh(new THREE.BoxGeometry(width - 0.18, 0.045, depth - 0.18), new THREE.MeshStandardMaterial({ color: 0xd49a50, roughness: 1 }));
-    border.position.set(x, y + 0.025, 0.2);
-    group.add(border);
-  }
-
-  _addBarrels(group, halfW, halfD) {
-    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x70452b, roughness: 0.9 });
-    const bandMat = new THREE.MeshStandardMaterial({ color: 0x33251e, roughness: 0.75 });
-    for (const x of [-halfW + 0.55, halfW - 0.55]) {
-      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.75, 10), barrelMat);
-      barrel.position.set(x, 0.38, halfD - 0.75);
-      barrel.castShadow = true;
-      group.add(barrel);
-      for (const y of [0.2, 0.55]) {
-        const band = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.025, 6, 16), bandMat);
-        band.rotation.x = Math.PI / 2;
-        band.position.set(x, y, halfD - 0.75);
-        group.add(band);
-      }
-    }
-  }
-
   _addSign(group, label, x, z) {
     const postGeo = new THREE.BoxGeometry(0.08, 0.6, 0.08);
     const postMat = new THREE.MeshStandardMaterial({ color: COLORS.woodDark });
@@ -726,7 +709,6 @@ export class GameScene {
     }
 
     // NPCs
-    this.npcs = [];
     const npcConfigs = [
       { pos: [3, 0, 2], color: COLORS.npc, name: 'mage' },
       { pos: [-4, 0, -3], color: COLORS.npc2, name: 'merchant' },
@@ -866,6 +848,12 @@ export class GameScene {
     const len = Math.hypot(mx, mz);
     if (len > 0) {
       mx /= len; mz /= len;
+      // Input is screen-relative: rotate it by the camera yaw so "up" walks away from the camera.
+      const cy = Math.cos(CAM_YAW);
+      const sy = Math.sin(CAM_YAW);
+      const wx = mx * cy + mz * sy;
+      const wz = -mx * sy + mz * cy;
+      mx = wx; mz = wz;
       const nx = this.player.position.x + mx * PLAYER_SPEED * dt;
       const nz = this.player.position.z + mz * PLAYER_SPEED * dt;
       if (!this._checkCollision(nx, this.player.position.z)) this.player.position.x = nx;
@@ -917,15 +905,25 @@ export class GameScene {
   // ===== CAMERA =====
 
   _updateCamera(dt) {
-    const px = this.player.position.x;
-    const pz = this.player.position.z;
-    const targetX = px;
-    const targetY = 16;
-    const targetZ = pz + 12;
-
-    this.camera.position.x += (targetX - this.camera.position.x) * 0.08;
-    this.camera.position.y += (targetY - this.camera.position.y) * 0.08;
-    this.camera.position.z += (targetZ - this.camera.position.z) * 0.08;
+    const p = this.player.position;
+    const f = this.interiorFactor;
+    const h = this.activeHouse;
+    // Inside a house the camera moves closer and frames the room rather than the player.
+    const tx = h ? lerp(p.x, h.center.x, 0.55 * f) : p.x;
+    const tz = h ? lerp(p.z, h.center.z, 0.55 * f) : p.z;
+    const dist = lerp(27, h ? Math.max(h.w, h.d) * 1.32 + 2 : 20, f);
+    const elev = lerp(0.92, 0.98, f);
+    const k = 1 - Math.pow(0.001, dt);
+    this.camTarget.x += (tx - this.camTarget.x) * k;
+    this.camTarget.z += (tz - this.camTarget.z) * k;
+    this.camTarget.y = 0.6;
+    const horiz = Math.cos(elev) * dist;
+    const goal = new THREE.Vector3(
+      this.camTarget.x + Math.sin(CAM_YAW) * horiz,
+      Math.sin(elev) * dist,
+      this.camTarget.z + Math.cos(CAM_YAW) * horiz,
+    );
+    this.camera.position.lerp(goal, k);
 
     if (this.shakeIntensity > 0.001) {
       this.camera.position.x += (Math.random() - 0.5) * this.shakeIntensity;
@@ -933,49 +931,70 @@ export class GameScene {
       this.shakeIntensity *= this.shakeDecay;
     }
 
-    this.camera.lookAt(px, 0.6, pz - 1.2);
+    this.camera.lookAt(this.camTarget);
   }
 
-  // ===== WALL TRANSPARENCY =====
+  // ===== CUTAWAY =====
+  // When the player is inside (or in the doorway of) a house, its roof fades out and the
+  // walls facing the camera drop to knee height, so the room reads like a dollhouse.
 
-  _updateWallTransparency() {
-    const playerPos = this.player.position;
-    const activeHouses = new Set();
+  _updateCutaway(dt) {
+    const p = this.player.position;
+    const camDir = new THREE.Vector3(Math.sin(CAM_YAW), 0, Math.cos(CAM_YAW));
+    const up = new THREE.Vector3(0, 1, 0);
+    const n = new THREE.Vector3();
+    const k = Math.min(1, dt * 5);
+    let best = null;
+    let maxCut = 0;
 
-    for (const ft of this.fadeTargets) {
-      const cosR = Math.cos(-ft.houseRotation);
-      const sinR = Math.sin(-ft.houseRotation);
-      const pdx = playerPos.x - ft.houseCenter.x;
-      const pdz = playerPos.z - ft.houseCenter.z;
-      const localX = pdx * cosR - pdz * sinR;
-      const localZ = pdx * sinR + pdz * cosR;
-      const halfW = ft.houseW / 2;
-      const halfD = ft.houseD / 2;
-      const isInside = Math.abs(localX) < halfW - 0.15 && Math.abs(localZ) < halfD - 0.15;
-      const isAtDoor = Math.abs(localX) < 0.85 && localZ > halfD - 1.25 && localZ < halfD + 0.8;
-      const shouldReveal = isInside || isAtDoor;
+    for (const h of this.houses) {
+      const cosR = Math.cos(-h.rotation);
+      const sinR = Math.sin(-h.rotation);
+      const dx = p.x - h.center.x;
+      const dz = p.z - h.center.z;
+      const lx = dx * cosR - dz * sinR;
+      const lz = dx * sinR + dz * cosR;
+      const inside = Math.abs(lx) < h.w / 2 - 0.1 && Math.abs(lz) < h.d / 2 - 0.1;
+      const atDoor = Math.abs(lx) < h.doorW / 2 + 0.4 && lz > h.d / 2 - 1.2 && lz < h.d / 2 + 1.0;
+      const target = inside || atDoor ? 1 : 0;
+      h.cut += (target - h.cut) * k;
+      if (Math.abs(target - h.cut) < 0.003) h.cut = target;
 
-      if (shouldReveal) activeHouses.add(ft.houseGroup);
-
-      const targetOpacity = shouldReveal ? (ft.isRoof ? 0.02 : 0.12) : 1.0;
-      const mat = ft.mesh.material;
-      if (targetOpacity < 1) {
-        mat.transparent = true;
-        mat.depthWrite = false;
-        mat.needsUpdate = true;
+      const opacity = Math.max(0, 1 - h.cut * 1.6);
+      h.roof.group.visible = opacity > 0.01;
+      for (const m of h.roof.mats) {
+        const transparent = opacity < 0.999;
+        if (m.transparent !== transparent) {
+          m.transparent = transparent;
+          m.depthWrite = !transparent;
+          m.needsUpdate = true;
+        }
+        m.opacity = opacity;
       }
-      mat.opacity += (targetOpacity - mat.opacity) * 0.2;
-      if (mat.opacity > 0.99) {
-        mat.transparent = false;
-        mat.depthWrite = true;
-        mat.opacity = 1;
-        mat.needsUpdate = true;
+
+      for (const t of h.cutTargets) {
+        n.copy(t.normal).applyAxisAngle(up, h.rotation);
+        const amount = n.dot(camDir) > 0.3 ? h.cut : 0;
+        t.body.scale.y = 1 - amount * (1 - t.minScale);
+        t.decor.visible = amount < 0.3;
       }
+
+      // Interior lights mostly stay off-stage until you walk in, so they don't wash the village.
+      const lightFactor = 0.3 + 0.7 * h.cut;
+      for (const l of h.lights) l.houseFactor = lightFactor;
+
+      if (h.cut > maxCut) { maxCut = h.cut; best = h; }
     }
 
-    for (const ft of this.fadeTargets) {
-      ft.houseGroup.userData.roofRevealed = activeHouses.has(ft.houseGroup);
-    }
+    this.interiorFactor = maxCut;
+    if (best) this.activeHouse = best;
+    else if (maxCut === 0) this.activeHouse = null;
+
+    // Dim the daylight while indoors so the fire and candles carry the room.
+    const f = maxCut;
+    this.ambient.intensity = this.lightBase.ambient * lerp(1, 0.6, f);
+    this.hemi.intensity = this.lightBase.hemi * lerp(1, 0.5, f);
+    this.sun.intensity = this.lightBase.sun * lerp(1, 0.55, f);
   }
 
   // ===== INTERACTION =====
@@ -1046,7 +1065,7 @@ export class GameScene {
 
     this._updatePlayer(dt);
     this._updateCamera(dt);
-    this._updateWallTransparency();
+    this._updateCutaway(dt);
     this._updateInteractables();
 
     // NPC idle bob
@@ -1073,20 +1092,20 @@ export class GameScene {
       }
     }
 
-    for (const fire of this.fireMeshes) {
-      const pulse = 0.82 + Math.sin(elapsed * 11 + fire.phase) * 0.18;
-      fire.mesh.scale.set(0.85 + pulse * 0.15, pulse, 0.85 + pulse * 0.15);
-      fire.light.intensity = 1.7 + pulse * 0.8;
+    // Fire and candle flicker.
+    for (const fl of this.kit.flames) {
+      const n = Math.sin(elapsed * fl.speed + fl.phase) * 0.5 + Math.sin(elapsed * fl.speed * 1.7 + fl.phase * 2) * 0.5;
+      const sy = 1 + n * (fl.small ? 0.12 : 0.2);
+      fl.mesh.scale.set(fl.base.x * (1 - n * 0.06), fl.base.y * sy, fl.base.z * (1 - n * 0.06));
+      fl.mesh.position.y = fl.y0 + (sy - 1) * fl.h * 0.5;
+    }
+    for (const l of this.kit.lights) {
+      const n = Math.sin(elapsed * l.speed + l.phase) * 0.6 + Math.sin(elapsed * l.speed * 2.3 + l.phase) * 0.4;
+      l.light.intensity = l.base * (1 + n * l.amp) * (l.houseFactor ?? 1);
     }
 
     // Water shimmer
-    if (this.scene) {
-      this.scene.traverse((child) => {
-        if (child.material && child.material.color && child.material.color.getHex() === COLORS.water && child.material.transparent) {
-          child.material.opacity = 0.6 + Math.sin(elapsed * 2 + child.position.x) * 0.1;
-        }
-      });
-    }
+    for (const m of this.waterMats) m.opacity = 0.65 + Math.sin(elapsed * 2) * 0.08;
 
     this.composer.render();
   }

@@ -52,22 +52,21 @@ const MATERIAL_EMOJI = {
   eau: '💧', toile: '🧵', fleur: '🌸', cristal: '💎',
 };
 
-const MATERIAL_WORDS = {
-  en: [
-    { word: 'iron', level: 'easy' }, { word: 'wood', level: 'easy' },
-    { word: 'fire', level: 'easy' }, { word: 'stone', level: 'easy' },
-    { word: 'wheat', level: 'easy' }, { word: 'water', level: 'easy' },
-    { word: 'cloth', level: 'easy' }, { word: 'flower', level: 'easy' },
-    { word: 'crystal', level: 'medium' },
-  ],
-  fr: [
-    { word: 'fer', level: 'easy' }, { word: 'bois', level: 'easy' },
-    { word: 'feu', level: 'easy' }, { word: 'pierre', level: 'easy' },
-    { word: 'blé', level: 'easy' }, { word: 'eau', level: 'easy' },
-    { word: 'toile', level: 'easy' }, { word: 'fleur', level: 'easy' },
-    { word: 'cristal', level: 'medium' },
-  ],
+// Each building yields its own materials. Spelling words come from the level word list,
+// never from the material names.
+const MATERIAL_FR = {
+  iron: 'fer', wood: 'bois', fire: 'feu', stone: 'pierre', wheat: 'blé',
+  water: 'eau', cloth: 'toile', flower: 'fleur', crystal: 'cristal',
 };
+const HOUSE_MATERIALS = {
+  forge: ['iron', 'fire', 'stone'],
+  shop: ['cloth', 'crystal', 'iron'],
+  tavern: ['wheat', 'water', 'fire'],
+  tower: ['crystal', 'flower', 'water'],
+  cottage: ['wood', 'flower', 'wheat'],
+  guild: ['stone', 'wood', 'cloth'],
+};
+const materialName = (id) => (lang === 'fr' ? MATERIAL_FR[id] : id);
 
 let lang = 'en';
 let t = UI.en;
@@ -136,8 +135,30 @@ function wordsForLevel(levelId) {
   return WORDS[lang].filter((w) => w.level === levelId);
 }
 
-function pickMaterialWord() {
-  return shuffle(MATERIAL_WORDS[lang])[0];
+// Words are served from a shuffled queue: tricky words first, then unmastered, then the rest,
+// so a child meets every word of the level before any repeats.
+let wordQueue = [];
+function pickWord() {
+  if (wordQueue.length === 0) {
+    const words = shuffle(wordsForLevel(game.levelId));
+    const rank = (w) => (progress.difficult[w.word] ? 0 : progress.mastered[w.word] ? 2 : 1);
+    wordQueue = words.sort((a, b) => rank(a) - rank(b));
+  }
+  return wordQueue.shift();
+}
+
+// Prefer a material that the remaining recipes still need, among those this building offers.
+function pickMaterial(houseType) {
+  const offered = (HOUSE_MATERIALS[houseType] ?? Object.keys(MATERIAL_FR)).map(materialName);
+  const need = {};
+  for (const item of CRAFTABLES) {
+    if (game.crafted.includes(item.id)) continue;
+    for (const part of item[lang].parts) need[part] = (need[part] ?? 0) + 1;
+  }
+  for (const [mat, count] of Object.entries(game.materials)) need[mat] = (need[mat] ?? 0) - count;
+  const useful = offered.filter((m) => (need[m] ?? 0) > 0);
+  const pool = useful.length ? useful : offered;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function getBadges() {
@@ -303,6 +324,7 @@ function newGame(levelId) {
     log: [],
     questIndex: 0,
   };
+  wordQueue = [];
   streak = 0;
   updateStreakDisplay();
   showScreen('game');
@@ -338,9 +360,10 @@ function tryInteract() {
 
 function beginMine(mineObj) {
   initAudio();
-  const word = pickMaterialWord();
-  const emoji = MATERIAL_EMOJI[word.word] ?? '⛏️';
-  spellContext = { type: 'mine', mineObj, word, tries: 0, material: word.word };
+  const word = pickWord();
+  const material = pickMaterial(mineObj.houseType);
+  const emoji = MATERIAL_EMOJI[material] ?? '⛏️';
+  spellContext = { type: 'mine', mineObj, word, tries: 0, material };
   $('#spell-title').textContent = `${emoji} ${t.mineTitle}`;
   $('#spell-instruction').textContent = t.mineInstruction;
   $('#spell-emoji').textContent = emoji;
@@ -385,37 +408,10 @@ function renderCraftMenu() {
 function beginCraft(item) {
   initAudio();
   const info = item[lang];
-  // Spell all parts in sequence
-  spellContext = { type: 'craft', item, partsQueue: [...info.parts], currentPart: null, tries: 0, totalTries: 0, partResults: [] };
-  startNextCraftPart();
-}
-
-function startNextCraftPart() {
-  if (spellContext.partsQueue.length === 0) {
-    finishCrafting();
-    return;
-  }
-  const part = spellContext.partsQueue.shift();
-  spellContext.currentPart = part;
-  spellContext.tries = 0;
-  const emoji = MATERIAL_EMOJI[part] ?? '';
-  const word = part;
-  // For crafting, the word IS the material name
-  spellContext.word = { word, level: 'easy' };
-  $('#spell-title').textContent = `${item_emoji(spellContext.item)} ${t.craftTitle}`;
-  $('#spell-instruction').textContent = `${t.craftPart}: ${emoji} ${part}`;
-  $('#spell-emoji').textContent = spellContext.item.emoji;
-  $('#spell-emoji').hidden = false;
-  spellInput.value = '';
-  spellRevealEl.hidden = true;
-  spellResultEl.hidden = true;
-  spellCheckBtn.hidden = false;
-  spellContinueBtn.hidden = true;
-  renderSpellTiles();
-  updateSpellAttempts();
-  $('#spell-modal').hidden = false;
-  setSpellLocked(false);
-  speak(word, 0.9);
+  void info;
+  // Materials were earned by spelling list words; crafting itself just builds the object.
+  spellContext = { type: 'craft', item };
+  finishCrafting();
 }
 
 function item_emoji(item) { return item.emoji; }
@@ -625,9 +621,7 @@ function onSpellContinue() {
       updateGameUI();
       renderCraftMenu();
     } else {
-      // Continue to next part
-      spellContext = ctx;
-      startNextCraftPart();
+      spellContext = null;
     }
   }
 }
@@ -874,6 +868,9 @@ function updateInteractHint() {
 }
 
 function init() {
+  // Lift the touch controls out of the animated screen so position:fixed pins them to the viewport.
+  const touch = document.querySelector(".touch-controls");
+  if (touch) document.body.appendChild(touch);
   if (progress.lang) lang = progress.lang;
   t = UI[lang] ?? UI.en;
   document.documentElement.lang = lang === 'fr' ? 'fr' : 'en-GB';
