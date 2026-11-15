@@ -566,6 +566,14 @@ function continueGame() {
 /* ===== GAME STATE ===== */
 
 function newGame(levelId = 'mixed', { keepSave = false } = {}) {
+  // A fresh story needs a fresh world (no bridges or cleared mist from the last game): reload.
+  if (!keepSave && game?.story && (game.story.chapter > 1 || Object.keys(game.spells ?? {}).length)) {
+    delete progress.save;
+    saveProgress();
+    try { sessionStorage.setItem('se-new-game', '1'); } catch { /* ignore */ }
+    location.reload();
+    return;
+  }
   if (!keepSave) delete progress.save;
   game = {
     levelId,
@@ -1685,6 +1693,9 @@ function init() {
     init3DScene();
     showScreen('menu');
     setTimeout(() => $('#loading').classList.add('is-done'), 250);
+    let fresh = false;
+    try { fresh = sessionStorage.getItem('se-new-game') === '1'; sessionStorage.removeItem('se-new-game'); } catch { /* ignore */ }
+    if (fresh) setTimeout(() => newGame(), 300);
   }));
 }
 
