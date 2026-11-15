@@ -154,3 +154,42 @@ export class QualityManager {
     }
   }
 }
+
+// Merge the direct mesh children of every group in a tree (bottom-up), by material.
+// Each group keeps its own merged meshes, so animated pivots (head, arms, legs) still move.
+export function mergeDirect(root) {
+  const groups = [];
+  root.traverse((o) => { if (!o.isMesh && o.children.length) groups.push(o); });
+  let removed = 0;
+  for (const grp of groups) {
+    const buckets = new Map();
+    for (const c of grp.children) {
+      if (!c.isMesh || c.isInstancedMesh || c.children.length || Array.isArray(c.material) || !c.visible) continue;
+      const key = `${c.material.uuid}|${c.castShadow ? 1 : 0}|${c.receiveShadow ? 1 : 0}`;
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(c);
+    }
+    for (const meshes of buckets.values()) {
+      if (meshes.length < 2) continue;
+      const geos = meshes.map((mesh) => {
+        mesh.updateMatrix();
+        let g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
+        for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+        if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+        g.clearGroups();
+        g.applyMatrix4(mesh.matrix);
+        return g;
+      });
+      const merged = mergeGeometries(geos, false);
+      geos.forEach((g) => g.dispose());
+      if (!merged) continue;
+      const out = new THREE.Mesh(merged, meshes[0].material);
+      out.castShadow = meshes[0].castShadow;
+      out.receiveShadow = meshes[0].receiveShadow;
+      grp.add(out);
+      for (const m of meshes) grp.remove(m);
+      removed += meshes.length - 1;
+    }
+  }
+  return removed;
+}

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { SIGNS, MIMOTS, PAGES, REGION_NPCS } from './story.js';
 import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh, buildMountain, buildCoast, STAIRS, SUMMIT, PIER, ISLAND, BOOK } from './regions.js';
-import { mergeStatic as mergeGroup } from './perf.js';
+import { mergeStatic as mergeGroup, mergeDirect as mergeGroupParts } from './perf.js';
 import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
 import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -1298,6 +1298,8 @@ export class GameScene {
 
   _createCharacter(specName) {
     const ch = createBlockyCharacter(specName);
+    // Villagers never change clothes: merge their blocks per body part (far fewer draw calls).
+    if (specName !== 'hero') mergeGroupParts(ch);
     this.characters ??= [];
     this.characters.push(ch);
     return ch;

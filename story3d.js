@@ -1,6 +1,7 @@
 // 3D pieces of the story: house signs, Mimots (escaped words that came alive) and the torn page.
 import * as THREE from 'three';
 import { blockMat, texBox } from './textures.js';
+import { mergeStatic } from './perf.js';
 
 const M = new Map();
 const mat = (c, o = {}) => {
@@ -81,6 +82,7 @@ export function buildMimot(color, letter = '?') {
   const tile = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), new THREE.MeshBasicMaterial({ map: tex }));
   tile.position.set(0, 0.3, 0.285);
   body.add(tile);
+  mergeStatic(body);
   body.scale.setScalar(1.35);
   g.userData.body = body;
   return g;

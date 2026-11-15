@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { blockMat, texBox } from './textures.js';
 import { BRIDGES } from './regions.js';
+import { mergeStatic } from './perf.js';
 
 // The word asked depends on the age: the first letter at 5, then the whole word.
 // unlock: stars needed (until the story unlocks them chapter by chapter).
@@ -77,6 +78,7 @@ export function buildCircle() {
   const disc = new THREE.Mesh(new THREE.CircleGeometry(0.85, 16), mat(0x6a3cff, { emissive: 0x6a3cff, emissiveIntensity: 0.6, opacity: 0.28 }));
   disc.rotation.x = -Math.PI / 2; disc.position.y = 0.02;
   g.add(disc);
+  mergeStatic(g);
   g.userData.spin = g;
   return g;
 }
@@ -108,11 +110,12 @@ export function buildBridge(power = 'strong', B = BRIDGE) {
   }
   // The island: grass blocks and a little lantern.
   const I = B.island;
-  if (!I) return g;
+  if (!I) { mergeStatic(g); return g; }
   for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) {
     if (Math.abs(x) + Math.abs(z) > 1 && power === 'weak') continue;
     cube(g, 0.84, 0.3, 0.84, mat(0x5aa83a), I.x + x * 0.84, 0.12, I.z + z * 0.84);
   }
+  mergeStatic(g);
   return g;
 }
 
@@ -128,6 +131,7 @@ export function buildMagicTree(power = 'strong') {
     cube(g, w * s, 0.7 * s, w * s, leaf, x * s, y, z * s);
   }
   for (let i = 0; i < 5; i++) cube(g, 0.16, 0.16, 0.16, leaf2, Math.cos(i * 1.3) * 0.7 * s, h + 0.2 + (i % 2) * 0.5 * s, Math.sin(i * 1.3) * 0.7 * s);
+  mergeStatic(g);
   return g;
 }
 
@@ -144,6 +148,7 @@ export function buildFlowerBed(power = 'strong') {
     const c = colors[i % colors.length];
     cube(g, 0.17, 0.17, 0.17, mat(c, { emissive: c, emissiveIntensity: 0.2 }), x, sh + 0.06, z).castShadow = false;
   }
+  mergeStatic(g);
   return g;
 }
 

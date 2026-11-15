@@ -470,6 +470,10 @@ function init3DScene() {
   const container = $('#canvas-container');
   if (!container) return;
   scene3D = new GameScene(container);
+  // ?test exposes the game to the automated playthrough tests (tests/e2e).
+  if (/[?&]test\b/.test(location.search)) {
+    window.__se = { scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, levelAt: (tier) => levelAt(tier) };
+  }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
   scene3D.minimapCanvas = $('#minimap');

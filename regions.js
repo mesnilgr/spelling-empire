@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { blockMat, texBox } from './textures.js';
 import { seededRandom } from './interiors.js';
+import { mergeStatic } from './perf.js';
 
 export const WORLD_RADIUS = 84;
 export const REGIONS = {
@@ -297,6 +298,7 @@ export function buildMountain(ctx) {
     const top = ctx.stairsY(z);
     texBox(stairs, STAIRS.hw * 2 + 0.2, Math.max(0.2, top - 1.5), (STAIRS.z0 - STAIRS.z1) / n + 0.02, blockMat('cobble'), STAIRS.x, (top + 1.5) / 2, z, { tile: 0.5 });
   }
+  mergeStatic(stairs);
   stairs.visible = false;
   stairs.userData.dynamic = true;
   g.add(stairs);
