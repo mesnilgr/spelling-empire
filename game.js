@@ -4,6 +4,7 @@ import { NPC_INFO, QUESTS, rollLoot, WORD_EMOJI } from './content.js';
 import { COSTUMES } from './characters.js';
 import { loadModel, recognize, inkBox } from './handwriting.js';
 import { SPELLS, spellById, spellWord } from './magic.js';
+import { SRS, ensureCard, grade as srsGrade, gradeFromAttempt, chooseWord } from './srs.js';
 import { CHAPTERS, SCENES, SPEAKERS, SIGNS, signWord, MIMOTS } from './story.js';
 import { TRAVEL } from './regions.js';
 import { setSignText } from './story3d.js';
@@ -135,10 +136,21 @@ function todayKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+// Spaced repetition à la Anki (see srs.js): every attempt grades the word's card.
 function recordAttempt(w, guess, ok, tries) {
   const s = wordStat(w);
+  const wasNew = ensureCard(s).state === 'new';
   if (ok) { s.correct += 1; if (tries === 1) s.firstTry += 1; }
   else { s.wrong += 1; s.misspellings = [guess, ...s.misspellings].slice(0, 5); }
+  // Practising a known word before it is due does not move its schedule forward (only a miss counts).
+  const early = s.state === 'review' && s.due > Date.now();
+  if (!(early && ok)) {
+    srsGrade(s, gradeFromAttempt({
+      ok, firstTry: tries === 1, copied: !!spellContext?.copyMode,
+      ms: Date.now() - (spellContext?.startedAt ?? Date.now()), length: w.word.replace(/ /g, '').length, drawing: progress.inputMode === 'draw',
+    }));
+  }
+  if (wasNew) { progress.daily ??= {}; const d = (progress.daily[todayKey()] ??= { attempts: 0, correct: 0 }); d.newCards = (d.newCards ?? 0) + 1; }
   s.lastSeen = Date.now();
   progress.daily ??= {};
   const day = (progress.daily[todayKey()] ??= { attempts: 0, correct: 0 });
@@ -233,7 +245,26 @@ function wordsForLevel(levelId) {
 // Words are served from a shuffled queue: tricky words first, then unmastered, then the rest,
 // so a child meets every word of the level before any repeats.
 let wordQueues = {};
+// Anki-style choice: words due for (re)learning or review first, then new words up to the
+// daily limit, then practice of known words. Now and then a word due from an easier list.
+let lastPicked = '';
 function pickWord(levelId = 'easy') {
+  const stats = progress.wordStats ?? {};
+  const key = (w) => `${lang}:${w.word}`;
+  const opts = { newToday: progress.daily?.[todayKey()]?.newCards ?? 0, newPerDay: progress.newPerDay ?? SRS.newPerDay, avoid: lastPicked };
+  const ladder = AGE_LADDER[lang] ?? AGE_LADDER.fr;
+  const i = ladder.indexOf(levelId), a = AGE_START[lang]?.[progress.age ?? 6] ?? 0;
+  let pick = null;
+  if (i > a && Math.random() < 0.3) {
+    const lower = ladder.slice(a, i).flatMap(wordsForLevel);
+    const c = chooseWord(lower, stats, key, { ...opts, newPerDay: 0 });
+    if (c && (c.why === 'learning' || c.why === 'review')) pick = c.w;
+  }
+  if (!pick) pick = chooseWord(wordsForLevel(levelId), stats, key, opts)?.w ?? nextQueued(levelId);
+  lastPicked = pick?.word ?? '';
+  return pick;
+}
+function nextQueued(levelId) {
   const key = `${lang}:${levelId}`;
   if (!wordQueues[key]?.length) {
     const words = shuffle(wordsForLevel(levelId));
@@ -472,7 +503,7 @@ function init3DScene() {
   scene3D = new GameScene(container);
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = { scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, levelAt: (tier) => levelAt(tier) };
+    window.__se = { scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, levelAt: (tier) => levelAt(tier), pickWord: (lvl) => pickWord(lvl) };
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -688,13 +719,14 @@ function beginMine(mineObj) {
   const material = mineObj.material ?? pickMaterial(mineObj.houseType);
   const emoji = MATERIAL_EMOJI[material] ?? '⛏️';
   spellContext = { type: 'mine', mineObj, word, tries: 0, material };
-  const instruction = word.level === 'letters' ? t.mineInstructionLetter : word.level === 'syllables' ? t.mineInstructionSyllable : t.mineInstruction;
+  const instruction = { letters: t.mineInstructionLetter, syllables: t.mineInstructionSyllable, homophones: t.mineInstructionHomophone, phrases: t.mineInstructionPhrase }[word.level] ?? t.mineInstruction;
   openSpellModal(`${emoji} ${t.mineTitle}`, instruction, emoji);
 }
 
 // The spelling window, for whatever spellContext holds (mining, a spell…).
 function openSpellModal(title, instruction, emoji) {
   const word = spellContext.word;
+  spellContext.startedAt = Date.now();
   const stat = wordStat(word);
   stat.seen += 1;
   stat.lastSeen = Date.now();
@@ -702,6 +734,13 @@ function openSpellModal(title, instruction, emoji) {
   $('#spell-title').textContent = title;
   setTimeout(() => { hw.strokes = []; hw.current = null; hw.misses = 0; hw.forceGuide = false; hwFeedback(); $('#hw-alts')?.replaceChildren(); setInputMode(progress.inputMode ?? 'keys'); }, 0);
   $('#spell-instruction').textContent = instruction;
+  // Homophones: show the sentence with a blank where the little word goes.
+  const ctxEl = $('#spell-context');
+  if (word.blank) {
+    const [before, after] = word.blank.split('___');
+    ctxEl.replaceChildren(document.createTextNode(before), el('span', 'blank', '\u00a0'), document.createTextNode(after));
+    ctxEl.hidden = false;
+  } else ctxEl.hidden = true;
   $('#spell-emoji').textContent = emoji;
   $('#spell-emoji').hidden = false;
   spellInput.value = '';
@@ -1079,6 +1118,7 @@ function renderSpellTiles() {
   const target = spellContext?.word?.word ?? '';
   const length = Math.max(target.length, spellInput.value.length);
   const tiles = Array.from({ length }, (_, i) => {
+    if (target[i] === ' ') return el('div', 'tile tile-space', '');
     const tile = el('div', 'tile', (spellInput.value[i] ?? '').toUpperCase());
     if (i === spellInput.value.length && !isLocked) tile.classList.add('is-next');
     return tile;
@@ -1215,7 +1255,7 @@ function handleSpellSuccess() {
     }
     sfxBreak();
     saveGame();
-    const sentence = buildSentence(wordStr, lang);
+    const sentence = spellContext.word.sentence ?? buildSentence(wordStr, lang);
     spellResultEl.replaceChildren(
       el('p', 'spell-success', copied ? t.copiedWell : firstTry ? t.perfectSpelling : t.youGotIt),
       el('p', 'spell-sentence', sentence),
@@ -1508,12 +1548,19 @@ function resetProgress() {
 /* ===== KEYBOARD ===== */
 
 function typeLetter(letter) {
-  const max = spellContext?.word?.word.length ?? MAX_GUESS_LENGTH;
+  const target = spellContext?.word?.word ?? '';
+  const max = target.length || MAX_GUESS_LENGTH;
   if (isLocked || spellInput.value.length >= max) return;
-  spellInput.value += letter; sfxType(); renderSpellTiles();
+  spellInput.value += letter;
+  // Short phrases: the space between two words fills in by itself.
+  while (target[spellInput.value.length] === ' ') spellInput.value += ' ';
+  sfxType(); renderSpellTiles();
 }
 function deleteLetter() {
-  if (isLocked) return; spellInput.value = spellInput.value.slice(0, -1); sfxType(); renderSpellTiles();
+  if (isLocked) return;
+  let v = spellInput.value.replace(/ +$/, '');
+  v = v.slice(0, -1).replace(/ +$/, '');
+  spellInput.value = v; sfxType(); renderSpellTiles();
 }
 
 function buildSpellKeyboard() {
@@ -1728,7 +1775,12 @@ function renderFamilies(stats) {
   const box = $('#dash-families');
   if (!box) return;
   const ch = game?.story ? chapterDef() : progress.save?.story ? CHAPTERS.find((c) => c.id === progress.save.story.chapter) : null;
-  $('#dash-chapter').textContent = ch ? t.chapterNow(ch.title[lang] ?? ch.title.fr) : '';
+  const now = Date.now();
+  const cards = stats.filter((st) => st.lang === lang).map((st) => ensureCard(st));
+  const due = cards.filter((st) => st.state !== 'new' && st.due <= now + 3600000 * 6).length;
+  const learned = cards.filter((st) => st.state === 'review').length;
+  const newToday = progress.daily?.[todayKey()]?.newCards ?? 0;
+  $('#dash-chapter').textContent = `${ch ? t.chapterNow(ch.title[lang] ?? ch.title.fr) + ' · ' : ''}${t.dueToday(due)} ${t.srsSummary(learned, newToday, progress.newPerDay ?? SRS.newPerDay)}`;
   const fr = stats.filter((s) => s.lang === 'fr' && s.word.length > 2 && s.correct + s.wrong > 0);
   box.replaceChildren(...FAMILIES.map(([name, re, ex]) => {
     const ws = fr.filter((s) => re.test(s.word));
@@ -1745,6 +1797,11 @@ function renderFamilies(stats) {
 
 function renderDashboard() {
   ageButtons($('#dash-age'), (a) => { setAge(a); renderDashboard(); });
+  const npd = $('#dash-newperday');
+  if (npd) {
+    npd.value = String(progress.newPerDay ?? SRS.newPerDay);
+    npd.onchange = () => { progress.newPerDay = Number(npd.value); saveProgress(); renderDashboard(); };
+  }
   const startLevel = LEVELS[lang].find((l) => l.id === levelAt(0));
   $('#dash-age-note').textContent = progress.age ? t.ageNote(progress.age, startLevel?.name ?? '') : '';
   const stats = Object.values(progress.wordStats ?? {});
@@ -1815,13 +1872,13 @@ function renderDashboardTable() {
   if (!rows.length) {
     const tr = el('tr');
     const td = el('td', 'dash-empty', t.noData);
-    td.colSpan = 8;
+    td.colSpan = 9;
     tr.append(td);
     table.replaceChildren(tr);
     return;
   }
   const head = el('tr');
-  for (const k of ['colWord', 'colLevel', 'colSeen', 'colRight', 'colWrong', 'colRate', 'colMistakes', 'colLast']) head.append(el('th', '', t[k]));
+  for (const k of ['colWord', 'colLevel', 'colSeen', 'colRight', 'colWrong', 'colRate', 'colMistakes', 'colLast', 'colNext']) head.append(el('th', '', t[k]));
   const thead = el('thead'); thead.append(head);
   const tbody = el('tbody');
   const fmtDate = (ms) => (ms ? new Date(ms).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'short' }) : '—');
@@ -1839,10 +1896,21 @@ function renderDashboardTable() {
       rateCell,
       el('td', 'dash-mistakes', s.misspellings.join(', ')),
       el('td', '', fmtDate(s.lastSeen)),
+      el('td', 'dash-next', nextReviewLabel(s, met)),
     );
     tbody.append(tr);
   }
   table.replaceChildren(thead, tbody);
+}
+
+// When the word comes back: "now", "in 10 min", "tomorrow", "in 6 days"…
+function nextReviewLabel(s, met) {
+  if (!met || !s.state || s.state === 'new') return '—';
+  const d = s.due - Date.now();
+  if (d <= 0) return t.nextNow;
+  if (d < 3600000) return t.nextMinutes(Math.max(1, Math.round(d / 60000)));
+  const days = Math.round(d / 86400000);
+  return days <= 1 ? t.nextTomorrow : t.nextDays(days);
 }
 
 function backupJson() {

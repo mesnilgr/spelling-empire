@@ -1656,3 +1656,12 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .fam-val { text-align: right; font-size: 0.85em; }
 .dash-families, .dash-age .age-buttons { align-self: stretch; width: 100%; }
 .dash-age .age-buttons { max-width: 420px; }
+
+/* Homophones: the sentence with the blank to fill */
+.spell-context { margin: 2px 0 8px; font-size: 1.35rem; font-weight: 800; color: #3a2a8a; background: #f3efff; border-radius: 12px; padding: 8px 14px; }
+.spell-context .blank { display: inline-block; min-width: 2.4em; border-bottom: 3px solid #7a5cff; margin: 0 4px; }
+.tile.tile-space { background: transparent; border-color: transparent; box-shadow: none; width: 14px; min-width: 14px; }
+
+.dash-newperday { display: flex; align-items: center; gap: 10px; font-weight: 800; margin-top: 10px; }
+.dash-newperday select { font: inherit; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--ink-100); }
+.dash-next { white-space: nowrap; color: var(--ink-500, #556); }

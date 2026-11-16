@@ -162,6 +162,7 @@
               <div class="spell-emoji" id="spell-emoji" hidden></div>
               <h2 id="spell-title">Mine!</h2>
               <p class="spell-instruction" id="spell-instruction">Listen and type the word to mine this material.</p>
+              <p class="spell-context" id="spell-context" hidden></p>
               <div class="spell-word-display">
                 <div class="tiles" id="spell-tiles" aria-hidden="true"></div>
                 <input
@@ -245,6 +246,10 @@
             <h2 data-i18n="ageTitle">Age</h2>
             <div class="age-buttons age-buttons-small" id="dash-age"></div>
             <p class="note" id="dash-age-note"></p>
+            <label class="dash-newperday"><span data-i18n="newPerDayLabel">New words per day</span>
+              <select id="dash-newperday"><option>5</option><option>10</option><option>15</option><option>20</option><option>30</option></select>
+            </label>
+            <p class="note" data-i18n="newPerDayNote"></p>
           </section>
           <div class="stat-grid stat-grid-4" id="dash-summary"></div>
           <section class="card section">

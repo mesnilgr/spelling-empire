@@ -1,4 +1,5 @@
 import { LANGUAGES, LEVELS, WORDS, UI, buildSentence, AGE_LADDER, AGE_START, AGES } from './language-engine.js';
+import { SRS, ensureCard, grade, gradeFromAttempt, chooseWord } from './srs.js';
 
 let pass = 0;
 let fail = 0;
@@ -209,8 +210,10 @@ for (const lang of ['en', 'fr']) {
 for (const lang of ['en', 'fr']) {
   const keys = new Set(LANGUAGES[lang].keyRows.join(''));
   for (const entry of WORDS[lang]) {
-    assert(!entry.word.includes(' '), `${lang}: word "${entry.word}" has no space`);
-    for (const letter of entry.word.toLowerCase()) {
+    // Only short phrases have spaces (filled in automatically); never two in a row or at the ends.
+    if (entry.level === 'phrases') assert(/^[^ ]+( [^ ]+)+$/.test(entry.word), `${lang}: phrase "${entry.word}" has single spaces between words`);
+    else assert(!entry.word.includes(' '), `${lang}: word "${entry.word}" has no space`);
+    for (const letter of entry.word.toLowerCase().replace(/ /g, '')) {
       assert(keys.has(letter), `${lang}: word "${entry.word}" letter "${letter}" is typeable`);
     }
   }
@@ -306,6 +309,59 @@ for (const l of ['fr', 'en']) {
   }
 }
 assert(AGE_START.fr[5] < AGE_START.fr[6] && AGE_START.fr[6] < AGE_START.fr[7] && AGE_START.fr[7] < AGE_START.fr[8], 'fr: older children start higher');
+
+// 10e. Homophones: the sentence with a blank, once filled with the word, is the spoken sentence
+for (const w of WORDS.fr.filter((x) => x.level === 'homophones')) {
+  assert(w.blank?.includes('___') && w.say, `fr/homophones "${w.word}": a sentence with a blank`);
+  assert(w.blank.replace('___', w.word).toLowerCase() === w.say.toLowerCase(), `fr/homophones "${w.word}": the blank is filled by the word`, w.blank);
+}
+
+// 10f. Spaced repetition (Anki-style)
+{
+  const MIN = 60000, DAY = 86400000, t0 = Date.UTC(2026, 0, 1);
+  const noFuzz = () => 0.5;
+  let c = { word: 'lapin' };
+  grade(c, 'good', t0, noFuzz);
+  assert(c.state === 'learning' && c.due === t0 + 10 * MIN, 'srs: a new word right first time comes back 10 min later');
+  grade(c, 'good', t0 + 11 * MIN, noFuzz);
+  assert(c.state === 'review' && c.interval === 1, 'srs: right again → learned, back tomorrow', JSON.stringify(c));
+  grade(c, 'good', t0 + 11 * MIN + DAY, noFuzz);
+  assert(c.interval === 3, 'srs: review good → interval × ease (1 → 3 days)', String(c.interval));
+  const before = c.interval;
+  grade(c, 'good', t0 + 11 * MIN + 4 * DAY, noFuzz);
+  assert(c.interval > before * 2, 'srs: intervals keep growing', String(c.interval));
+  const iv = c.interval;
+  grade(c, 'again', t0 + 30 * DAY, noFuzz);
+  assert(c.state === 'relearning' && c.lapses === 1 && Math.abs(c.ease - 2.3) < 1e-9 && c.due === t0 + 30 * DAY + 10 * MIN, 'srs: a lapse → relearning in 10 min, ease − 0.2');
+  assert(c.interval === Math.max(1, Math.round(iv * SRS.lapseFactor)), 'srs: a lapse halves the interval');
+  grade(c, 'good', t0 + 30 * DAY + 12 * MIN, noFuzz);
+  assert(c.state === 'review' && c.due > t0 + 31 * DAY - MIN, 'srs: relearned → back to review');
+  const e = grade({ word: 'chat' }, 'easy', t0, noFuzz);
+  assert(e.state === 'review' && e.interval === SRS.easyDays, 'srs: easy first time → 4 days');
+  const h = grade({ word: 'vache' }, 'hard', t0, noFuzz);
+  assert(h.state === 'learning' && h.due === t0 + 10 * MIN, 'srs: right after a miss → stays in learning');
+  for (let k = 0; k < 10; k++) grade(c, 'again', t0 + (40 + k) * DAY, noFuzz);
+  assert(c.ease >= SRS.minEase, 'srs: ease never drops below 1.3');
+  const old = ensureCard({ word: 'loup', box: 3, correct: 3, wrong: 0, due: t0 });
+  assert(old.state === 'review' && old.interval === 7, 'srs: old box stats become review cards');
+  assert(gradeFromAttempt({ ok: false }) === 'again' && gradeFromAttempt({ ok: true, firstTry: false }) === 'hard' && gradeFromAttempt({ ok: true, firstTry: true, ms: 2000, length: 4 }) === 'easy' && gradeFromAttempt({ ok: true, firstTry: true, ms: 60000, length: 4 }) === 'good', 'srs: grades from what the child did');
+  // Choosing: learning due → review due → new (daily limit) → practice.
+  const words = ['a1', 'b2', 'c3', 'd4', 'n5'].map((w) => ({ word: w }));
+  const stats = {
+    a1: { word: 'a1', state: 'review', interval: 3, ease: 2.5, due: t0 - DAY, lapses: 0, reps: 2 },
+    b2: { word: 'b2', state: 'learning', step: 0, interval: 0, ease: 2.5, due: t0 - MIN, lapses: 0, reps: 1 },
+    c3: { word: 'c3', state: 'review', interval: 10, ease: 2.0, due: t0 + 5 * DAY, lapses: 1, reps: 4 },
+    d4: { word: 'd4', state: 'review', interval: 1, ease: 2.6, due: t0 + DAY, lapses: 0, reps: 1 },
+  };
+  const key = (w) => w.word;
+  assert(chooseWord(words, stats, key, { now: t0 }).w.word === 'b2', 'srs: a learning card due comes first');
+  assert(chooseWord(words, stats, key, { now: t0, avoid: 'b2' }).w.word === 'a1', 'srs: then a review card due');
+  assert(chooseWord(words, stats, key, { now: t0, avoid: 'b2', newToday: 0 }).why !== 'new', 'srs: due reviews before new words');
+  delete stats.a1; delete stats.b2;
+  assert(chooseWord(words, stats, key, { now: t0, newToday: 0, rnd: () => 0 }).why === 'new', 'srs: new words when nothing is due');
+  const pr = chooseWord(words, stats, key, { now: t0, newToday: SRS.newPerDay, rnd: () => 0 });
+  assert(pr.why === 'practice' && pr.w.word === 'c3', 'srs: daily new limit reached → practise the hardest known word', JSON.stringify(pr));
+}
 
 // 10c. Every word has a real example sentence that uses it
 for (const l of ['en', 'fr']) {

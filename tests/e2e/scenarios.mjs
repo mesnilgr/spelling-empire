@@ -24,7 +24,7 @@ export const SCENARIOS = [
       check(levels[5] === 'letters,syllables,gs', '5 ans : lettres, syllabes, premiers mots', levels[5]);
       check(levels[6] === 'easy,medium,challenge', '6 ans : listes CP', levels[6]);
       check(levels[7] === 'medium,challenge,ce2', '7 ans : listes CE1', levels[7]);
-      check(levels[8] === 'challenge,ce2,ce2hard', '8 ans : listes CE2', levels[8]);
+      check(levels[8] === 'ce2,ce2hard,homophones', '8 ans : CE2 et homophones', levels[8]);
       check(levels.up === 'syllables,gs,easy', 'une liste maîtrisée fait monter d’un cran', levels.up);
       await g.click('#new-game-btn');
       await g.page.waitForTimeout(400);
@@ -247,6 +247,54 @@ export const SCENARIOS = [
       await draw(LETTERS.o); await g.page.waitForTimeout(3600);
       const res = await g.page.$eval('#spell-result', (e) => (e.hidden ? '' : e.innerText));
       check(res.length > 0, 'le mot fini se valide tout seul', await val());
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Homophones, petites phrases et révision',
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 8, inputMode: 'keys', save: save(story(2, 0)) });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1000);
+      const open = async (pred) => {
+        await g.use("i.kind === 'house'");
+        await g.page.waitForSelector('#spell-modal:not([hidden])', { timeout: 30000 });
+        await g.page.evaluate(async (p) => {
+          const { WORDS } = await import('/language-engine.js');
+          const w = WORDS.fr.find(new Function('w', `return ${p}`));
+          const c = window.__se.spell(); c.word = w;
+          const ctx = document.querySelector('#spell-context');
+          const [b, a] = (w.blank ?? '').split('___');
+          if (w.blank) { ctx.textContent = `${b}…${a}`; ctx.hidden = false; } else ctx.hidden = true;
+          document.querySelector('#spell-input').value = ''; document.querySelector('#spell-input').dispatchEvent(new Event('input'));
+        }, pred);
+      };
+      // Homophone: the sentence with its blank is shown and "est" is accepted.
+      await g.use("i.kind === 'house'");
+      await g.page.waitForSelector('#spell-modal:not([hidden])', { timeout: 30000 });
+      await g.page.evaluate(() => document.querySelector('#spell-modal').hidden = true);
+      await open("w.level === 'homophones' && w.word === 'est'");
+      check(await g.page.$eval('#spell-context', (e) => !e.hidden && e.textContent.includes('Le ciel')), 'la phrase à trous est affichée');
+      let r = await g.spell();
+      check(r.word === 'est' && r.result.length > 0, 'le petit mot « est » est accepté', r.result);
+      // Phrase: typing only the letters fills the spaces.
+      await open("w.level === 'phrases' && w.word === 'les chats dorment'");
+      await g.page.evaluate(() => { for (const ch of 'leschatsdorment') document.querySelector(`#spell-keyboard .key[aria-label="${ch}"]`).click(); });
+      check(await g.page.$eval('#spell-input', (e) => e.value) === 'les chats dorment', 'les espaces se mettent tout seuls');
+      check(await g.page.$$eval('#spell-tiles .tile-space', (t) => t.length) === 2, 'deux cases d’espace');
+      await g.click('#spell-check-btn');
+      await g.page.waitForTimeout(500);
+      check((await g.page.$eval('#spell-result', (e) => e.innerText)).includes('les chats dorment'), 'la phrase est validée');
+      await g.click('#spell-continue-btn');
+      // Review: a word due for review comes back more often than the others.
+      const counts = await g.page.evaluate(() => {
+        const p = window.__se.progress();
+        p.wordStats['fr:forêt'] = { lang: 'fr', word: 'forêt', level: 'ce2', seen: 2, correct: 0, wrong: 2, firstTry: 0, lastSeen: 0, misspellings: [], box: 0, due: Date.now() - 1000 };
+        let n = 0; for (let k = 0; k < 40; k++) if (window.__se.pickWord('ce2').word === 'forêt') n++;
+        return n;
+      });
+      check(counts >= 8, `un mot à revoir revient souvent (${counts} fois sur 40)`);
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },

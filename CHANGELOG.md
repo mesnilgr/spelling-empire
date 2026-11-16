@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.6.0 — Apprendre plus, et des tests qui veillent
+
+- **Deux fois plus de mots** : 22 lettres, 40 syllabes, 36 premiers mots, 40 mots CP, 53 sons complexes, 40 pièges CE1, 40 mots CE2 et 40 mots irréguliers. Chaque mot a sa phrase d'exemple.
+- **Révision espacée à la Anki** (algorithme SM-2, adapté au jeu) : chaque mot est une carte qui revient juste avant d'être oublié.
+  - Un nouveau mot réussi revient une fois dans la partie (10 minutes plus tard), puis le lendemain, puis à des intervalles qui grandissent (3 jours, une semaine, un mois…) selon la facilité du mot pour l'enfant.
+  - Une erreur fait revenir le mot 10 minutes plus tard, rend son intervalle plus court et le mot plus « difficile ».
+  - Le jeu note tout seul, sans boutons : erreur = « à revoir », réussi après une erreur = « difficile », réussi du premier coup = « bien », réussi vite = « facile ».
+  - Ordre de choix : les mots en cours d'apprentissage, puis les mots à revoir (les plus en retard d'abord, y compris dans les listes plus faciles), puis de nouveaux mots, jusqu'à une limite par jour (15 par défaut, réglable dans l'espace parents), puis l'entraînement des mots connus les plus difficiles.
+  - L'espace parents indique les mots à revoir aujourd'hui, les mots appris, les nouveaux mots du jour et la prochaine révision de chaque mot.
+- **Pour les 8 ans, deux nouveaux niveaux :**
+  - **homophones** : une phrase à trous s'affiche (« Le chat ___ le chien jouent. ») et l'enfant écrit le petit mot qui manque (a/à, et/est, son/sont, on/ont, ou/où) ;
+  - **petites phrases** en dictée (« les chats dorment »), avec les accords ; les espaces se mettent tout seuls.
+- Les 8 ans commencent maintenant au CE2 (les pièges CE1 restent pour les 7 ans).
+- **Tests de parcours** dans le dépôt (`npm run test:e2e`) : 8 scénarios et 85 vérifications (plus 17 tests unitaires de l'algorithme de révision), qui jouent toute l'histoire, la magie, l'écriture à la main, les homophones, les phrases, la révision, et contrôlent un budget d'affichage pour l'iPad. Une action GitHub les lance à chaque modification.
+
 ## v1.5.0 — La montagne, la mer et la fin de l'histoire
 
 - 🏔️ **La montagne** (nord) : pentes, rochers, sapins, un sommet enneigé entouré d'une falaise. Le nouveau sort **Pierre** fait apparaître un escalier jusqu'à la tour d'Alaric.
