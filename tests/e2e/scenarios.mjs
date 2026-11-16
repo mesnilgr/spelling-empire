@@ -300,6 +300,68 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'Accessibilité de toute la carte',
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, stars: 200, save: save(story(6, 0, { travel: { forest: true, marsh: true, mountain: true, coast: true } })) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      const res = await g.page.evaluate(() => {
+        const s = window.__se.scene;
+        const explore = () => {
+        // Walk the whole map on a 0.5 grid with the real rules: obstacles, water, steps, jumps.
+        const STEP = 0.5, R = 84, N = Math.ceil((R * 2) / STEP), JUMP = 1.35, UP = 0.55;
+        const idx = (x, z) => Math.round((z + R) / STEP) * (N + 1) + Math.round((x + R) / STEP);
+        const seen = new Float32Array((N + 1) * (N + 1)).fill(NaN);
+        const start = [0, 6];
+        const q = [start];
+        seen[idx(...start)] = s.groundAt(...start);
+        let jumps = 0;
+        while (q.length) {
+          const [x, z] = q.pop();
+          const h = seen[idx(x, z)];
+          for (const [dx, dz] of [[STEP, 0], [-STEP, 0], [0, STEP], [0, -STEP]]) {
+            const nx = x + dx, nz = z + dz;
+            const k = idx(nx, nz);
+            if (!Number.isNaN(seen[k]) || Math.hypot(nx, nz) > R - 0.3) continue;
+            if (s._checkCollision(nx, nz) || s._blocked(nx, nz, Math.max(h, s.groundAt(nx, nz)) + 5)) continue;
+            const nh = s.groundAt(nx, nz);
+            if (nh - h > JUMP) continue;
+            if (nh - h > UP) jumps++;
+            seen[k] = nh;
+            q.push([nx, nz]);
+          }
+        }
+        const reach = (o) => {
+          const r = (o.reach ?? 1.5) + 0.3;
+          for (let x = o.worldPos.x - r; x <= o.worldPos.x + r; x += STEP) for (let z = o.worldPos.z - r; z <= o.worldPos.z + r; z += STEP) {
+            if (Math.hypot(x - o.worldPos.x, z - o.worldPos.z) > r) continue;
+            const v = seen[idx(x, z)];
+            if (!Number.isNaN(v) && Math.abs(v - o.worldPos.y) < 1.8) return true;
+          }
+          return false;
+        };
+        const kinds = ['house', 'node', 'npc', 'circle', 'sign', 'travel', 'mimot', 'page', 'book', 'bed'];
+        const all = s.interactables.filter((o) => kinds.includes(o.kind) && !(o.kind === 'circle' && !o.active));
+        const bad = all.filter((o) => !reach(o)).map((o) => `${o.kind}:${o.npcId ?? o.mimotId ?? o.cid ?? o.region ?? o.material ?? o.name ?? ''}@${o.worldPos.x.toFixed(0)},${o.worldPos.z.toFixed(0)}`);
+        let cells = 0; for (const v of seen) if (!Number.isNaN(v)) cells++;
+        return { total: all.length, bad, cells, jumps };
+        };
+        // Before any spell: only the places the story closes on purpose are out of reach.
+        const before = explore();
+        // Every spell that opens a way is cast (bridges, wind, stone stairs).
+        for (const o of s.interactables.filter((i) => i.kind === 'circle' && ['pont', 'vent', 'pierre'].includes(i.spellId))) s.castSpell(o.spellId, o, 'strong', { silent: true });
+        return { before, after: explore() };
+      });
+      const gated = (b) => /mimot:(foret|marais|neige|papier)|npc:(forester|fisher|alaricTower|alaricIsland)|book|page:|node:.*@-(6|7)\d,|node:.*@(5|6|7)\d,|circle:feu-marais|chest@-16/.test(b);
+      const surprise = res.before.bad.filter((b) => !gated(b));
+      check(surprise.length === 0, `sans sort, seuls les lieux fermés par l’histoire sont hors d’atteinte (${res.before.bad.length})`, surprise.join(' ; '));
+      const dup = await g.page.evaluate(() => { const ids = window.__se.scene.interactables.filter((i) => i.kind === 'npc').map((i) => i.npcId); return ids.filter((id, k) => ids.indexOf(id) !== k); });
+      check(dup.length === 0, 'chaque personnage n’est enregistré qu’une fois', dup.join(', '));
+      check(res.after.bad.length === 0, `avec les sorts, tous les lieux sont atteignables à pied (${res.after.total} objets, ${res.after.cells} cases explorées)`, res.after.bad.join(' ; '));
+      await g.page.close();
+    },
+  },
+  {
     name: 'Fluidité iPad (budget d’affichage)',
     async run(browser, base, check) {
       const g = await openGame(browser, base, { lang: 'fr', age: 7, save: save(story(2, 0)) });

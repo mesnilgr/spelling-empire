@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { seededRandom } from './interiors.js';
+import { RIVER, MARSH_POOLS } from './regions.js';
 
 // Terraced voxel hills around the village (half-block layers). The village centre stays flat.
 // Walking up one layer (0.5) is automatic; a full block or more needs a jump.
@@ -69,6 +70,13 @@ export class Terrain {
         }
         // Hills at the edge of the world.
         if (r > 76 && z < 56) raw = Math.max(raw, (r - 76) * 0.45 + n1(x * 0.15, z * 0.15) * 1.5);
+        // Water always wins: the river bed and the marsh pools cut through any hill, with sloping banks.
+        const dRiver = Math.max(0, RIVER.x0 - x, x - RIVER.x1);
+        if (dRiver < 4) raw = Math.min(raw, dRiver * 0.3);
+        for (const [px, pz, pr] of MARSH_POOLS) {
+          const dp = Math.hypot(x - px, z - pz) - pr;
+          if (dp < 3) raw = Math.min(raw, Math.max(0, dp) * 0.3);
+        }
         // Mountain slopes (north), up to the cliff around the summit.
         const S = this.summit;
         const ds = Math.hypot(x - S.x, z - S.z);

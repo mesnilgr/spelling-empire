@@ -989,7 +989,8 @@ function useTravelSign(o) {
 /* ===== WORD MAGIC ===== */
 function refreshCircle(obj) {
   const sp = spellById(obj.spellId);
-  scene3D.setSpotMaterial(obj, 'spell', spellUnlocked(sp) ? `${sp.emoji} ${spellName(sp)}` : `🔒 ${spellName(sp)}`);
+  const ch = !spellUnlocked(sp) && sp.story && CHAPTERS.find((c) => c.objectives.some((o) => o.id === sp.story));
+  scene3D.setSpotMaterial(obj, 'spell', spellUnlocked(sp) ? `${sp.emoji} ${spellName(sp)}` : `🔒 ${spellName(sp)}${ch ? ` · ${t.chapterShort(ch.id)}` : ''}`);
 }
 function refreshCircles() { for (const o of scene3D?.interactables ?? []) if (o.kind === 'circle') refreshCircle(o); }
 function spellUnlocked(sp) { return !!sp && ((sp.unlock !== null && (progress.stars ?? 0) >= sp.unlock) || (!!sp.story && !!game?.story && storyPast(sp.story))); }
@@ -997,7 +998,11 @@ function spellName(sp) { return sp.name[lang] ?? sp.name.fr; }
 function beginSpellCast(circle) {
   initAudio();
   const sp = spellById(circle.spellId);
-  if (!spellUnlocked(sp)) { toast(sp.unlock === null ? (sp.soon?.[lang] ?? t.spellSoon) : t.spellLocked(spellName(sp), sp.unlock)); return; }
+  if (!spellUnlocked(sp)) {
+    const ch = sp.story && CHAPTERS.find((c) => c.objectives.some((o) => o.id === sp.story));
+    toast(ch ? t.spellLockedChapter(spellName(sp), ch.id) : sp.unlock === null ? (sp.soon?.[lang] ?? t.spellSoon) : t.spellLocked(spellName(sp), sp.unlock));
+    return;
+  }
   if (scene3D.spellObjects?.[circle.cid ?? sp.id]?.node?.active) { toast(t.spellAlready); return; }
   const word = spellWord(sp, progress.age ?? 6, lang);
   spellContext = { type: 'spell', spell: sp, circle, word, tries: 0 };

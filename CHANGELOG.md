@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.1 — Corrections signalées par les joueurs
+
+- **La rivière n'est plus coupée** : les collines du bord du monde recouvraient la rivière de la forêt au nord et au sud (et une mare du marais). Le terrain laisse maintenant toujours passer l'eau, avec des berges en pente.
+- **Alaric n'apparaît plus là où on ne peut pas aller** : les personnages des régions étaient enregistrés deux fois, et le nom d'Alaric flottait au sommet de la montagne avant le chapitre 4. C'est corrigé.
+- **La falaise du sommet s'explique** : des rochers éboulés, un panneau « Pierre ? » et un cercle « 🔒 Pierre · chap. 4 » montrent que le passage s'ouvre avec le sort Pierre. Toucher un sort verrouillé indique à quel chapitre on l'apprend.
+- **Nouveau test d'accessibilité** : il explore toute la carte avec les vraies règles de déplacement (obstacles, eau, marches, saut) et vérifie que chaque personnage, maison, cercle, coffre et Mimot est atteignable une fois les sorts lancés, et que sans sort seuls les lieux fermés par l'histoire sont hors d'atteinte.
+
 ## v1.6.0 — Apprendre plus, et des tests qui veillent
 
 - **Deux fois plus de mots** : 22 lettres, 40 syllabes, 36 premiers mots, 40 mots CP, 53 sons complexes, 40 pièges CE1, 40 mots CE2 et 40 mots irréguliers. Chaque mot a sa phrase d'exemple.

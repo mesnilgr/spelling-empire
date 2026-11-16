@@ -302,7 +302,22 @@ export function buildMountain(ctx) {
   stairs.visible = false;
   stairs.userData.dynamic = true;
   g.add(stairs);
-  return { group: g, stairs, book };
+  // Fallen rocks where the stairs will be: the Stone spell clears them.
+  const rockfall = new THREE.Group();
+  for (let i = 0; i < 9; i++) {
+    const t = (i % 3) / 2, row = Math.floor(i / 3);
+    const s = 0.7 + ((i * 37) % 10) / 25;
+    const b = new THREE.Mesh(BOX, mat(i % 2 ? 0x8d8a86 : 0x77736e));
+    b.scale.set(s, s * 0.8, s);
+    b.position.set(STAIRS.x + (t - 0.5) * 1.6, ctx.stairsY(STAIRS.z0 - 0.6) - 0.6 + row * 0.55, STAIRS.z0 - 0.4 - row * 0.5);
+    b.rotation.y = i * 0.7;
+    b.castShadow = true;
+    rockfall.add(b);
+  }
+  mergeStatic(rockfall);
+  rockfall.userData.dynamic = true;
+  g.add(rockfall);
+  return { group: g, stairs, book, rockfall };
 }
 
 function letterTexture() {

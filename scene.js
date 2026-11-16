@@ -572,6 +572,13 @@ export class GameScene {
       this.collidables.push({ x: n.x, z: n.z, r: 0.4 });
       this._addInteractable({ kind: 'npc', npcId: n.id, npc, worldPos: npc.position.clone(), iconY: 2.45, reach: 2.2, hitRadius: 0.9 });
     }
+    // A sign at the foot of the cliff: the way up opens with the Stone spell.
+    this.cliffSign = buildSign();
+    this.cliffSign.position.set(-2.2, this.terrain.heightAt(-2.2, -53.6), -53.6);
+    this.cliffSign.userData.dynamic = true;
+    setSignText(this.cliffSign, 'Pierre ?');
+    this.scene.add(this.cliffSign);
+    this.collidables.push({ x: -2.2, z: -53.6, r: 0.18 });
     this.bookObj = this._addInteractable({ kind: 'book', worldPos: new THREE.Vector3(BOOK.x, SUMMIT.level, BOOK.z), iconY: 2.0, reach: 1.8, hitRadius: 0.9 });
   }
   setNpcVisible(id, on) {
@@ -808,6 +815,8 @@ export class GameScene {
       this.spellObjects[key] = true;
       const st = this.mountain?.stairs;
       if (st) { st.visible = true; if (!silent) grow(st); }
+      if (this.mountain?.rockfall) this.mountain.rockfall.visible = false;
+      if (this.cliffSign) this.cliffSign.visible = false;
       (this.walkways ??= []).push({ axis: 'z', x: STAIRS.x, z0: STAIRS.z0 + 0.6, z1: STAIRS.z1 - 0.6, hw: STAIRS.hw, y: (x, z) => this.stairsY(z) });
       if (circle) { circle.active = false; circle.block.visible = false; circle.iconHolder.visible = false; if (circle.labelEl) circle.labelEl.style.display = 'none'; }
       if (!silent) this.screenShake(0.12);
@@ -1290,7 +1299,7 @@ export class GameScene {
     }
     // Every villager can be talked to (quests).
     for (const npc of this.npcs) {
-      if (!npc.userData.name) continue;
+      if (!npc.userData.name || this.interactables.some((i) => i.npc === npc)) continue; // already registered (region villagers)
       const wp = npc.getWorldPosition(new THREE.Vector3());
       this._addInteractable({ kind: 'npc', npcId: npc.userData.name, npc, worldPos: wp, iconY: 2.45, reach: 2.2, hitRadius: 0.9 });
     }
