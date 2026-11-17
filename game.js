@@ -11,6 +11,8 @@ import { setSignText } from './story3d.js';
 import { BOSSES } from './bosses.js';
 import { PET_NAMES } from './pet.js';
 import { DECOR } from './decor.js';
+import { PLACES, DISCOVER_RADIUS } from './landmarks.js';
+import { ANIMAL_KINDS } from './fauna.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -512,6 +514,7 @@ function init3DScene() {
   scene3D.onLava = () => knockOut('lava');
   scene3D.onZombieCatch = zombieTouch;
   setupPet();
+  setupFauna();
   scene3D.onMeatPickup = onMeatPickup;
   scene3D.onZombieBurnt = onZombieBurnt;
   scene3D.canBeAttacked = () => !!game && document.body.dataset.screen === 'game' && $('#spell-modal').hidden && $('#dialog').hidden && $('#travel-modal').hidden && $('#quest-modal')?.hidden !== false && !knocking;
@@ -543,7 +546,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (obj.kind === 'sign' || obj.kind === 'mimot' || obj.kind === 'page' || obj.kind === 'travel' || obj.kind === 'book') continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -582,6 +585,8 @@ function saveGame() {
     fountainRaised: !!game.fountainRaised,
     pet: game.pet ?? null,
     bosses: game.bosses ?? [],
+    places: game.places ?? [],
+    portalLit: !!game.portalLit,
     savedAt: Date.now(),
   };
   saveProgress();
@@ -605,6 +610,8 @@ function continueGame() {
     fountainRaised: !!s.fountainRaised,
     pet: s.pet ?? null,
     bosses: [...(s.bosses ?? [])],
+    places: [...(s.places ?? [])],
+    portalLit: !!s.portalLit,
   });
   // Lasting spells come back: the bridge, the lit braziers.
   for (const [key, power] of Object.entries(game.spells)) {
@@ -715,6 +722,7 @@ function interactWith(obj) {
   if (obj.kind === 'mimot') { beginMimot(obj); return; }
   if (obj.kind === 'boss') { beginBoss(obj); return; }
   if (obj.kind === 'pet') { petInteract(); return; }
+  if (obj.kind === 'portal') { usePortal(); return; }
   if (obj.kind === 'page') { scene3D.setStoryActive(obj, false); playScene(obj.scene, () => advanceStory(obj.pageId)); return; }
   if (obj.kind === 'travel') { useTravelSign(obj); return; }
   if (obj.nodeType === 'fish' && ownsTool('rod')) {
@@ -905,11 +913,59 @@ function updateMapPins() {
   if (bed) pins.push({ x: bed.worldPos.x, z: bed.worldPos.z, text: t.bedPin });
   pins.push({ x: LAVA.start.x, z: LAVA.start.z, text: '🔥' });
   for (const b of BOSSES) if (bossOpen(b)) pins.push({ x: b.x, z: b.z, text: b.emoji });
+  for (const pl of PLACES) if (game?.places?.includes(pl.id)) pins.push({ x: pl.x, z: pl.z, text: pl.emoji });
   const p = game.parkour?.done && !game.fountainRaised ? { x: 0, z: 0 } : objectivePos();
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐' });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); }, 300);
+
+/* ===== PLACES TO DISCOVER, THE PORTAL, ANIMALS ===== */
+function checkPlaces() {
+  if (!game || !scene3D || scene3D.mode !== 'play') return;
+  const p = scene3D.player.position;
+  game.places ??= [];
+  for (const pl of PLACES) {
+    if (game.places.includes(pl.id) || Math.hypot(p.x - pl.x, p.z - pl.z) > DISCOVER_RADIUS) continue;
+    game.places.push(pl.id);
+    progress.stars += 2; game.starsEarned += 2;
+    sfxCraft(); smile();
+    toast(t.placeFound(pl.emoji, pl.name[lang], game.places.length, PLACES.length), 3800);
+    speak(t.placeFoundSay(pl.name[lang]), 0.95);
+    updateGameUI(); saveGame();
+    if (game.places.length === PLACES.length) setTimeout(() => { progress.stars += 15; game.starsEarned += 15; launchConfetti(); sfxVictory(); toast(t.allPlaces, 5000); updateGameUI(); saveGame(); }, 4200);
+  }
+}
+// The Nether portal: lit with a word, then it takes the hero to the lava course.
+function usePortal() {
+  if (!game.portalLit) {
+    spellContext = { type: 'portal', word: pickWord(levelAt(1)), tries: 0 };
+    openSpellModal(`🌀 ${t.portalTitle}`, t.portalInstruction, '🌀');
+    return;
+  }
+  sfxCraft();
+  toast(t.portalGo, 2600);
+  const fade = $('#sleep-fade');
+  fade.hidden = false; fade.classList.remove('is-out');
+  setTimeout(() => {
+    scene3D.teleport(LAVA.start.x, LAVA.start.z + 1.5);
+    scene3D.pet?.catchUp();
+    fade.classList.add('is-out');
+    setTimeout(() => { fade.hidden = true; }, 700);
+  }, 700);
+}
+function setupFauna() {
+  const f = scene3D?.fauna;
+  if (!f) return;
+  f.onSound = (a) => {
+    const txt = a.def.sound?.[lang] ?? a.def.sound?.fr;
+    if (!txt || txt === '…') return;
+    const [freq, wave] = a.def.tone ?? [500, 'square'];
+    playTone(freq, 0.12, wave, 0.05); playTone(freq * 0.8, 0.14, wave, 0.04, 0.1);
+    const pos = scene3D.worldToScreen(a.mesh.position.clone().setY(a.mesh.position.y + 1.1));
+    if (pos) showFloatingText(pos.x, pos.y, txt, '#ffffff');
+  };
+}
 
 /* ===== BOSSES, THE PUPPY, THE COTTAGE DECORATIONS ===== */
 const bossDone = (b) => !!game?.bosses?.includes(b.id);
@@ -928,6 +984,9 @@ function applyExtras() {
   // The puppy shows only its name (no spinning icon hiding it).
   if (po) po.iconHolder.children.filter((c) => !c.isCSS2DObject && c.isObject3D && !c.userData.label).forEach((c) => { c.visible = false; });
   for (const id of progress.decor ?? []) scene3D.placeDecor(id);
+  scene3D.lightPortal(!!game.portalLit);
+  const pobj = scene3D.portalObj;
+  if (pobj && pobj.portalLabel !== !!game.portalLit) { pobj.portalLabel = !!game.portalLit; scene3D.setSpotMaterial(pobj, 'talk', game.portalLit ? `🌀 ${t.portalLabelOn}` : `🌀 ${t.portalLabelOff}`); }
 }
 
 function beginBoss(obj) {
@@ -1571,6 +1630,14 @@ function handleSpellSuccess() {
     spellResultEl.hidden = false;
     speak(won ? t.bossWonSay : t.bossHitSay, 0.95);
     spellContext.after = won ? winBoss : () => { scene3D?.bosses.attack(b.id); sfxRoar(); setTimeout(nextBossWord, 1100); };
+  } else if (type === 'portal') {
+    game.portalLit = true;
+    scene3D?.lightPortal(true);
+    sfxVictory(); launchConfetti();
+    spellResultEl.replaceChildren(el('p', 'spell-success', `🌀 ${t.portalLit}`), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${t.stars}`));
+    spellResultEl.hidden = false;
+    speak(t.portalLit, 0.95);
+    applyExtras(); saveGame();
   } else if (type === 'pet') {
     sfxVictory();
     spellResultEl.replaceChildren(
@@ -2035,7 +2102,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');

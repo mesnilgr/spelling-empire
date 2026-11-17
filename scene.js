@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { SIGNS, MIMOTS, PAGES, REGION_NPCS } from './story.js';
-import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh, buildMountain, buildCoast, STAIRS, SUMMIT, PIER, ISLAND, BOOK, LAVA, LAVA_FLAGS, buildLavaCourse } from './regions.js';
+import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh, buildMountain, buildCoast, STAIRS, SUMMIT, PIER, ISLAND, BOOK, LAVA, LAVA_FLAGS, buildLavaCourse, MARSH_POOLS } from './regions.js';
 import { mergeStatic as mergeGroup, mergeDirect as mergeGroupParts } from './perf.js';
 import { ZombieManager } from './zombies.js';
 import { BossManager } from './bosses.js';
 import { PetManager } from './pet.js';
 import { DECOR } from './decor.js';
+import { PLACES, buildPlace, buildExtras, buildTrails, buildGroves, buildRegionFillers } from './landmarks.js';
+import { FaunaManager } from './fauna.js';
 import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
 import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -215,6 +217,7 @@ export class GameScene {
     this.zombies = new ZombieManager(this);
     this.bosses = new BossManager(this);
     this.pet = new PetManager(this);
+    this.fauna = new FaunaManager(this);
   }
 
   _insideAnyHouse(x, z, margin = 0.6) {
@@ -438,18 +441,7 @@ export class GameScene {
   // Ores in the quarry and the hills, the wheat field, trees, a flower meadow and the pond.
   _buildResourceNodes() {
     const h = (x, z) => this.terrain.heightAt(x, z);
-    const ore = (x, z, kind) => {
-      const y = h(x, z);
-      const tex = { iron: 'ironOre', diamond: 'diamondOre', obsidian: 'obsidian' }[kind];
-      const block = texBox(this.scene, 0.95, 0.95, 0.95, blockMat(tex), x, y + 0.475, z, { tile: 0.95 });
-      block.userData.dynamic = true;
-      this.collidables.push({ x, z, r: 0.5 });
-      this._addInteractable({
-        kind: 'node', nodeType: 'ore', material: kind, requires: 'pickaxe', block,
-        burst: { iron: '#d8a878', diamond: '#5af0e6', obsidian: '#5a3a8a' }[kind],
-        worldPos: new THREE.Vector3(x, y, z), iconY: 1.55, reach: 1.5,
-      });
-    };
+    const ore = (x, z, kind) => this._addOre(x, z, kind);
     const q = this.terrain.quarry;
     const kinds = ['iron', 'diamond', 'iron', 'obsidian', 'iron', 'diamond', 'obsidian'];
     kinds.forEach((k, i) => {
@@ -497,19 +489,7 @@ export class GameScene {
       });
     }
     // Treasure chests hidden around the world: something random inside.
-    for (const [cx, cz, ry] of [[-25, 13, 0.6], [27, 8, -1.2], [-6, 23, 0.2], [13.5, -21, 2.4], [-22, -24, 0.9], [11, 24, -0.4]]) {
-      const y = h(cx, cz);
-      const chest = buildChest();
-      chest.position.set(cx, y, cz);
-      chest.rotation.y = ry;
-      chest.userData.dynamic = true;
-      this.scene.add(chest);
-      this.collidables.push({ x: cx, z: cz, r: 0.6 });
-      this._addInteractable({
-        kind: 'node', nodeType: 'chest', material: 'chest', block: chest, chest,
-        burst: '#f2c84b', worldPos: new THREE.Vector3(cx, y, cz), iconY: 1.6, reach: 1.7, respawn: 240,
-      });
-    }
+    for (const [cx, cz, ry] of [[-25, 13, 0.6], [27, 8, -1.2], [-6, 23, 0.2], [13.5, -21, 2.4], [-22, -24, 0.9], [11, 24, -0.4]]) this._addChest(cx, cz, ry);
     // Glowing mushrooms: they only come out at night.
     for (const [mx2, mz2] of [[-28, 4], [-24, -13], [12, 27], [27, 14], [-11, 28], [29, -6]]) {
       const y = h(mx2, mz2);
@@ -580,6 +560,7 @@ export class GameScene {
       this.scene.add(group);
       this.regionGroups.push({ name, group, def: REGIONS[name] });
     }
+    this._buildPlaces();
     // The marsh boardwalk: walkable over the pools.
     (this.walkways ??= []).push({ x0: BOARDWALK.x0, x1: BOARDWALK.x1, z: BOARDWALK.z, hw: BOARDWALK.hw, y: () => 0.22 });
     // Villagers out in the regions.
@@ -635,6 +616,88 @@ export class GameScene {
     this.walkways.push({ axis: 'z', x: LAVA.exit.x, z0: zTop + 0.05, z1: zBottom, hw: 0.8, y: (x, z) => Math.max(0, fin[3] * (z - zBottom) / (zTop - zBottom)) });
   }
   inLava(x, z) { return x > LAVA.x0 - 0.3 && x < LAVA.x1 + 0.3 && z > LAVA.z0 - 0.3 && z < LAVA.z1 + 0.3; }
+  // An ore block to mine with the pickaxe.
+  _addOre(x, z, kind) {
+    const y = this.terrain.heightAt(x, z);
+    const tex = { iron: 'ironOre', diamond: 'diamondOre', obsidian: 'obsidian' }[kind];
+    const block = texBox(this.scene, 0.95, 0.95, 0.95, blockMat(tex), x, y + 0.475, z, { tile: 0.95 });
+    block.userData.dynamic = true;
+    this.collidables.push({ x, z, r: 0.5 });
+    return this._addInteractable({
+      kind: 'node', nodeType: 'ore', material: kind, requires: 'pickaxe', block,
+      burst: { iron: '#d8a878', diamond: '#5af0e6', obsidian: '#5a3a8a' }[kind],
+      worldPos: new THREE.Vector3(x, y, z), iconY: 1.55, reach: 1.5,
+    });
+  }
+  // A treasure chest: something random inside, back after a while.
+  _addChest(cx, cz, ry = 0) {
+    const y = this.terrain.heightAt(cx, cz);
+    const chest = buildChest();
+    chest.position.set(cx, y, cz);
+    chest.rotation.y = ry;
+    chest.userData.dynamic = true;
+    this.scene.add(chest);
+    this.collidables.push({ x: cx, z: cz, r: 0.6 });
+    return this._addInteractable({
+      kind: 'node', nodeType: 'chest', material: 'chest', block: chest, chest,
+      burst: '#f2c84b', worldPos: new THREE.Vector3(cx, y, cz), iconY: 1.6, reach: 1.7, respawn: 240,
+    });
+  }
+  // Places to discover (landmarks.js), the beach castles and lily pads, and the animals.
+  _buildPlaces() {
+    this.places = [];
+    this.placeAnims = [];
+    for (const def of PLACES) {
+      const out = buildPlace(def, this);
+      mergeGroup(out.group);
+      out.group.userData.dynamic = true;
+      this.scene.add(out.group);
+      this.regionGroups.push({ name: def.id, group: out.group, def: { x: def.x, z: def.z, show: 34 } });
+      for (const n of out.nodes) {
+        if (n.chest) this._addChest(n.x, n.z, n.ry);
+        else if (n.ore) this._addOre(n.x, n.z, n.ore);
+        else if (n.kind === 'portal') this.portalObj = this._addInteractable({ kind: 'portal', placeId: def.id, worldPos: new THREE.Vector3(n.x, this.groundAt(n.x, n.z), n.z), iconY: 2.4, reach: 2.0, hitRadius: 1.3 });
+        else this._addInteractable({ kind: 'node', nodeType: n.nodeType, material: n.material, requires: n.requires, worldPos: new THREE.Vector3(n.x, this.groundAt(n.x, n.z), n.z), iconY: 1.5, reach: n.reach ?? 1.8, hitRadius: 1.2 });
+      }
+      if (out.portal) this.portalSurface = out.portal;
+      for (const fn of out.anims) this.placeAnims.push({ x: def.x, z: def.z, fn });
+      this.places.push(def);
+    }
+    for (const extras of [buildExtras(this, MARSH_POOLS), buildTrails(this), buildGroves(this), buildRegionFillers(this)]) {
+      mergeGroup(extras);
+      extras.userData.dynamic = true;
+      this.scene.add(extras);
+    }
+    // Fireflies over the marsh, the meadow and the forest at night.
+    this.fireflies = [[60, 2, 14], [-34, 39, 8], [-64, 6, 14], [-52, 24, 6]].map(([x, z, r]) => {
+      const n = 36, pos = new Float32Array(n * 3), seeds = [];
+      for (let i = 0; i < n; i++) seeds.push([x + (Math.random() - 0.5) * r * 2, z + (Math.random() - 0.5) * r * 2, Math.random() * 6]);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xfff27a, size: 0.22, transparent: true, opacity: 0.9, depthWrite: false }));
+      pts.userData.dynamic = true;
+      pts.frustumCulled = false;
+      pts.visible = false;
+      this.scene.add(pts);
+      return { pts, seeds, x, z };
+    });
+  }
+  _tickFireflies(t) {
+    const night = (this.night ?? 0) > 0.4, p = this.player.position;
+    for (const f of this.fireflies ?? []) {
+      f.pts.visible = night && Math.hypot(p.x - f.x, p.z - f.z) < 50;
+      if (!f.pts.visible) continue;
+      const a = f.pts.geometry.attributes.position;
+      f.seeds.forEach(([x, z, k], i) => a.setXYZ(i, x + Math.sin(t * 0.7 + k) * 1.2, this.groundAt(x, z) + 0.8 + Math.sin(t * 1.3 + k * 2) * 0.5, z + Math.cos(t * 0.6 + k) * 1.2));
+      a.needsUpdate = true;
+    }
+  }
+  lightPortal(on = true) { if (this.portalSurface) this.portalSurface.visible = on; }
+  _tickPlaces(dt, t) {
+    const p = this.player.position;
+    for (const a of this.placeAnims ?? []) if (Math.abs(p.x - a.x) < 45 && Math.abs(p.z - a.z) < 45) a.fn(dt, t);
+  }
+
   // Decorations bought with stars, inside the cottage.
   placeDecor(id) {
     const def = DECOR.find((d) => d.id === id);
@@ -776,6 +839,7 @@ export class GameScene {
     if (this.coast) for (const b of this.coast.island.children) if (b.userData.float) { const f = b.userData.float; b.position.y = 1.2 + Math.sin(t * 1.5 + f.i) * 0.25; b.rotation.y = t * 0.6 + f.a; }
     if (this.mountain) this.mountain.book.position.y = SUMMIT.level + 1.08 + Math.sin(t * 2) * 0.04;
     for (const r of this.regionGroups ?? []) r.group.visible = Math.hypot(p.x - r.def.x, p.z - r.def.z) < r.def.show + 10;
+    for (const a of this.fauna?.list ?? []) a.mesh.visible = Math.hypot(p.x - a.mesh.position.x, p.z - a.mesh.position.z) < (a.def.swim ? 60 : 38);
     // The sun (and its shadows) follow the hero around the bigger world.
     if (this.sun) {
       this.sun.position.set(p.x - 14, 24, p.z + 12);
@@ -1742,10 +1806,10 @@ export class GameScene {
 
   // ===== MOVEMENT & COLLISION =====
 
-  _checkCollision(x, z) {
+  _checkCollision(x, z, o) {
     const onWalk = this.walkways?.length && this._walkwayAt(x, z);
     for (const c of this.collidables) {
-      if (c.water && onWalk) continue;
+      if (c.water && (onWalk || o?.swim)) continue;
       if (c.rect) { if (x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1) return true; continue; }
       if (c.type === 'houseWall') {
         // Transform world position into the house's local space
@@ -2307,7 +2371,7 @@ export class GameScene {
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
     this._tickRegions();
-    this._tickEruptions(dt); this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
+    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') this.fauna?.update(dt, elapsed); this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

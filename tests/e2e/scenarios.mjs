@@ -635,6 +635,53 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'Lieux à découvrir et animaux',
+    weight: 2,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, save: save(story(3, 0)) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(800);
+      const n = await g.page.evaluate(() => ({ places: window.__se.scene.places.length, animals: window.__se.scene.fauna.list.length }));
+      check(n.places >= 12, `des lieux à découvrir dans tout le monde (${n.places})`);
+      check(n.animals >= 40, `des animaux partout (${n.animals})`);
+      // Walking near a place discovers it (+2 stars, a pin on the map).
+      await g.page.evaluate(() => { window.__starsBefore = window.__se.progress().stars; window.__se.scene.teleport(-38, -26); });
+      await g.page.waitForFunction(() => window.__se.game().places?.includes('tower'), null, { timeout: 5000 }).catch(() => {});
+      const found = await g.page.evaluate(() => ({ places: window.__se.game().places, stars: window.__se.progress().stars - window.__starsBefore, toast: document.querySelector('#toast')?.textContent ?? '' }));
+      check(found.places?.includes('tower') && found.stars === 2 && /Nouveau lieu/.test(found.toast), 'en s’approchant de la tour en ruine, on la découvre (+2 ★)', JSON.stringify(found));
+      // Each place hides something: a chest in the tower.
+      check(await g.page.evaluate(() => window.__se.scene.interactables.some((i) => i.nodeType === 'chest' && Math.hypot(i.worldPos.x + 38, i.worldPos.z + 31) < 3)), 'un trésor est caché dans la tour');
+      check(await g.page.evaluate(() => ['iron', 'diamond'].every((m) => window.__se.scene.interactables.some((i) => i.material === m && Math.hypot(i.worldPos.x + 30, i.worldPos.z + 42) < 6))), 'la mine abandonnée a du fer et du diamant à miner');
+      // The Nether portal: lit with a word, then it takes the hero to the lava course.
+      check(await g.use("i.kind === 'portal'") === 'ok', 'on touche le portail du Nether');
+      await g.spell();
+      check(await g.page.evaluate(() => window.__se.game().portalLit && window.__se.scene.portalSurface.visible), 'un mot allume le portail');
+      await g.page.waitForFunction(() => document.querySelector('#spell-modal').hidden, null, { timeout: 5000 }).catch(() => {});
+      await g.use("i.kind === 'portal'");
+      await g.page.waitForFunction(() => window.__se.scene.player.position.z > -40 && window.__se.scene.player.position.x < 32, null, { timeout: 8000 }).catch(() => {});
+      const at = await g.page.evaluate(() => { const p = window.__se.scene.player.position; return { x: p.x, z: p.z }; });
+      check(Math.hypot(at.x - 29, at.z + 35.9) < 2.5, 'le portail allumé emmène au parcours de lave', JSON.stringify(at));
+      // Animals wander, and run off when the hero comes too close.
+      const life = await g.page.evaluate(() => {
+        const s = window.__se.scene, f = s.fauna;
+        const a = f.list.find((x) => x.kind === 'sheep');
+        s.teleport(a.home.x + 12, a.home.z);
+        const start = a.mesh.position.clone();
+        for (let k = 0; k < 300; k++) f.update(1 / 30, k / 30);
+        const wandered = start.distanceTo(a.mesh.position);
+        s.teleport(a.mesh.position.x + 1.0, a.mesh.position.z);
+        const before = Math.hypot(s.player.position.x - a.mesh.position.x, s.player.position.z - a.mesh.position.z);
+        for (let k = 0; k < 30; k++) f.update(1 / 30, 10 + k / 30);
+        const after = Math.hypot(s.player.position.x - a.mesh.position.x, s.player.position.z - a.mesh.position.z);
+        return { wandered, before, after };
+      });
+      check(life.wandered > 0.3, 'les moutons se promènent', JSON.stringify(life));
+      check(life.after > life.before + 0.5, 'un animal s’éloigne quand le héros s’approche trop', JSON.stringify(life));
+      check(await g.page.evaluate(() => window.__se.scene.fauna.list.every((a) => a.kind === 'dolphin' || !window.__se.scene._checkCollision(a.mesh.position.x, a.mesh.position.z, { swim: a.kind === 'duck' || a.kind === 'frog' }))), 'aucun animal coincé dans un mur ou un arbre');
+      await g.page.close();
+    },
+  },
+  {
     name: 'Espace parents : listes de mots',
     async run(browser, base, check) {
       const { WORDS } = await import('../../language-engine.js');
@@ -745,8 +792,9 @@ export const SCENARIOS = [
       }, [x, z]);
       // Budgets: measured at v1.5 with this method (village ≈ 1 100 calls / 142k triangles,
       // regions 400–700 calls), plus about 10 %. A new feature that blows them needs a look on iPad.
-      // Draw calls vary by about ±50 from one run to the next (animations, camera); the village sits near 1200.
-      for (const [label, x, z, calls, tris] of [['village', 0, 4, 1260, 160000], ['forêt', -62, 0, 800, 160000], ['marais', 60, 0, 800, 160000], ['montagne', 0, -50, 800, 160000], ['plage', 0, 62, 800, 160000]]) {
+      // Draw calls vary by about ±60 from one run to the next (animals and villagers walking about,
+      // the load of the test machine). v1.14 (places + animals), alone: village ≈ 1 140, regions 500–730.
+      for (const [label, x, z, calls, tris] of [['village', 0, 4, 1300, 160000], ['forêt', -62, 0, 860, 160000], ['marais', 60, 0, 860, 160000], ['montagne', 0, -50, 860, 160000], ['plage', 0, 62, 860, 160000]]) {
         const m = await measure(x, z);
         check(m.calls <= calls && m.tris <= tris, `${label} : ${m.calls} appels, ${Math.round(m.tris / 1000)}k triangles`, `budget ${calls} / ${tris / 1000}k`);
       }

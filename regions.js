@@ -23,6 +23,8 @@ export const MIST_X = 45.5;
 export const MARSH_POOLS = [[52, 7, 3.4], [55, -6, 3.0], [61, 0, 3.6], [67, 7.5, 3.2], [69, -6.5, 3.4], [74.5, 1.5, 2.6], [58, 13, 2.6], [63, -13, 2.8]];
 export const MARSH_LANTERNS = [[50, 1.1], [56, -1.1], [62, 1.1], [68, -1.1], [74, 1.1]];
 export const CABIN = { x: -70, z: -6 };
+// Clearings kept free of trees for the forest places (landmarks.js): tree house, fairy ring.
+export const CLEARINGS = [[-78, -18, 6.5], [-52, 24, 6]];
 
 const M = new Map();
 const mat = (c, o = {}) => {
@@ -75,6 +77,7 @@ export function buildForest(ctx) {
     if (x > RIVER.x0 - 1.2 && x < RIVER.x1 + 1.2) return false; // the river
     if (Math.hypot(x - CABIN.x, z - CABIN.z) < 6) return false;
     if (Math.hypot(x + 68, z - 4) < 5.5) return false; // the clearing
+    if (CLEARINGS.some(([cx, cz, r]) => Math.hypot(x - cx, z - cz) < r)) return false;
     return true;
   };
   for (let i = 0; i < 420 && spots.length < 150; i++) {

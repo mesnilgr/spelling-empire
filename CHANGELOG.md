@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.14.0 — Un monde rempli : 13 lieux à découvrir et 50 animaux
+
+- 🗺️ **13 lieux à découvrir**, chacun avec un secret :
+  - 🏰 la Tour en ruine, 🏕️ le Campement (feu de camp qui crépite), ⛏️ la Mine abandonnée (rails, wagonnet, fer et diamant à miner) ;
+  - 🌀 le **Portail du Nether** : un mot l'allume, puis il emmène directement au parcours de lave ;
+  - 🐷 la Ferme (grange, enclos à cochons, poulailler, citrouilles, épouvantail, blé), 🌬️ le Moulin à vent dont les ailes tournent ;
+  - 🐝 la Prairie des abeilles (ruches, abeilles qui volent, champignons géants), 🗿 le Cercle de pierres (rune qui brille), 🪣 le Vieux puits ;
+  - 🌳 la Cabane dans les arbres et 🍄 le Cercle des fées dans la forêt, 🧙 la Cabane de la sorcière dans le marais (chaudron qui bouillonne, chat noir), 🏴‍☠️ l'Épave du pirate sur la plage.
+  - Chaque lieu découvert rapporte **+2 ★** et apparaît sur la minicarte ; les trouver tous : **+15 ★**. La plupart cachent un trésor.
+- 🐑 **50 animaux qui vivent leur vie** : moutons, cochons, vaches, poules, lapins, renards, chèvres, grenouilles, canards, crabes, tortues et dauphins qui sautent dans la mer. Ils se promènent, broutent, font leur cri quand on s'approche (« Bêê ! », « Groin groin ! », « Coin coin ! ») et s'enfuient si on vient trop près.
+- 🌲 **Plus de vide** : chemins de terre avec lanternes jusqu'aux lieux, petits bois, buissons et fleurs entre les régions ; saules, troncs moussus et champignons dans le marais ; palmiers et coquillages sur la plage ; cristaux de glace dans la montagne ; nénuphars sur les mares ; châteaux de sable.
+- ✨ **Des lucioles** la nuit au-dessus du marais, de la prairie et de la forêt.
+- Les petits détails ne projettent plus d'ombre : malgré tout ce contenu, l'affichage reste dans le budget de l'iPad.
+
 ## v1.13.0 — Un chiot, des boss et une maison à décorer
 
 - 🐶 **Un chiot attend près de la chaumière.** On l'apprivoise en épelant un mot, puis on lui choisit un nom (Biscuit, Caramel, Noisette ou Pirouette). Ensuite il :
