@@ -1692,3 +1692,10 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .hurt-flash.is-on { animation: hurt-flash 0.6s ease-out; }
 @keyframes hurt-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
 .interact-btn[hidden] { display: none; }
+
+/* Boss fight bar, puppy names, cottage decorations. */
+.boss-bar { position: fixed; top: 92px; left: 50%; transform: translateX(-50%); z-index: 45; display: flex; gap: 12px; align-items: center; padding: 8px 18px; border-radius: 999px; background: rgba(30, 20, 40, 0.88); color: #fff; font-weight: 800; font-size: 1.15rem; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+.boss-bar[hidden] { display: none; }
+.boss-hp { font-size: 1.4rem; letter-spacing: 3px; }
+.pet-names { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 10px 0; }
+.decor-title { margin: 28px 0 4px; font-size: 1.4rem; }

@@ -3,6 +3,9 @@ import { SIGNS, MIMOTS, PAGES, REGION_NPCS } from './story.js';
 import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh, buildMountain, buildCoast, STAIRS, SUMMIT, PIER, ISLAND, BOOK, LAVA, LAVA_FLAGS, buildLavaCourse } from './regions.js';
 import { mergeStatic as mergeGroup, mergeDirect as mergeGroupParts } from './perf.js';
 import { ZombieManager } from './zombies.js';
+import { BossManager } from './bosses.js';
+import { PetManager } from './pet.js';
+import { DECOR } from './decor.js';
 import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
 import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -210,6 +213,8 @@ export class GameScene {
     this._buildMagic();
     this._buildStory();
     this.zombies = new ZombieManager(this);
+    this.bosses = new BossManager(this);
+    this.pet = new PetManager(this);
   }
 
   _insideAnyHouse(x, z, margin = 0.6) {
@@ -630,6 +635,24 @@ export class GameScene {
     this.walkways.push({ axis: 'z', x: LAVA.exit.x, z0: zTop + 0.05, z1: zBottom, hw: 0.8, y: (x, z) => Math.max(0, fin[3] * (z - zBottom) / (zTop - zBottom)) });
   }
   inLava(x, z) { return x > LAVA.x0 - 0.3 && x < LAVA.x1 + 0.3 && z > LAVA.z0 - 0.3 && z < LAVA.z1 + 0.3; }
+  // Decorations bought with stars, inside the cottage.
+  placeDecor(id) {
+    const def = DECOR.find((d) => d.id === id);
+    const house = this.houses.find((h) => h.type === 'cottage');
+    if (!def || !house) return false;
+    this.decor ??= {};
+    if (this.decor[id]) return true;
+    const g = new THREE.Group();
+    g.position.set(def.at[0], def.id === 'rug' ? 0 : 0.12, def.at[1]); // on the plank floor
+    g.rotation.y = def.ry ?? 0;
+    def.build(g, this.kit, THREE);
+    g.traverse((o) => { o.userData.dynamic = true; });
+    house.group.add(g);
+    if (def.r) this._addLocalCollider(house.group, def.at[0], def.at[1], def.r);
+    this.decor[id] = g;
+    return true;
+  }
+
   // The lava bucket: a pool of lava bubbles up in front of the hero for a few seconds. It burns
   // zombies, never the hero.
   eruptLava(seconds = 3) {
@@ -2245,6 +2268,11 @@ export class GameScene {
     this.shakeDecay = 0.92;
   }
 
+  worldToScreen(v) {
+    const vec = v.clone().project(this.camera);
+    const rect = this.container.getBoundingClientRect();
+    return { x: ((vec.x + 1) / 2) * rect.width + rect.left, y: ((-vec.y + 1) / 2) * rect.height + rect.top };
+  }
   getPlayerScreenPosition() {
     const vec = this.player.position.clone();
     vec.y = 1;
@@ -2279,7 +2307,7 @@ export class GameScene {
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
     this._tickRegions();
-    this._tickEruptions(dt); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
+    this._tickEruptions(dt); this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

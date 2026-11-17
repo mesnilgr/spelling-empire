@@ -560,6 +560,81 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'Chiot, boss et décorations',
+    weight: 3,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, stars: 100, save: save(story(3, 0), { materials: { meat: 1 } }) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1000);
+      // The puppy by the cottage: tamed with a word, then it gets a name.
+      check(await g.page.evaluate(() => !!window.__se.scene.pet && !window.__se.scene.pet.tamed), 'un chiot attend près de la chaumière');
+      check(await g.use("i.kind === 'pet'") === 'ok', 'on peut parler au chiot');
+      await g.spell({ keepOpen: true });
+      await g.page.waitForSelector('.pet-names button', { timeout: 5000 });
+      await g.page.evaluate(() => [...document.querySelectorAll('.pet-names button')].find((b) => b.textContent === 'Caramel').click());
+      await g.click('#spell-continue-btn');
+      await g.page.waitForTimeout(300);
+      check(await g.page.evaluate(() => window.__se.game().pet?.tamed && window.__se.game().pet.name === 'Caramel' && window.__se.scene.pet.tamed), 'le chiot est apprivoisé et s’appelle Caramel');
+      // It follows the hero, even after a long trip.
+      const follow = await g.page.evaluate(() => {
+        const s = window.__se.scene, pet = s.pet;
+        s.teleport(8, 24);
+        for (let k = 0; k < 120; k++) pet.update(1 / 30, k / 30);
+        const near = Math.hypot(pet.mesh.position.x - 8, pet.mesh.position.z - 24);
+        s.teleport(-46, 2);
+        for (let k = 0; k < 30; k++) pet.update(1 / 30, k / 30);
+        return { near, far: Math.hypot(pet.mesh.position.x + 46, pet.mesh.position.z - 2) };
+      });
+      check(follow.near < 3 && follow.far < 3, 'le chiot suit le héros, même après un voyage', JSON.stringify(follow));
+      // Hungry: fed with meat, it is happy (+2 stars).
+      await g.page.evaluate(() => { window.__starsBefore = window.__se.progress().stars; });
+      await g.use("i.kind === 'pet'");
+      const fed = await g.page.evaluate(() => ({ day: window.__se.game().pet.fedDay, meat: window.__se.game().materials.meat ?? 0, stars: window.__se.progress().stars - window.__starsBefore }));
+      check(!!fed.day && fed.meat === 0 && fed.stars === 2, 'on nourrit le chiot avec de la viande (+2 ★)', JSON.stringify(fed));
+      // It digs things up, and pushes zombies away.
+      const dug = await g.page.evaluate(() => { const m = window.__se.game().materials, n = Object.values(m).reduce((a, b) => a + b, 0); window.__se.scene.pet.onDig(); return Object.values(m).reduce((a, b) => a + b, 0) - n; });
+      check(dug === 1, 'le chiot creuse et trouve un matériau');
+      const guard = await g.page.evaluate(() => {
+        const s = window.__se.scene, pet = s.pet;
+        s.dayTime = 0.8 * 420; s.night = 1;
+        s.zombies.armedChance = 0; s.zombies._spawn();
+        const z = s.zombies.active[0]; if (!z) return 'no zombie';
+        z.mesh.scale.setScalar(1);
+        z.mesh.position.set(pet.mesh.position.x + 1.2, pet.mesh.position.y, pet.mesh.position.z);
+        pet.guardCooldown = 0; z.stun = 0;
+        pet.update(1 / 30, 0);
+        const st = z.stun; s.zombies.clear(false); s.dayTime = 0.3 * 420;
+        return st > 0;
+      });
+      check(guard === true, 'le chiot repousse un zombie trop proche', String(guard));
+      // The forest boss: three words to beat it.
+      check(await g.page.evaluate(() => window.__se.scene.interactables.filter((i) => i.kind === 'boss').length === 4), '4 boss dorment dans le monde');
+      check(await g.page.evaluate(() => window.__se.scene.interactables.find((i) => i.bossId === 'stoneGolem').active === false), 'le boss de la montagne dort encore (histoire pas assez avancée)');
+      await g.page.evaluate(() => { window.__starsBefore = window.__se.progress().stars; });
+      check(await g.use("i.kind === 'boss' && i.bossId === 'mossGolem'") === 'ok', 'on réveille le Golem de mousse');
+      for (let k = 0; k < 3; k++) {
+        await g.page.waitForFunction(() => window.__se.spell()?.type === 'boss' && !document.querySelector('#spell-modal').hidden, null, { timeout: 10000 });
+        await g.spell();
+      }
+      await g.page.waitForTimeout(500);
+      await g.page.evaluate(() => { const b = window.__se.scene.bosses; for (let k = 0; k < 60; k++) b.update(1 / 30, k / 30); });
+      const boss = await g.page.evaluate(() => ({ won: window.__se.game().bosses.includes('mossGolem'), gone: !window.__se.scene.bosses.get('mossGolem').mesh.visible, stars: window.__se.progress().stars - window.__starsBefore, bar: document.querySelector('#boss-bar').hidden }));
+      check(boss.won && boss.gone && boss.bar, 'trois mots réussis : le Golem de mousse est vaincu', JSON.stringify(boss));
+      check(boss.stars >= 23, 'la victoire rapporte au moins 20 ★', JSON.stringify(boss));
+      // Decorations bought with stars appear in the cottage.
+      await g.page.evaluate(() => { window.__se.progress().stars = 100; });
+      await g.click('#wardrobe-btn');
+      await g.page.waitForTimeout(400);
+      const bought = await g.page.evaluate(() => {
+        const card = [...document.querySelectorAll('#decor-grid .wardrobe-card')].find((c) => c.textContent.includes('Aquarium'));
+        card?.querySelector('button')?.click();
+        return { decor: window.__se.progress().decor ?? [], placed: !!window.__se.scene.decor?.aquarium, stars: window.__se.progress().stars };
+      });
+      check(bought.decor.includes('aquarium') && bought.placed && bought.stars === 65, 'l’aquarium acheté (35 ★) apparaît dans la chaumière', JSON.stringify(bought));
+      await g.page.close();
+    },
+  },
+  {
     name: 'Espace parents : listes de mots',
     async run(browser, base, check) {
       const { WORDS } = await import('../../language-engine.js');

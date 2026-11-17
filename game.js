@@ -8,6 +8,9 @@ import { SRS, ensureCard, grade as srsGrade, gradeFromAttempt, chooseWord } from
 import { CHAPTERS, SCENES, SPEAKERS, SIGNS, signWord, MIMOTS } from './story.js';
 import { TRAVEL, LAVA, LAVA_FLAGS } from './regions.js';
 import { setSignText } from './story3d.js';
+import { BOSSES } from './bosses.js';
+import { PET_NAMES } from './pet.js';
+import { DECOR } from './decor.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -508,6 +511,7 @@ function init3DScene() {
   scene3D = new GameScene(container);
   scene3D.onLava = () => knockOut('lava');
   scene3D.onZombieCatch = zombieTouch;
+  setupPet();
   scene3D.onMeatPickup = onMeatPickup;
   scene3D.onZombieBurnt = onZombieBurnt;
   scene3D.canBeAttacked = () => !!game && document.body.dataset.screen === 'game' && $('#spell-modal').hidden && $('#dialog').hidden && $('#travel-modal').hidden && $('#quest-modal')?.hidden !== false && !knocking;
@@ -576,6 +580,8 @@ function saveGame() {
     story: game.story,
     parkour: game.parkour ?? null,
     fountainRaised: !!game.fountainRaised,
+    pet: game.pet ?? null,
+    bosses: game.bosses ?? [],
     savedAt: Date.now(),
   };
   saveProgress();
@@ -597,6 +603,8 @@ function continueGame() {
     story: { ...newStory(), ...(s.story ?? {}) },
     parkour: s.parkour ?? null,
     fountainRaised: !!s.fountainRaised,
+    pet: s.pet ?? null,
+    bosses: [...(s.bosses ?? [])],
   });
   // Lasting spells come back: the bridge, the lit braziers.
   for (const [key, power] of Object.entries(game.spells)) {
@@ -705,6 +713,8 @@ function interactWith(obj) {
   }
   if (obj.kind === 'sign') { beginSign(obj); return; }
   if (obj.kind === 'mimot') { beginMimot(obj); return; }
+  if (obj.kind === 'boss') { beginBoss(obj); return; }
+  if (obj.kind === 'pet') { petInteract(); return; }
   if (obj.kind === 'page') { scene3D.setStoryActive(obj, false); playScene(obj.scene, () => advanceStory(obj.pageId)); return; }
   if (obj.kind === 'travel') { useTravelSign(obj); return; }
   if (obj.nodeType === 'fish' && ownsTool('rod')) {
@@ -894,16 +904,148 @@ function updateMapPins() {
   const bed = scene3D.interactables.find((i) => i.kind === 'bed');
   if (bed) pins.push({ x: bed.worldPos.x, z: bed.worldPos.z, text: t.bedPin });
   pins.push({ x: LAVA.start.x, z: LAVA.start.z, text: '🔥' });
+  for (const b of BOSSES) if (bossOpen(b)) pins.push({ x: b.x, z: b.z, text: b.emoji });
   const p = game.parkour?.done && !game.fountainRaised ? { x: 0, z: 0 } : objectivePos();
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐' });
   scene3D.mapPins = pins;
 }
 setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); }, 300);
 
+/* ===== BOSSES, THE PUPPY, THE COTTAGE DECORATIONS ===== */
+const bossDone = (b) => !!game?.bosses?.includes(b.id);
+const bossOpen = (b) => !bossDone(b) && !!game?.story && (storyPast(b.after) || game.story.chapter >= 6);
+function applyExtras() {
+  for (const b of BOSSES) {
+    const o = scene3D.interactables.find((i) => i.kind === 'boss' && i.bossId === b.id);
+    if (bossDone(b)) { scene3D.bosses.setDefeated(b.id); continue; }
+    scene3D.setStoryActive(o, bossOpen(b));
+    if (bossOpen(b) && o && !o.labelSet) { o.labelSet = true; scene3D.setSpotMaterial(o, 'talk', `${b.emoji} ${b.name[lang].replace(/^(le|la|the) /i, '')}`); }
+  }
+  const pet = scene3D.pet, po = pet?.obj;
+  if (pet && game.pet?.tamed && !pet.tamed) { pet.tamed = true; pet.catchUp(); }
+  if (po && !po.labelSet) { po.labelSet = true; scene3D.setSpotMaterial(po, 'talk', game.pet?.tamed ? `🐶 ${game.pet.name}` : '🐶 ?'); }
+  if (po && game.pet?.tamed && po.labelText !== game.pet.name) { po.labelText = game.pet.name; scene3D.setSpotMaterial(po, 'talk', `🐶 ${game.pet.name}${petHungry() ? ' 🍖' : ''}`); }
+  // The puppy shows only its name (no spinning icon hiding it).
+  if (po) po.iconHolder.children.filter((c) => !c.isCSS2DObject && c.isObject3D && !c.userData.label).forEach((c) => { c.visible = false; });
+  for (const id of progress.decor ?? []) scene3D.placeDecor(id);
+}
+
+function beginBoss(obj) {
+  const b = BOSSES.find((x) => x.id === obj.bossId);
+  if (!b || bossDone(b)) return;
+  if (!bossOpen(b)) { toast(t.bossLocked); return; }
+  bossFight = { id: b.id, hp: b.hp, max: b.hp };
+  scene3D.bosses.wake(b.id);
+  sfxRoar();
+  renderBossBar();
+  toast(t.bossIntro(b.name[lang]), 3000);
+  speak(t.bossIntroSay(b.name[lang]), 0.95);
+  setTimeout(nextBossWord, 1400);
+}
+let bossFight = null;
+function nextBossWord() {
+  if (!bossFight) return;
+  const b = BOSSES.find((x) => x.id === bossFight.id);
+  spellContext = { type: 'boss', bossId: b.id, word: pickWord(levelAt(1)), tries: 0 };
+  openSpellModal(`${b.emoji} ${t.bossTitle(b.name[lang])}`, t.bossInstruction(bossFight.hp), b.emoji);
+}
+function renderBossBar() {
+  const bar = $('#boss-bar');
+  if (!bar) return;
+  bar.hidden = !bossFight;
+  if (!bossFight) return;
+  const b = BOSSES.find((x) => x.id === bossFight.id);
+  bar.replaceChildren(el('span', 'boss-name', `${b.emoji} ${b.name[lang]}`), el('span', 'boss-hp', '💚'.repeat(bossFight.hp) + '🖤'.repeat(bossFight.max - bossFight.hp)));
+}
+function sfxRoar() { playNoise({ freq: 160, q: 0.6, volume: 0.22, duration: 0.7 }); playTone(90, 0.6, 'sawtooth', 0.08); }
+function winBoss() {
+  const b = BOSSES.find((x) => x.id === bossFight?.id);
+  if (!b) return;
+  bossFight = null;
+  renderBossBar();
+  scene3D.bosses.defeat(b.id);
+  game.bosses ??= [];
+  game.bosses.push(b.id);
+  progress.stars += 20; game.starsEarned += 20;
+  setTimeout(() => { sfxVictory(); launchConfetti(); smile(); }, 900);
+  toast(t.bossWon(b.name[lang]), 4500);
+  speak(t.bossWonSay, 0.95);
+  updateGameUI(); updateObjectiveUI(); saveGame();
+}
+
+// The puppy.
+const today = () => new Date().toISOString().slice(0, 10);
+const petHungry = () => !!game?.pet?.tamed && game.pet.fedDay !== today();
+function petInteract() {
+  if (!game.pet?.tamed) {
+    spellContext = { type: 'pet', word: pickWord(levelAt(0)), tries: 0 };
+    openSpellModal(`🐶 ${t.petTitle}`, t.petInstruction, '🐶');
+    return;
+  }
+  const pet = scene3D.pet;
+  const food = ['brochette', 'meat', 'fish'].find((f) => (game.materials[f] ?? 0) > 0);
+  if (petHungry() && food) {
+    game.materials[food] -= 1;
+    if (!game.materials[food]) delete game.materials[food];
+    game.pet.fedDay = today();
+    pet.joy();
+    progress.stars += 2; game.starsEarned += 2;
+    sfxCraft(); smile();
+    toast(t.petFed(game.pet.name), 3200);
+    scene3D.pet.obj.labelText = null;
+    updateGameUI(); renderCraftMenu(); applyExtras(); saveGame();
+    return;
+  }
+  pet.trick();
+  sfxBark();
+  toast(petHungry() ? t.petHungry(game.pet.name) : t.petTrick(game.pet.name), 3000);
+}
+function sfxBark() { playTone(520, 0.07, 'square', 0.08); playTone(380, 0.1, 'square', 0.07, 0.08); }
+function petNamePicker(after) {
+  const box = el('div', 'pet-names');
+  for (const n of PET_NAMES[lang] ?? PET_NAMES.fr) {
+    const b = el('button', 'btn btn-accent btn-small', n);
+    b.type = 'button';
+    b.addEventListener('click', () => {
+      game.pet = { tamed: true, name: n, fedDay: null };
+      scene3D.pet.tame();
+      scene3D.pet.obj.labelText = null;
+      box.replaceChildren(el('p', 'spell-success', t.petNamed(n)));
+      speak(t.petNamed(n), 0.95);
+      spellContext && (spellContext.finished = true);
+      applyExtras(); saveGame();
+      after?.();
+    });
+    box.append(b);
+  }
+  return box;
+}
+function setupPet() {
+  const pet = scene3D?.pet;
+  if (!pet) return;
+  pet.onBark = () => {
+    if (!game?.pet?.tamed) return;
+    sfxBark();
+    const pos = scene3D.worldToScreen?.(pet.mesh.position.clone().setY(pet.mesh.position.y + 1.2));
+    if (pos) showFloatingText(pos.x, pos.y, t.petBark, '#ffffff');
+  };
+  let guardSaid = false;
+  pet.onGuard = () => { sfxBark(); if (!guardSaid) { guardSaid = true; toast(t.petGuard(game.pet.name), 3200); } };
+  pet.onDig = () => {
+    if (!game?.pet?.tamed) return;
+    const found = ['wood', 'stone', 'iron', 'flower', 'wheat', 'water'][Math.floor(Math.random() * 6)];
+    game.materials[found] = (game.materials[found] ?? 0) + 1;
+    sfxCraft();
+    toast(t.petDug(game.pet.name, `${MATERIAL_EMOJI[found] ?? ''} ${materialName(found)}`), 3600);
+    updateGameUI(); renderCraftMenu(); saveGame();
+  };
+}
+
 // Show / hide the story things to match where the child is in the story.
 function applyStoryState() {
   if (!scene3D || !game?.story) return;
   const st = game.story;
+  applyExtras();
   $('#grimoire-btn').hidden = !storyPast('talkMage');
   for (const sg of SIGNS) {
     const o = scene3D.setSignWord(sg.house, st.signs[sg.house] ? sg.word[6] : null);
@@ -1326,6 +1468,7 @@ function handleSpellSuccess() {
   if (copied) {
     streak = 0;
   } else if (firstTry) {
+    if (game?.pet?.tamed) scene3D?.pet?.joy();
     streak += 1;
     if (streak > (progress.bestStreak || 0)) progress.bestStreak = streak;
   } else { streak = 0; }
@@ -1414,6 +1557,32 @@ function handleSpellSuccess() {
     speak(t.signBack(name), 0.9);
     const ctxDone = () => { advanceStory('signs'); if (storyAt('mimot')) playScene('signsDone'); };
     spellContext.after = ctxDone;
+  } else if (type === 'boss') {
+    const b = BOSSES.find((x) => x.id === spellContext.bossId);
+    bossFight.hp -= 1;
+    scene3D?.bosses.hit(b.id);
+    sfxHit();
+    renderBossBar();
+    const won = bossFight.hp <= 0;
+    spellResultEl.replaceChildren(
+      el('p', 'spell-success', won ? `🏆 ${t.bossWon(b.name[lang])}` : `💥 ${t.bossHit(bossFight.hp)}`),
+      el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned + (won ? 20 : 0)} ${t.stars}`),
+    );
+    spellResultEl.hidden = false;
+    speak(won ? t.bossWonSay : t.bossHitSay, 0.95);
+    spellContext.after = won ? winBoss : () => { scene3D?.bosses.attack(b.id); sfxRoar(); setTimeout(nextBossWord, 1100); };
+  } else if (type === 'pet') {
+    sfxVictory();
+    spellResultEl.replaceChildren(
+      el('p', 'spell-success', `🐶 ${t.petTamed}`),
+      el('p', 'spell-sentence', t.petChooseName),
+      petNamePicker(),
+      el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${t.stars}`),
+    );
+    spellResultEl.hidden = false;
+    speak(t.petTamed + ' ' + t.petChooseName, 0.95);
+    // A name must be chosen before going on (a default one if the child just taps Continue).
+    spellContext.after = () => { if (!game.pet?.tamed) { game.pet = { tamed: true, name: (PET_NAMES[lang] ?? PET_NAMES.fr)[0], fedDay: null }; scene3D.pet.tame(); scene3D.pet.obj.labelText = null; applyExtras(); saveGame(); } };
   } else if (type === 'zombieWord') {
     sfxCraft();
     if (!copied) { progress.stars += 2; game.starsEarned += 2; }
@@ -1866,7 +2035,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');
@@ -2523,6 +2692,39 @@ function renderWardrobe() {
     }
     card.append(btn);
     if (!owned && questCostumes.has(c.id)) card.append(el('span', 'wardrobe-note', `🎖️ ${t.questReward}`));
+    return card;
+  }));
+  renderDecor();
+}
+
+// Decorations for the cottage (kept with the stars, like outfits).
+function renderDecor() {
+  progress.decor ??= [];
+  $('#decor-title').textContent = `🏠 ${t.decorTitle}`;
+  $('#decor-lede').textContent = t.decorLede;
+  $('#decor-grid').replaceChildren(...DECOR.map((d) => {
+    const owned = progress.decor.includes(d.id);
+    const card = el('div', `wardrobe-card ${owned ? 'is-current' : 'is-locked'}`);
+    card.append(el('span', 'wardrobe-emoji', d.emoji), el('span', 'wardrobe-name', d.name[lang]));
+    const btn = el('button', 'btn btn-small');
+    btn.type = 'button';
+    if (owned) { btn.textContent = `✓ ${t.decorPlaced}`; btn.disabled = true; btn.classList.add('btn-ghost'); }
+    else {
+      btn.textContent = `${t.buy} · ${d.cost} ★`;
+      btn.classList.add('btn-accent');
+      btn.disabled = progress.stars < d.cost;
+      btn.addEventListener('click', () => {
+        if (progress.stars < d.cost || progress.decor.includes(d.id)) return;
+        progress.stars -= d.cost;
+        progress.decor.push(d.id);
+        saveProgress(); sfxCraft();
+        scene3D?.placeDecor(d.id);
+        toast(t.decorBought(d.name[lang]), 3000);
+        renderWardrobe();
+        $('#total-stars').textContent = progress.stars;
+      });
+    }
+    card.append(btn);
     return card;
   }));
 }

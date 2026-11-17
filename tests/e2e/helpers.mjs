@@ -60,7 +60,7 @@ function api(page) {
       }, pred);
     },
     // Spell the word asked in the open spelling window with the on-screen keyboard.
-    async spell({ wrongFirst = false } = {}) {
+    async spell({ wrongFirst = false, keepOpen = false } = {}) {
       await page.waitForSelector('#spell-modal:not([hidden])', { timeout: 30000 });
       const word = await page.evaluate(() => window.__se.spell().word.word);
       const type = (w) => page.evaluate((x) => {
@@ -75,8 +75,7 @@ function api(page) {
       await type(word);
       await page.waitForTimeout(500);
       const result = await page.$eval('#spell-result', (e) => e.innerText.replace(/\s+/g, ' ').trim());
-      await click('#spell-continue-btn');
-      await page.waitForTimeout(250);
+      if (!keepOpen) { await click('#spell-continue-btn'); await page.waitForTimeout(250); }
       return { word, result };
     },
   };

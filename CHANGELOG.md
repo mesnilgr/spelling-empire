@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.13.0 — Un chiot, des boss et une maison à décorer
+
+- 🐶 **Un chiot attend près de la chaumière.** On l'apprivoise en épelant un mot, puis on lui choisit un nom (Biscuit, Caramel, Noisette ou Pirouette). Ensuite il :
+  - suit le héros partout, même après un voyage ;
+  - saute de joie à chaque mot réussi du premier coup ;
+  - aboie « Ouaf ! » quand un zombie approche, et repousse ceux qui s'approchent trop ;
+  - creuse de temps en temps et rapporte un matériau ;
+  - a faim chaque jour (🍖 à côté de son nom) : viande ou brochette = +2 ★. Sinon, il fait une pirouette quand on le touche.
+- ⚔️ **Un boss dans chaque région**, qui dort dans son repaire jusqu'à ce que l'histoire soit assez avancée : le **Golem de mousse** dans la forêt, le **Roi Crapaud** dans le marais, le **Golem de pierre** au pied de la montagne et le **Kraken** dans la mer. Il se réveille en rugissant ; chaque mot épelé est un coup (barre de vie 💚💚💚). Trois mots et il disparaît dans une pluie de confettis : **+20 ★**. Les boss réveillables apparaissent sur la minicarte.
+- 🏠 **Décorer la chaumière avec ses étoiles** (dans la garde-robe 👕) : grand tapis, plante, tableau, lanterne, panier du chiot, bibliothèque, aquarium et statue en or du héros (de 10 à 50 ★). Ils apparaissent tout de suite dans la maison et restent d'une partie à l'autre.
+
 ## v1.12.0 — Zombies armés
 
 - 🪖 **Un zombie sur quatre est armé** : casque de fer et vieille épée qui brille dans la nuit.
