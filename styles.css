@@ -1671,3 +1671,16 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .attack-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #8a1f18; }
 @keyframes attack-pulse { 50% { transform: scale(1.07); } }
 #dash-zombies { width: 22px; height: 22px; }
+
+/* Parents: word lists (learned / learning / next) with pages */
+.dash-lists .dash-tabs, .dash-lists .dash-words, .dash-lists .dash-pager { align-self: stretch; }
+.dash-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.dash-tab { font: inherit; font-weight: 800; padding: 8px 12px; border-radius: 999px; border: 2px solid var(--ink-100); background: var(--white); cursor: pointer; }
+.dash-tab.is-on { background: #1f2a44; color: #fff; border-color: #1f2a44; }
+.dash-words { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 8px 0; }
+.dash-word { border: 2px solid var(--ink-100); border-radius: 12px; padding: 8px 10px; background: #fff; }
+.dash-word b { display: block; font-size: 1.1rem; }
+.dash-word small { color: var(--ink-500, #556); font-weight: 600; }
+.dash-word.is-learned { border-color: #7ac08a; }
+.dash-word.is-learning { border-color: #f2b632; }
+.dash-pager { display: flex; align-items: center; justify-content: center; gap: 12px; font-weight: 800; }

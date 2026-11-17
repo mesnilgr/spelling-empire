@@ -417,10 +417,9 @@ export const SCENARIOS = [
       await g.page.evaluate(() => { window.__se.game().crafted = ['sword']; });
       await g.page.waitForTimeout(400);
       check(await g.page.$eval('#attack-btn', (e) => !e.hidden), 'le bouton ⚔️ apparaît quand un zombie est proche');
-      await g.page.evaluate(() => { const s = window.__se.scene; s.zombies.active[0].mesh.position.set(8, 0, 25.2); s.player.rotation.y = 0; });
+      await g.page.evaluate(() => { const s = window.__se.scene; const z = s.zombies.active[0]; window.__pz = z; z.mesh.position.set(8, s.groundAt(8, 25.2), 25.2); z.stun = 0; s.player.rotation.y = 0; s.player.userData.action = null; });
       await g.click('#attack-btn');
-      await g.page.waitForTimeout(500);
-      const pushed = await g.page.evaluate(() => { const z = window.__se.scene.zombies.active[0]; return { alive: !!z, hp: z?.hp, d: window.__se.scene.zombies.nearest() }; });
+      const pushed = await g.page.evaluate(() => { const z = window.__pz, p = window.__se.scene.player.position; return { alive: z.alive, hp: z.hp, d: Math.hypot(z.mesh.position.x - p.x, z.mesh.position.z - p.z) }; });
       check(pushed.alive && pushed.hp === 2 && pushed.d > 2, 'une épée normale repousse le zombie sans le vaincre', JSON.stringify(pushed));
       await setup();
       await g.page.evaluate(() => { window.__se.game().crafted = ['sword', 'sword_diamond']; });
@@ -440,6 +439,36 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(6000);
       check(await g.page.evaluate(() => window.__se.scene.zombies.active.length === 0), 'zombies désactivés : aucun la nuit');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Espace parents : listes de mots',
+    async run(browser, base, check) {
+      const { WORDS } = await import('../../language-engine.js');
+      const now = Date.now(), D = 86400000;
+      const easy = WORDS.fr.filter((w) => w.level === 'easy').map((w) => w.word);
+      const wordStats = {};
+      easy.slice(0, 30).forEach((w, i) => { wordStats[`fr:${w}`] = { lang: 'fr', word: w, level: 'easy', seen: 3, correct: 3, wrong: i % 3 === 0 ? 1 : 0, firstTry: 2, lastSeen: now - D, misspellings: [], state: 'review', interval: 1 + i, ease: 2.5, due: now + (1 + i) * D, lapses: 0, reps: 3 }; });
+      easy.slice(30, 35).forEach((w) => { wordStats[`fr:${w}`] = { lang: 'fr', word: w, level: 'easy', seen: 2, correct: 0, wrong: 2, firstTry: 0, lastSeen: now, misspellings: ['x'], state: 'learning', step: 0, interval: 0, ease: 2.5, due: now + 5 * 60000, lapses: 0, reps: 2 }; });
+      const g = await openGame(browser, base, { lang: 'fr', age: 6, wordStats }, { quality: 0, height: 1400 });
+      await g.click('#parents-btn');
+      await g.page.waitForTimeout(800);
+      const read = () => g.page.evaluate(() => ({ tabs: [...document.querySelectorAll('#dash-tabs .dash-tab')].map((b) => b.textContent), n: document.querySelectorAll('#dash-words .dash-word').length, page: document.querySelector('#dash-page').textContent, first: document.querySelector('#dash-words .dash-word b')?.textContent }));
+      let r = await read();
+      check(r.tabs[0].includes('30') && r.tabs[1].includes('5'), 'les onglets comptent les mots acquis et en cours', r.tabs.join(' | '));
+      check(r.n === 24 && r.page === 'Page 1 / 2', 'les mots acquis s’affichent par pages de 24', JSON.stringify(r));
+      await g.click('#dash-next');
+      r = await read();
+      check(r.n === 6 && r.page === 'Page 2 / 2', 'page suivante : les 6 derniers', JSON.stringify(r));
+      await g.page.evaluate(() => document.querySelectorAll('#dash-tabs .dash-tab')[1].click());
+      r = await read();
+      check(r.n === 5, 'onglet « en cours » : 5 mots', JSON.stringify(r));
+      await g.page.evaluate(() => document.querySelectorAll('#dash-tabs .dash-tab')[2].click());
+      r = await read();
+      check(r.first === easy[35], `onglet « à venir » : les prochains mots, dans l’ordre (${r.first})`, JSON.stringify(r));
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.screenshot({ path: '/tmp/dash-lists.png' });
       await g.page.close();
     },
   },

@@ -1905,6 +1905,58 @@ function renderFamilies(stats) {
   }));
 }
 
+// Three word lists for the parents (learned, learning, coming next), 24 words a page.
+const LIST_PAGE = 24;
+let dashList = 'learned', dashPage = 0;
+function wordLists() {
+  const levels = (AGE_LADDER[lang] ?? AGE_LADDER.fr).slice(AGE_START[lang]?.[progress.age ?? 6] ?? 0);
+  const seen = new Set();
+  const learned = [], learning = [], next = [];
+  for (const lvl of levels) {
+    for (const w of wordsForLevel(lvl)) {
+      if (seen.has(w.word)) continue;
+      seen.add(w.word);
+      const st = progress.wordStats?.[`${lang}:${w.word}`];
+      const card = st ? ensureCard(st) : null;
+      if (!card || card.state === 'new') next.push({ w });
+      else if (card.state === 'review') learned.push({ w, st: card });
+      else learning.push({ w, st: card });
+    }
+  }
+  learned.sort((a, b) => (b.st.interval ?? 0) - (a.st.interval ?? 0));
+  learning.sort((a, b) => (a.st.due ?? 0) - (b.st.due ?? 0));
+  return { learned, learning, next };
+}
+function renderWordLists() {
+  const box = $('#dash-words');
+  if (!box) return;
+  const lists = wordLists();
+  for (const tab of document.querySelectorAll('#dash-tabs .dash-tab')) {
+    const k = tab.dataset.list;
+    tab.textContent = { learned: t.listLearned, learning: t.listLearning, next: t.listNext }[k](lists[k].length);
+    tab.classList.toggle('is-on', k === dashList);
+    tab.onclick = () => { dashList = k; dashPage = 0; renderWordLists(); };
+  }
+  $('#dash-list-note').textContent = { learned: t.listLearnedNote, learning: t.listLearningNote, next: t.listNextNote }[dashList];
+  const items = lists[dashList];
+  const pages = Math.max(1, Math.ceil(items.length / LIST_PAGE));
+  dashPage = Math.min(dashPage, pages - 1);
+  const levelName = (id) => LEVELS[lang].find((l) => l.id === id)?.name ?? id;
+  const slice = items.slice(dashPage * LIST_PAGE, (dashPage + 1) * LIST_PAGE);
+  box.replaceChildren(...(slice.length ? slice.map(({ w, st }) => {
+    const card = el('div', `dash-word${dashList === 'learned' ? ' is-learned' : dashList === 'learning' ? ' is-learning' : ''}`);
+    card.append(el('b', '', w.word));
+    const info = dashList === 'next' ? levelName(w.level) : `${nextReviewLabel(st, true)} · ${t.wordMisses(st.wrong ?? 0)}`;
+    card.append(el('small', '', info));
+    return card;
+  }) : [el('p', 'note', t.listEmpty)]));
+  $('#dash-page').textContent = t.pageOf(dashPage + 1, pages);
+  $('#dash-prev').disabled = dashPage === 0;
+  $('#dash-next').disabled = dashPage >= pages - 1;
+  $('#dash-prev').onclick = () => { dashPage = Math.max(0, dashPage - 1); renderWordLists(); };
+  $('#dash-next').onclick = () => { dashPage = Math.min(pages - 1, dashPage + 1); renderWordLists(); };
+}
+
 function renderDashboard() {
   ageButtons($('#dash-age'), (a) => { setAge(a); renderDashboard(); });
   const zb = $('#dash-zombies');
@@ -1921,6 +1973,7 @@ function renderDashboard() {
   $('#dash-age-note').textContent = progress.age ? t.ageNote(progress.age, startLevel?.name ?? '') : '';
   const stats = Object.values(progress.wordStats ?? {});
   renderFamilies(stats);
+  renderWordLists();
   const seen = stats.filter((s) => s.seen > 0 || s.correct + s.wrong > 0);
   const attempts = stats.reduce((n, s) => n + s.correct + s.wrong, 0);
   const correct = stats.reduce((n, s) => n + s.correct, 0);

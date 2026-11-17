@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.9.0 — Meilleur « e » et listes pour les parents
+
+- ✍️ **Le « e » écrit à la main est bien mieux reconnu** : le réseau ne connaissait que deux façons de l'écrire. Il apprend maintenant les « e » d'enfant (barre haute avec un petit œil, boucle ouverte, e aplati ou étroit, e rond attaché avec une petite queue). Sur des centaines de « e » variés, la reconnaissance passe de 80 % à 99 %, sans perte sur les autres lettres.
+- 👪 **Espace parents : trois listes de mots**, avec des pages de 24 :
+  - ✅ **acquis** : appris, avec la date de la prochaine révision ;
+  - 🌱 **en cours** : rencontrés mais pas encore acquis (ou oubliés), avec le nombre d'erreurs ;
+  - 🔜 **à venir** : les prochains mots, dans l'ordre où ils arriveront selon l'âge.
+
 ## v1.8.0 — Les zombies de la nuit
 
 - 🧟 **La nuit, des zombies sortent** près du héros quand il est dehors, et le poursuivent. Ils sont plus lents que lui, on peut toujours s'enfuir.
