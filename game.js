@@ -1,7 +1,7 @@
 import { LANGUAGES, LEVELS, WORDS, UI, buildSentence, AGE_LADDER, AGE_START, AGES } from './language-engine.js';
 import { GameScene } from './scene.js';
 import { NPC_INFO, QUESTS, rollLoot, WORD_EMOJI } from './content.js';
-import { COSTUMES } from './characters.js';
+import { COSTUMES, playAction } from './characters.js';
 import { loadModel, recognize, inkBox } from './handwriting.js';
 import { SPELLS, spellById, spellWord } from './magic.js';
 import { SRS, ensureCard, grade as srsGrade, gradeFromAttempt, chooseWord } from './srs.js';
@@ -502,6 +502,9 @@ function init3DScene() {
   if (!container) return;
   scene3D = new GameScene(container);
   scene3D.onLava = () => knockOut('lava');
+  scene3D.onZombieCatch = () => knockOut('zombie');
+  scene3D.canBeAttacked = () => !!game && document.body.dataset.screen === 'game' && $('#spell-modal').hidden && $('#dialog').hidden && $('#travel-modal').hidden && $('#quest-modal')?.hidden !== false && !knocking;
+  scene3D.zombies.enabled = progress.zombies !== false;
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
@@ -515,7 +518,7 @@ function init3DScene() {
   scene3D.onDayPhase = (phase) => {
     $('#hud-time').textContent = phase === 'night' ? '🌙' : '☀️';
     refreshBed();
-    if (document.body.dataset.screen === 'game') toast(phase === 'night' ? t.nightFalls : t.dayBreaks);
+    if (document.body.dataset.screen === 'game') toast(phase === 'night' ? (scene3D.zombies?.enabled ? t.zombieNight : t.nightFalls) : t.dayBreaks);
   };
   applyCostume();
   refreshSpots();
@@ -887,7 +890,7 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐' });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); }, 500);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); }, 300);
 
 // Show / hide the story things to match where the child is in the story.
 function applyStoryState() {
@@ -1021,8 +1024,20 @@ function knockOut(reason) {
     scene3D.teleport(to.x, to.z);
     scene3D.lavaBurnt = false;
     scene3D.onKnockOut?.(reason);
-    setTimeout(() => { fade.classList.add('is-out'); setTimeout(() => { fade.hidden = true; knocking = false; }, 700); }, 350);
+    setTimeout(() => {
+      fade.classList.add('is-out');
+      setTimeout(() => { fade.hidden = true; knocking = false; if (reason === 'lava') beginRevive(); }, 700);
+    }, 350);
   }, 650);
+}
+
+// After a fall in the lava: spell a word (from the child's easiest list) to set off again.
+function beginRevive() {
+  if (!game || !$('#spell-modal').hidden) return;
+  const word = pickWord(levelAt(0));
+  spellContext = { type: 'revive', word, tries: 0 };
+  const instruction = { letters: t.reviveInstructionLetter }[word.level] ?? t.reviveInstruction;
+  openSpellModal(`🔥 ${t.reviveTitle}`, instruction, '🔥');
 }
 
 /* ===== LAVA COURSE (side quest) ===== */
@@ -1365,6 +1380,15 @@ function handleSpellSuccess() {
     speak(t.signBack(name), 0.9);
     const ctxDone = () => { advanceStory('signs'); if (storyAt('mimot')) playScene('signsDone'); };
     spellContext.after = ctxDone;
+  } else if (type === 'revive') {
+    sfxCraft();
+    spellResultEl.replaceChildren(
+      el('p', 'spell-success', `🔥 ${t.reviveDone}`),
+      el('p', 'spell-sentence', spellContext.word.sentence ?? buildSentence(wordStr, lang)),
+      el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`),
+    );
+    spellResultEl.hidden = false;
+    speak(t.reviveDone, 0.95);
   } else if (type === 'travel') {
     const region = spellContext.region;
     game.story.travel ??= {};
@@ -1883,6 +1907,11 @@ function renderFamilies(stats) {
 
 function renderDashboard() {
   ageButtons($('#dash-age'), (a) => { setAge(a); renderDashboard(); });
+  const zb = $('#dash-zombies');
+  if (zb) {
+    zb.checked = progress.zombies !== false;
+    zb.onchange = () => { progress.zombies = zb.checked; if (scene3D?.zombies) { scene3D.zombies.enabled = zb.checked; if (!zb.checked) scene3D.zombies.clear(); } saveProgress(); };
+  }
   const npd = $('#dash-newperday');
   if (npd) {
     npd.value = String(progress.newPerDay ?? SRS.newPerDay);
@@ -2079,12 +2108,47 @@ function equipItem(id) {
   saveGame();
 }
 
+/* ===== ZOMBIES: the attack button swings the best sword the child owns ===== */
+function swordPower() {
+  const owned = (game?.crafted ?? []);
+  if (owned.includes('sword_diamond')) return { power: 'diamond', id: 'sword_diamond' };
+  const sw = owned.find((id) => id.startsWith('sword'));
+  return sw ? { power: 'sword', id: sw } : { power: 'hand', id: null };
+}
+let diamondHintShown = false;
+function zombieAttack(power = swordPower().power) {
+  if (!scene3D?.zombies) return;
+  const res = scene3D.zombies.hit(power);
+  if (res.defeated) {
+    progress.stars += res.defeated; game.starsEarned += res.defeated;
+    toast(t.zombieDefeated); sfxVictory(); updateGameUI(); saveGame();
+  } else if (res.touched) {
+    sfxBreak?.();
+    if (power !== 'diamond' && !diamondHintShown) { diamondHintShown = true; toast(t.zombieNeedDiamond, 4200); }
+  }
+}
+function attackButton() {
+  if (!game || !scene3D) return;
+  initAudio();
+  const sw = swordPower();
+  if (sw.id && game.equipped !== sw.id) equipItem(sw.id);
+  if (sw.id) scene3D.useItem(sw.id); else playActionSwing();
+  zombieAttack(sw.power);
+}
+function playActionSwing() { if (!scene3D.player.userData.action) playAction(scene3D.player, 'swing', 0.35); }
+function updateAttackButton() {
+  const b = $('#attack-btn');
+  if (!b || !scene3D?.zombies) return;
+  b.hidden = !(scene3D.zombies.active.length && scene3D.zombies.nearest() < 9);
+}
+
 function useEquipped() {
   if (!game?.equipped || !scene3D) return;
   if (!$('#spell-modal').hidden) return;
   initAudio();
   if (scene3D.useItem(game.equipped)) {
     sfxMine();
+    if (game.equipped.startsWith('sword')) zombieAttack(game.equipped === 'sword_diamond' ? 'diamond' : 'sword');
     // Swinging the pickaxe at a glowing spot starts mining there.
     if (game.equipped.startsWith('pickaxe')) setTimeout(() => { if (scene3D.getNearbyInteractable()) tryInteract(); }, 450);
   }
@@ -2116,9 +2180,11 @@ function renderEquipBar() {
 
 document.addEventListener('keydown', (event) => {
   if (!game || document.body.dataset.screen !== 'game' || !$('#spell-modal').hidden) return;
+  if ((event.key === 'f' || event.key === 'F') && !$('#attack-btn').hidden) { attackButton(); return; }
   if (event.key === 'f' || event.key === 'F' || event.key === 'e' || event.key === 'E') useEquipped();
 });
 $('#use-btn')?.addEventListener('click', useEquipped);
+$('#attack-btn')?.addEventListener('click', (e) => { e.preventDefault(); attackButton(); });
 $('#jump-btn')?.addEventListener('pointerdown', (e) => { e.preventDefault(); scene3D?.jump(); });
 $('#continue-btn')?.addEventListener('click', () => { initAudio(); continueGame(); });
 

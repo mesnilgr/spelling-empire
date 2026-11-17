@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.8.0 — Les zombies de la nuit
+
+- 🧟 **La nuit, des zombies sortent** près du héros quand il est dehors, et le poursuivent. Ils sont plus lents que lui, on peut toujours s'enfuir.
+- 🏠 **Les maisons protègent** : les zombies n'y entrent jamais et n'attaquent pas un héros à l'intérieur. Le lit permet toujours de passer la nuit.
+- **Attrapé ?** « Aïe ! », un fondu, et on se réveille au lit de la chaumière, sans rien perdre.
+- ⚔️ **Se défendre** : un bouton ⚔️ apparaît quand un zombie est proche. Il frappe avec la meilleure épée de l'enfant (pas besoin de l'équiper). **Seule l'épée en diamant 💎 vainc un zombie** (en deux coups, +1 ★) ; les autres épées, et même les mains nues, le repoussent.
+- Au lever du jour, les zombies disparaissent.
+- **Espace parents** : interrupteur « Zombies la nuit » (activé par défaut).
+- **Après une chute dans la lave**, il faut maintenant épeler un mot de sa liste la plus facile avant de repartir du dernier drapeau.
+
 ## v1.7.0 — Le défi de la lave
 
 - 🔥 **Parcours de lave** au nord-est du village (repère 🔥 sur la minicarte, panneau « Lave ! » à l'entrée) : 11 piliers à sauter au-dessus d'un bassin de lave, en zigzag, de plus en plus hauts et espacés.

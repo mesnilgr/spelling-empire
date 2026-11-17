@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { SIGNS, MIMOTS, PAGES, REGION_NPCS } from './story.js';
 import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh, buildMountain, buildCoast, STAIRS, SUMMIT, PIER, ISLAND, BOOK, LAVA, buildLavaCourse } from './regions.js';
 import { mergeStatic as mergeGroup, mergeDirect as mergeGroupParts } from './perf.js';
+import { ZombieManager } from './zombies.js';
 import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
 import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -207,6 +208,7 @@ export class GameScene {
     this._buildResourceNodes();
     this._buildMagic();
     this._buildStory();
+    this.zombies = new ZombieManager(this);
   }
 
   _insideAnyHouse(x, z, margin = 0.6) {
@@ -616,6 +618,7 @@ export class GameScene {
     const zTop = fin[1] - fin[2] / 2, zBottom = LAVA.z0 - 1.6;
     this.walkways.push({ axis: 'z', x: LAVA.exit.x, z0: zTop + 0.05, z1: zBottom, hw: 0.8, y: (x, z) => Math.max(0, fin[3] * (z - zBottom) / (zTop - zBottom)) });
   }
+  inLava(x, z) { return x > LAVA.x0 - 0.3 && x < LAVA.x1 + 0.3 && z > LAVA.z0 - 0.3 && z < LAVA.z1 + 0.3; }
   lavaPillar(role) { const pp = LAVA.pillars.find((q) => q[4] === role); return pp ? { x: pp[0], z: pp[1], y: pp[3] } : null; }
   raiseFountain(instant = false) {
     const f = this.village.fountain, base = this.village.fountainBase, jet = this.village.fountainBigJet;
@@ -2182,6 +2185,7 @@ export class GameScene {
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
     this._tickRegions();
+    if (this.mode === 'play') this.zombies?.update(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

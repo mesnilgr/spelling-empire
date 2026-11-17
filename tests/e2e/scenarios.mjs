@@ -339,6 +339,10 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(2200);
       const after = await g.page.evaluate(() => { const p = window.__se.scene.player.position; return { x: p.x, z: p.z }; });
       check(Math.hypot(after.x - 29, after.z + 37.4) < 1.5, 'tomber dans la lave ramène au départ', JSON.stringify(after));
+      const asked = await g.page.waitForFunction(() => window.__se.spell()?.type === 'revive' && !document.querySelector('#spell-modal').hidden, null, { timeout: 8000 }).then(() => true, () => false);
+      check(asked, 'après la chute, il faut épeler un mot pour repartir');
+      const rv = await g.spell();
+      check(rv.result.includes('reparti'), 'le mot réussi, on repart', rv.result);
       // Flags, then the finish.
       for (const role of ['cp1', 'cp2']) {
         await g.page.evaluate((r) => { const s = window.__se.scene; const c = s.lavaPillar(r); s.teleport(c.x, c.z); }, role);
@@ -347,6 +351,7 @@ export const SCENARIOS = [
       check(await g.page.evaluate(() => window.__se.game().parkour?.cp === 'cp2'), 'les drapeaux sont enregistrés');
       await g.page.evaluate(() => window.__se.scene.teleport(33, -46));
       await g.page.waitForTimeout(2200);
+      if (await g.page.waitForFunction(() => window.__se.spell()?.type === 'revive', null, { timeout: 8000 }).then(() => true, () => false)) await g.spell();
       const cpBack = await g.page.evaluate(() => { const p = window.__se.scene.player.position; return { x: p.x, z: p.z }; });
       check(Math.hypot(cpBack.x - 39.2, cpBack.z + 50.8) < 1.5, 'après le drapeau 2, une chute ramène au drapeau 2', JSON.stringify(cpBack));
       await g.page.evaluate(() => { const s = window.__se.scene; const c = s.lavaPillar('finish'); s.teleport(c.x, c.z); });
@@ -365,6 +370,75 @@ export const SCENARIOS = [
       await g.click('#continue-btn');
       await g.page.waitForTimeout(1000);
       check(await g.page.evaluate(() => window.__se.scene.village.fountain.position.y > 1.2), 'la fontaine reste levée après rechargement');
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Zombies la nuit',
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, stars: 10, save: save(story(2, 0), { crafted: [] }) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1000);
+      await g.page.evaluate(() => { const s = window.__se.scene; window.__ko = 0; const prev = s.onKnockOut; s.onKnockOut = (r) => { window.__ko++; window.__koReason = r; prev?.(r); }; });
+      check(await g.page.evaluate(() => window.__se.scene.zombies.active.length === 0), 'pas de zombie le jour');
+      // Night, outside in the fields.
+      await g.page.evaluate(() => { const s = window.__se.scene; s.teleport(8, 24); s.dayTime = 0.8 * 420; });
+      await g.page.waitForFunction(() => window.__se.scene.zombies.active.length >= 1, null, { timeout: 30000 }).catch(() => {});
+      const n = await g.page.evaluate(() => window.__se.scene.zombies.active.length);
+      check(n >= 1, `la nuit, des zombies apparaissent (${n})`);
+      // Step the zombies with their own code (the test browser runs the game slowly).
+      const step = (sec) => g.page.evaluate((n) => { const s = window.__se.scene; for (let k = 0; k < n; k++) s.zombies.update(1 / 30, s.clock.elapsedTime + k / 30); }, Math.round(sec * 30));
+      const d0 = await g.page.evaluate(() => window.__se.scene.zombies.nearest());
+      await step(2);
+      const d1 = await g.page.evaluate(() => window.__se.scene.zombies.nearest());
+      check(d1 < d0 - 3, `ils poursuivent le héros dehors (${d0.toFixed(1)} → ${d1.toFixed(1)} en 2 s)`);
+      // Caught: back home, nothing lost.
+      for (let k = 0; k < 10 && !(await g.page.evaluate(() => window.__ko >= 1)); k++) { await step(1); await g.page.waitForTimeout(100); }
+      await g.page.waitForTimeout(1500);
+      const home = await g.page.evaluate(() => { const s = window.__se.scene; const bed = s.interactables.find((i) => i.kind === 'bed'); const p = s.player.position; return { ko: window.__ko, reason: window.__koReason, dist: Math.hypot(p.x - bed.worldPos.x, p.z - bed.worldPos.z), safe: s.zombies.heroSafe() }; });
+      check(home.ko === 1 && home.reason === 'zombie' && home.dist < 2.5, 'un zombie qui attrape le héros le renvoie au lit de la chaumière', JSON.stringify(home));
+      check(home.safe, 'dans la maison, le héros est à l’abri');
+      await step(10);
+      await g.page.waitForTimeout(500);
+      const inside = await g.page.evaluate(() => { const s = window.__se.scene; return { ko: window.__ko, inHouse: s.zombies.active.some((z) => s._insideAnyHouse(z.mesh.position.x, z.mesh.position.z, 0)) }; });
+      check(inside.ko === 1 && !inside.inHouse, 'aucun zombie n’entre ni n’attaque dans une maison', JSON.stringify(inside));
+      // Defend: an ordinary sword pushes back, the diamond sword defeats.
+      const setup = () => g.page.evaluate(() => {
+        const s = window.__se.scene; s.zombies.grace = 30;
+        s.teleport(8, 24);
+        if (!s.zombies.active.length) s.zombies._spawn();
+        const z = s.zombies.active[0];
+        z.mesh.position.set(8, s.groundAt(8, 25.2), 25.2); z.stun = 0;
+        s.player.rotation.y = 0;
+        return s.zombies.active.length;
+      });
+      await setup();
+      await g.page.evaluate(() => { window.__se.game().crafted = ['sword']; });
+      await g.page.waitForTimeout(400);
+      check(await g.page.$eval('#attack-btn', (e) => !e.hidden), 'le bouton ⚔️ apparaît quand un zombie est proche');
+      await g.page.evaluate(() => { const s = window.__se.scene; s.zombies.active[0].mesh.position.set(8, 0, 25.2); s.player.rotation.y = 0; });
+      await g.click('#attack-btn');
+      await g.page.waitForTimeout(500);
+      const pushed = await g.page.evaluate(() => { const z = window.__se.scene.zombies.active[0]; return { alive: !!z, hp: z?.hp, d: window.__se.scene.zombies.nearest() }; });
+      check(pushed.alive && pushed.hp === 2 && pushed.d > 2, 'une épée normale repousse le zombie sans le vaincre', JSON.stringify(pushed));
+      await setup();
+      await g.page.evaluate(() => { window.__se.game().crafted = ['sword', 'sword_diamond']; });
+      await g.page.evaluate(() => { window.__target = window.__se.scene.zombies.active[0]; window.__starsBefore = window.__se.progress().stars; });
+      for (let k = 0; k < 2; k++) {
+        await g.page.evaluate(() => { const s = window.__se.scene; const z = window.__target; if (!z.alive) return; z.mesh.position.set(8, s.groundAt(8, 25.1), 25.1); z.stun = 0; s.player.rotation.y = 0; s.player.userData.action = null; });
+        await g.click('#attack-btn');
+        await g.page.waitForTimeout(400);
+      }
+      const won = await g.page.evaluate(() => ({ alive: window.__target.alive, stars: window.__se.progress().stars - window.__starsBefore }));
+      check(!won.alive && won.stars === 1, 'l’épée en diamant vainc le zombie en deux coups (+1 ★)', JSON.stringify(won));
+      // Dawn: they go away. Switched off by the parents: none at night.
+      await g.page.evaluate(() => { window.__se.scene.dayTime = 0.3 * 420; });
+      await g.page.waitForTimeout(1500);
+      check(await g.page.evaluate(() => window.__se.scene.zombies.active.length === 0), 'au lever du jour, les zombies disparaissent');
+      await g.page.evaluate(() => { const s = window.__se.scene; s.zombies.enabled = false; s.dayTime = 0.8 * 420; s.teleport(8, 24); });
+      await g.page.waitForTimeout(6000);
+      check(await g.page.evaluate(() => window.__se.scene.zombies.active.length === 0), 'zombies désactivés : aucun la nuit');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },

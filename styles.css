@@ -1665,3 +1665,9 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .dash-newperday { display: flex; align-items: center; gap: 10px; font-weight: 800; margin-top: 10px; }
 .dash-newperday select { font: inherit; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--ink-100); }
 .dash-next { white-space: nowrap; color: var(--ink-500, #556); }
+
+.attack-btn { width: 74px; height: 74px; border-radius: 50%; border: 3px solid #fff; background: radial-gradient(circle at 35% 30%, #ff8a7a, #c8372d); color: #fff; font-size: 2rem; box-shadow: 0 6px 0 #8a1f18, 0 8px 18px rgba(0,0,0,0.35); animation: attack-pulse 1.2s ease-in-out infinite; touch-action: manipulation; }
+.attack-btn[hidden] { display: none; }
+.attack-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #8a1f18; }
+@keyframes attack-pulse { 50% { transform: scale(1.07); } }
+#dash-zombies { width: 22px; height: 22px; }
