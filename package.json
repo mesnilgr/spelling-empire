@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node test-game.mjs",
-    "test:e2e": "node tests/e2e/run.mjs"
+    "test:e2e": "node tests/e2e/run.mjs",
+    "test:quick": "node tests/e2e/run.mjs --quick"
   },
   "devDependencies": {
     "playwright": "^1.63.0",

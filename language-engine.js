@@ -72,41 +72,51 @@ export const WORDS = {
     { word: 'numéro', level: 'easy' }, { word: 'zéro', level: 'easy' }, { word: 'midi', level: 'easy' }, { word: 'mardi', level: 'easy' },
     { word: 'samedi', level: 'easy' }, { word: 'animal', level: 'easy' }, { word: 'canari', level: 'easy' }, { word: 'sofa', level: 'easy' },
 
-    // Niveau 2 — e muet final, et sons écrits avec plusieurs lettres :
+    // Niveau 2 — exactement UNE orthographe complexe par mot (un e muet final, OU un son écrit
+    // avec plusieurs lettres, OU une lettre muette). Vérifié par frComplexity() dans les tests.
     // Le e muet à la fin
     { word: 'tomate', level: 'medium' }, { word: 'pirate', level: 'medium' }, { word: 'salade', level: 'medium' }, { word: 'banane', level: 'medium' },
     { word: 'cabane', level: 'medium' }, { word: 'école', level: 'medium' }, { word: 'table', level: 'medium' }, { word: 'livre', level: 'medium' },
-    { word: 'arbre', level: 'medium' }, { word: 'porte', level: 'medium' },
-    // /ʃ/ ch
-    { word: 'chemin', level: 'medium' }, { word: 'chat', level: 'medium' }, { word: 'cheval', level: 'medium' }, { word: 'vache', level: 'medium' },
-    { word: 'chaise', level: 'medium' },
-    // /u/ ou
-    { word: 'mouton', level: 'medium' }, { word: 'loup', level: 'medium' }, { word: 'poule', level: 'medium' }, { word: 'soupe', level: 'medium' },
-    { word: 'route', level: 'medium' },
-    // /ɔ̃/ on
-    { word: 'cochon', level: 'medium' }, { word: 'savon', level: 'medium' }, { word: 'bonbon', level: 'medium' }, { word: 'melon', level: 'medium' },
-    // /ɑ̃/ an, en
-    { word: 'enfant', level: 'medium' }, { word: 'maman', level: 'medium' }, { word: 'lampe', level: 'medium' }, { word: 'pantalon', level: 'medium' },
-    { word: 'dimanche', level: 'medium' },
-    // /ɛ̃/ in, ain, ein
+    { word: 'arbre', level: 'medium' }, { word: 'porte', level: 'medium' }, { word: 'lune', level: 'medium' }, { word: 'robe', level: 'medium' },
+    { word: 'jupe', level: 'medium' }, { word: 'tulipe', level: 'medium' }, { word: 'tortue', level: 'medium' }, { word: 'minute', level: 'medium' },
+    { word: 'olive', level: 'medium' }, { word: 'crocodile', level: 'medium' }, { word: 'parapluie', level: 'medium' },
+    // ch
+    { word: 'cheval', level: 'medium' },
+    // ou
+    { word: 'bijou', level: 'medium' },
+    // on
+    { word: 'savon', level: 'medium' }, { word: 'melon', level: 'medium' }, { word: 'dragon', level: 'medium' }, { word: 'violon', level: 'medium' },
+    { word: 'salon', level: 'medium' }, { word: 'lion', level: 'medium' },
+    // an, am, um
+    { word: 'maman', level: 'medium' }, { word: 'parfum', level: 'medium' },
+    // in, ain, ein
     { word: 'jardin', level: 'medium' }, { word: 'lapin', level: 'medium' }, { word: 'matin', level: 'medium' }, { word: 'sapin', level: 'medium' },
-    { word: 'pain', level: 'medium' }, { word: 'main', level: 'medium' }, { word: 'bain', level: 'medium' }, { word: 'plein', level: 'medium' },
-    { word: 'peinture', level: 'medium' },
-    // /o/ au, eau
-    { word: 'bateau', level: 'medium' }, { word: 'auto', level: 'medium' }, { word: 'chapeau', level: 'medium' }, { word: 'cadeau', level: 'medium' },
-    { word: 'château', level: 'medium' }, { word: 'gâteau', level: 'medium' },
-    // /wa/ oi
-    { word: 'voiture', level: 'medium' }, { word: 'roi', level: 'medium' }, { word: 'étoile', level: 'medium' }, { word: 'poire', level: 'medium' },
-    { word: 'armoire', level: 'medium' },
-    // /ɲ/ gn
-    { word: 'montagne', level: 'medium' }, { word: 'champignon', level: 'medium' }, { word: 'campagne', level: 'medium' }, { word: 'ligne', level: 'medium' },
+    { word: 'patin', level: 'medium' }, { word: 'lutin', level: 'medium' }, { word: 'pain', level: 'medium' }, { word: 'main', level: 'medium' },
+    { word: 'bain', level: 'medium' }, { word: 'plein', level: 'medium' }, { word: 'copain', level: 'medium' }, { word: 'train', level: 'medium' },
+    // au, eau
+    { word: 'bateau', level: 'medium' }, { word: 'auto', level: 'medium' }, { word: 'cadeau', level: 'medium' }, { word: 'radeau', level: 'medium' },
+    { word: 'rideau', level: 'medium' }, { word: 'bureau', level: 'medium' },
+    // oi
+    { word: 'roi', level: 'medium' },
+    // une lettre muette à la fin, ou un y
+    { word: 'renard', level: 'medium' }, { word: 'stylo', level: 'medium' },
+    // euil
+    { word: 'écureuil', level: 'medium' },
 
     // Niveau 3 — lettres muettes, consonnes doubles, ill, s qui chante [z], c et g doux.
+    // (venus du niveau 2 : plusieurs orthographes complexes)
+    { word: 'chemin', level: 'challenge' }, { word: 'chat', level: 'challenge' }, { word: 'vache', level: 'challenge' }, { word: 'chaise', level: 'challenge' },
+    { word: 'mouton', level: 'challenge' }, { word: 'loup', level: 'challenge' }, { word: 'poule', level: 'challenge' }, { word: 'soupe', level: 'challenge' },
+    { word: 'route', level: 'challenge' }, { word: 'cochon', level: 'challenge' }, { word: 'bonbon', level: 'challenge' }, { word: 'enfant', level: 'challenge' },
+    { word: 'lampe', level: 'challenge' }, { word: 'pantalon', level: 'challenge' }, { word: 'dimanche', level: 'challenge' }, { word: 'peinture', level: 'challenge' },
+    { word: 'chapeau', level: 'challenge' }, { word: 'château', level: 'challenge' }, { word: 'gâteau', level: 'challenge' }, { word: 'voiture', level: 'challenge' },
+    { word: 'étoile', level: 'challenge' }, { word: 'poire', level: 'challenge' }, { word: 'armoire', level: 'challenge' }, { word: 'montagne', level: 'challenge' },
+    { word: 'champignon', level: 'challenge' }, { word: 'campagne', level: 'challenge' }, { word: 'ligne', level: 'challenge' },
     { word: 'escargot', level: 'challenge' }, { word: 'éléphant', level: 'challenge' }, { word: 'papillon', level: 'challenge' }, { word: 'grenouille', level: 'challenge' },
     { word: 'poisson', level: 'challenge' }, { word: 'oiseau', level: 'challenge' }, { word: 'maison', level: 'challenge' }, { word: 'chocolat', level: 'challenge' },
     { word: 'citron', level: 'challenge' }, { word: 'girafe', level: 'challenge' }, { word: 'hibou', level: 'challenge' }, { word: 'feuille', level: 'challenge' },
-    { word: 'abeille', level: 'challenge' }, { word: 'perroquet', level: 'challenge' }, { word: 'écureuil', level: 'challenge' }, { word: 'hérisson', level: 'challenge' },
-    { word: 'fraise', level: 'challenge' }, { word: 'cerise', level: 'challenge' }, { word: 'framboise', level: 'challenge' }, { word: 'parapluie', level: 'challenge' },
+    { word: 'abeille', level: 'challenge' }, { word: 'perroquet', level: 'challenge' }, { word: 'hérisson', level: 'challenge' },
+    { word: 'fraise', level: 'challenge' }, { word: 'cerise', level: 'challenge' }, { word: 'framboise', level: 'challenge' }, 
     // 5 ans (grande section) — une lettre entendue par son nom et un mot qui la contient.
     { word: 'a', level: 'letters', say: 'La lettre a… comme dans ami.' }, { word: 'e', level: 'letters', say: 'La lettre e… comme dans petit.' }, { word: 'i', level: 'letters', say: 'La lettre i… comme dans midi.' }, { word: 'o', level: 'letters', say: 'La lettre o… comme dans moto.' },
     { word: 'u', level: 'letters', say: 'La lettre u… comme dans lune.' }, { word: 'm', level: 'letters', say: 'La lettre ème… comme dans maman.' }, { word: 'l', level: 'letters', say: 'La lettre èle… comme dans lapin.' }, { word: 'r', level: 'letters', say: 'La lettre èr… comme dans radis.' },
@@ -191,7 +201,6 @@ export const WORDS = {
     { word: 'karaté', level: 'easy' },
     { word: 'canapé', level: 'easy' },
     { word: 'métro', level: 'easy' },
-    { word: 'stylo', level: 'easy' },
     { word: 'radar', level: 'easy' },
     { word: 'bazar', level: 'easy' },
     { word: 'été', level: 'easy' },
@@ -202,7 +211,7 @@ export const WORDS = {
     { word: 'kimono', level: 'easy' },
     { word: 'salami', level: 'easy' },
     { word: 'kilo', level: 'easy' },
-    { word: 'renard', level: 'challenge' },
+    
     { word: 'crapaud', level: 'challenge' },
     { word: 'chaussure', level: 'challenge' },
     { word: 'pantoufle', level: 'challenge' },
@@ -212,7 +221,7 @@ export const WORDS = {
     { word: 'tournesol', level: 'challenge' },
     { word: 'araignée', level: 'challenge' },
     { word: 'kangourou', level: 'challenge' },
-    { word: 'crocodile', level: 'challenge' },
+    
     { word: 'hippopotame', level: 'challenge' },
     { word: 'dinosaure', level: 'challenge' },
     { word: 'pingouin', level: 'challenge' },
@@ -298,6 +307,49 @@ export const WORDS = {
 };
 
 // One short, meaningful example sentence per word (read aloud after a correct spelling).
+/* ===== Word difficulty: complex spellings ===== */
+const V = 'aeiouyéèêëàâîïôûùœ';
+const isV = (c) => !!c && V.includes(c);
+// Each spelling that is not "one letter = one sound" counts once: a silent final letter, a sound
+// written with several letters (ou, an, ch, eau…), a double consonant, ç, a soft c/g, s sounding z,
+// an accent other than é, x/y/w, a silent h. "balançoire" → an, ç, oi, e = 4.
+export function frComplexity(word) {
+  const w = word.toLowerCase();
+  const found = [];
+  let i = 0;
+  const at = (s) => w.startsWith(s, i);
+  const nasalOk = (len) => { const n = w[i + len]; return !n || (!isV(n) && n !== 'n' && n !== 'm' && !(n === 'h')); };
+  while (i < w.length) {
+    const c = w[i], prev = w[i - 1], next = w[i + 1];
+    let m = null;
+    // silent final letters
+    if (i === w.length - 1 && c === 'e' && i > 0) m = 'e';
+    else if (i === w.length - 1 && 'stdxpz'.includes(c) && i > 1) m = c;
+    else if (i === 0 && c === 'h') m = 'h';
+    else {
+      for (const g of ['eau', 'ouill', 'aill', 'eill', 'euil', 'ueil', 'ill']) if (at(g) && (g !== 'ill' || i > 0)) { m = g; break; }
+      if (!m) for (const g of ['ain', 'aim', 'ein', 'oin', 'ien']) if (at(g) && nasalOk(3)) { m = g; break; }
+      if (!m) for (const g of ['ou', 'oi', 'ai', 'ei', 'au', 'eu', 'œu', 'ch', 'ph', 'gn', 'qu', 'th']) if (at(g)) { m = g; break; }
+      if (!m && at('gu') && 'eiyéèê'.includes(w[i + 2] ?? '')) m = 'gu';
+      if (!m) for (const g of ['an', 'am', 'en', 'em', 'in', 'im', 'on', 'om', 'un', 'um', 'yn', 'ym']) if (at(g) && nasalOk(2)) { m = g; break; }
+      if (!m && next === c && 'lstpmnrfcdg'.includes(c)) m = c + c;
+      if (!m && at('tion')) m = 't=s';
+      if (!m && c === 'ç') m = 'ç';
+      if (!m && c === 'c' && 'eiyéèê'.includes(next ?? '')) m = 'c(e)';
+      if (!m && c === 'g' && 'eiyéèê'.includes(next ?? '')) m = 'g(e)';
+      if (!m && c === 's' && isV(prev) && isV(next)) m = 's=z';
+      if (!m && 'èêëâîïôûùœ'.includes(c)) m = c;
+      if (!m && 'xwy'.includes(c)) m = c;
+      if (!m && c === 'h') m = 'h';
+      if (!m && c === 'e' && !isV(next) && next && w[i + 2] && !isV(w[i + 2]) && next !== w[i + 2]) m = 'e+cc'; // "es-car-got": e sounds è
+      if (!m && c === 'e' && next && next === w[i + 2] && !isV(next)) m = 'e+cc';
+    }
+    if (m) { found.push(m.replace('(e)', '')); i += m.length > 1 && !m.includes('(') && m !== 's=z' && m !== 'e+cc' && m !== 't=s' ? m.length : 1; }
+    else i++;
+  }
+  return found;
+}
+
 export const EXAMPLES = {
   fr: {
     "c": "C comme café.",
@@ -558,6 +610,25 @@ export const EXAMPLES = {
     "animal": "Le chat est mon animal préféré.",
     "canari": "Le canari chante dans sa cage.",
     "sofa": "Le chien dort sur le sofa.",
+    "lune": "La lune brille dans le ciel la nuit.",
+    "robe": "Lili a une jolie robe bleue.",
+    "jupe": "Rosa porte une jupe à fleurs.",
+    "tulipe": "La tulipe rouge pousse au jardin.",
+    "tortue": "La tortue avance tout doucement.",
+    "minute": "Attends-moi une minute !",
+    "olive": "L’olive est petite et verte.",
+    "bijou": "La reine a un bijou en or.",
+    "dragon": "Le dragon crache du feu.",
+    "violon": "Il joue une jolie musique au violon.",
+    "salon": "Papa lit dans le salon.",
+    "lion": "Le lion est le roi des animaux.",
+    "patin": "Je glisse sur la glace avec mes patins.",
+    "lutin": "Un petit lutin se cache dans la forêt.",
+    "copain": "Mon copain joue avec moi.",
+    "train": "Le train roule vite sur les rails.",
+    "radeau": "Ils traversent la rivière sur un radeau.",
+    "rideau": "Ferme le rideau, il fait nuit.",
+    "bureau": "Le livre est posé sur le bureau.",
     "tomate": "La tomate est rouge et ronde.",
     "pirate": "Le pirate cherche un trésor.",
     "salade": "Je mange de la salade verte.",
@@ -737,7 +808,7 @@ export const UI = {
     equipHint: 'Tap an object to hold it, then the round button to use it.',
     parents: 'Parents’ corner',
     parentsTitle: 'Parents’ corner',
-    talkToMageFirst: 'Go and see Alaric the mage first 🧙', travelTitle: 'Where to?', cancel: 'Cancel', travelSignTitle: 'Signpost', travelSignInstruction: 'Write the place’s name back on the signpost!', travelFixed: (n) => `The signpost says “${n}” again! You can now travel here.`, placeNames: { village: '🏘️ Village', forest: '🌲 Forest', marsh: '🪷 Marsh', mountain: '🏔️ Mountain', coast: '🏖️ Beach' }, theEnd: 'The end!', endStats: (w, m, s) => `${w} words written · ${m} Mimots · ${s} ★`, keepPlaying: 'Keep playing', bookLocked: 'The big book is closed… for now.', notThere: 'You are already here!', signTitle: 'Sign', signInstruction: 'Write the house’s name back on its sign!', signBack: (n) => `The sign says “${n}” again!`, mimotTitle: 'A Mimot!', mimotInstruction: 'Write its word to tame it!', mimotTamed: 'You tamed a Mimot! It hides in your album.', mimotsTamed: (n, k) => `🐣 Mimots tamed: ${n} / ${k}`, chapterDone: 'Chapter complete!', familiesTitle: 'Sounds and spelling patterns', familyNone: 'not met yet', familyWords: (n) => `${n} word${n > 1 ? 's' : ''}`, chapterNow: (c) => `Story: ${c}`, spellLockedChapter: (n, c) => `The ${n} spell is learned in chapter ${c}. Follow the story!`, chapterShort: (c) => `ch. ${c}`, ouch: { lava: 'Ouch! The lava is hot! 🔥 Back to the last flag.', zombie: 'Ouch! A zombie caught you! 🧟 Back home.' }, ouchSay: 'Ouch!', reviveTitle: 'Spell this word to set off again!', reviveInstruction: 'Listen and type the word to start again from the flag.', reviveInstructionLetter: 'Listen and write the letter to start again from the flag.', reviveDone: 'Off you go! Mind the lava!', lavaHelp: '🪨 Need a hand? Here is a little bridge to the next pillar!', flagReached: '🚩 Flag! If you fall, you will start again from here.', lavaDone: (n) => `🏆 Lava course done${n ? ` (${n} fall${n > 1 ? 's' : ''})` : ' without falling!'} Go back to the fountain!`, lavaDoneSay: 'Well done! You crossed the lava! Go back to the fountain.', lavaQuest: '🔥 Lava challenge', backToFountain: 'Well done! Go back to the village fountain ⛲', fountainUp: '⛲ The fountain rises! What a champion!', zombiesLabel: 'Zombies at night', zombiesNote: 'At night, zombies chase the child outside (never in a house). Only the diamond sword defeats them; other swords push them back. The bed skips the night.', zombieNight: '🌙 Night falls… zombies come out! Go into a house or sleep in your bed 🛏️', zombieNeedDiamond: '🧟 Pushed back! You need the diamond sword 💎 to defeat a zombie.', zombieDefeated: '🧟 Zombie defeated! +1 ★', listsTitle: 'Word lists', listLearned: (n) => `✅ Learned (${n})`, listLearning: (n) => `🌱 Learning (${n})`, listNext: (n) => `🔜 Coming next (${n})`, listLearnedNote: 'Learned words: they come back now and then so they are not forgotten.', listLearningNote: 'Words met but not learned yet (or forgotten): they come back often.', listNextNote: 'The next words, in the order they will come for this age and progress.', listEmpty: 'No words yet.', pageOf: (p, n) => `Page ${p} / ${n}`, wordMisses: (n) => n ? `${n} mistake${n > 1 ? 's' : ''}` : 'no mistakes', grimoireTitle: 'Spellbook', grimoireLede: 'Write a spell’s word on a purple magic circle to cast it. Right first time = full power!', spellTitle: 'Spell', spellInstruction: 'Listen and write the magic word on the circle!', spellCast: (n) => `Spell cast: ${n}!`, powerStrong: 'Full power! ✨', powerWobbly: 'It worked… a bit wobbly!', powerWeak: 'A small spell — try again for more power.', spellLocked: (n, k) => `${n} unlocks at ${k} ★`, spellSoon: 'Coming soon', spellAlready: 'It is already there: gather it first!', spellReady: 'Ready', spellUsed: 'Cast', hearWord: 'Tap to hear the word',
+    talkToMageFirst: 'Go and see Alaric the mage first 🧙', travelTitle: 'Where to?', cancel: 'Cancel', travelSignTitle: 'Signpost', travelSignInstruction: 'Write the place’s name back on the signpost!', travelFixed: (n) => `The signpost says “${n}” again! You can now travel here.`, placeNames: { village: '🏘️ Village', forest: '🌲 Forest', marsh: '🪷 Marsh', mountain: '🏔️ Mountain', coast: '🏖️ Beach' }, theEnd: 'The end!', endStats: (w, m, s) => `${w} words written · ${m} Mimots · ${s} ★`, keepPlaying: 'Keep playing', bookLocked: 'The big book is closed… for now.', notThere: 'You are already here!', signTitle: 'Sign', signInstruction: 'Write the house’s name back on its sign!', signBack: (n) => `The sign says “${n}” again!`, mimotTitle: 'A Mimot!', mimotInstruction: 'Write its word to tame it!', mimotTamed: 'You tamed a Mimot! It hides in your album.', mimotsTamed: (n, k) => `🐣 Mimots tamed: ${n} / ${k}`, chapterDone: 'Chapter complete!', familiesTitle: 'Sounds and spelling patterns', familyNone: 'not met yet', familyWords: (n) => `${n} word${n > 1 ? 's' : ''}`, chapterNow: (c) => `Story: ${c}`, spellLockedChapter: (n, c) => `The ${n} spell is learned in chapter ${c}. Follow the story!`, chapterShort: (c) => `ch. ${c}`, ouch: { lava: 'Ouch! The lava is hot! 🔥 Back to the last flag.', zombie: 'Ouch! A zombie caught you! 🧟 Back home.' }, ouchSay: 'Ouch!', reviveTitle: 'Spell this word to set off again!', reviveInstruction: 'Listen and type the word to start again from the flag.', reviveInstructionLetter: 'Listen and write the letter to start again from the flag.', reviveDone: 'Off you go! Mind the lava!', lavaHelp: '🪨 Need a hand? Here is a little bridge to the next pillar!', flagReached: '🚩 Flag! If you fall, you will start again from here.', lavaDone: (n) => `🏆 Lava course done${n ? ` (${n} fall${n > 1 ? 's' : ''})` : ' without falling!'} Go back to the fountain!`, lavaDoneSay: 'Well done! You crossed the lava! Go back to the fountain.', lavaQuest: '🔥 Lava challenge', backToFountain: 'Well done! Go back to the village fountain ⛲', fountainUp: '⛲ The fountain rises! What a champion!', zombiesLabel: 'Zombies at night', zombiesNote: 'At night, zombies chase the child outside (never in a house). Any sword defeats one in a single hit (the diamond sword hits all around); bare hands push them back. The bed skips the night.', zombieNight: '🌙 Night falls… zombies come out! Go into a house or sleep in your bed 🛏️', zombieNeedSword: '🧟 Pushed back! Craft a sword ⚔️ (iron + wood + fire) to defeat zombies.', zombieDefeated: '🧟 Zombie defeated! +1 ★ Pick up the meat 🍖', zombieBurnt: '🔥 Zombie burnt! +1 ★', zombieHurt: (n) => `🧟 Ouch! A zombie touched you! ${'❤️'.repeat(n)} left: hit it with your sword or run!`, zombieWordTitle: 'Zombie hunter bonus!', zombieWordInstruction: 'Spell this word for 2 extra stars!', zombieWordDone: 'Bravo, zombie hunter! +2 bonus stars', meatPicked: (n) => `🍖 Meat! (${n}) Cook a skewer 🍢 for Rosa`, rosaThanks: '🍢 Yum, a skewer! Thank you! +5 ★', rosaThanksSay: 'Yum! Thank you!', bucketWait: (n) => `🪣 The bucket is filling up again… ${n} s`, bucketReady: '🪣 Lava bucket ready!', listsTitle: 'Word lists', listLearned: (n) => `✅ Learned (${n})`, listLearning: (n) => `🌱 Learning (${n})`, listNext: (n) => `🔜 Coming next (${n})`, listLearnedNote: 'Learned words: they come back now and then so they are not forgotten.', listLearningNote: 'Words met but not learned yet (or forgotten): they come back often.', listNextNote: 'The next words, in the order they will come for this age and progress.', listEmpty: 'No words yet.', pageOf: (p, n) => `Page ${p} / ${n}`, wordMisses: (n) => n ? `${n} mistake${n > 1 ? 's' : ''}` : 'no mistakes', grimoireTitle: 'Spellbook', grimoireLede: 'Write a spell’s word on a purple magic circle to cast it. Right first time = full power!', spellTitle: 'Spell', spellInstruction: 'Listen and write the magic word on the circle!', spellCast: (n) => `Spell cast: ${n}!`, powerStrong: 'Full power! ✨', powerWobbly: 'It worked… a bit wobbly!', powerWeak: 'A small spell — try again for more power.', spellLocked: (n, k) => `${n} unlocks at ${k} ★`, spellSoon: 'Coming soon', spellAlready: 'It is already there: gather it first!', spellReady: 'Ready', spellUsed: 'Cast', hearWord: 'Tap to hear the word',
     ageQuestion: 'How old are you?', ageLede: 'The words will match your age, and get harder as you learn.', ageTitle: 'Age', ageYears: 'years', ageNote: (a, lvl) => `Age ${a}: words start at “${lvl}” and move up on their own once a list is mastered.`,
     parentsLede: 'Every word your child has met, how often it was spelled right or wrong, and the last mistakes. Saved on this device.',
     statWordsSeen: 'words met',
@@ -883,7 +954,7 @@ export const UI = {
     equipHint: 'Touche un objet pour le prendre en main, puis le bouton rond pour l’utiliser.',
     parents: 'Espace parents',
     parentsTitle: 'Espace parents',
-    talkToMageFirst: 'Va d’abord voir Alaric le mage 🧙', travelTitle: 'Où veux-tu aller ?', cancel: 'Annuler', travelSignTitle: 'Panneau de voyage', travelSignInstruction: 'Écris le nom de l’endroit sur le panneau !', travelFixed: (n) => `Le panneau dit de nouveau « ${n} » ! Tu peux maintenant voyager ici.`, placeNames: { village: '🏘️ Village', forest: '🌲 Forêt', marsh: '🪷 Marais', mountain: '🏔️ Montagne', coast: '🏖️ Plage' }, theEnd: 'Fin !', endStats: (w, m, s) => `${w} mots écrits · ${m} Mimots · ${s} ★`, keepPlaying: 'Continuer à jouer', bookLocked: 'Le grand livre est fermé… pour l’instant.', notThere: 'Tu es déjà ici !', signTitle: 'Panneau', signInstruction: 'Écris le nom de la maison sur son panneau !', signBack: (n) => `Le panneau dit de nouveau « ${n} » !`, mimotTitle: 'Un Mimot !', mimotInstruction: 'Écris son mot pour l’apprivoiser !', mimotTamed: 'Tu as apprivoisé un Mimot ! Il se cache dans ton album.', mimotsTamed: (n, k) => `🐣 Mimots apprivoisés : ${n} / ${k}`, chapterDone: 'Chapitre terminé !', familiesTitle: 'Sons et pièges d’orthographe', familyNone: 'pas encore rencontré', familyWords: (n) => `${n} mot${n > 1 ? 's' : ''}`, chapterNow: (c) => `Histoire : ${c}`, spellLockedChapter: (n, c) => `Le sort ${n} s’apprend au chapitre ${c}. Suis l’histoire !`, chapterShort: (c) => `chap. ${c}`, ouch: { lava: 'Aïe ! La lave brûle ! 🔥 Retour au dernier drapeau.', zombie: 'Aïe ! Un zombie t’a attrapé ! 🧟 Retour à la maison.' }, ouchSay: 'Aïe !', reviveTitle: 'Pour repartir, épelle ce mot !', reviveInstruction: 'Écoute et écris le mot pour repartir du drapeau.', reviveInstructionLetter: 'Écoute et écris la lettre pour repartir du drapeau.', reviveDone: 'C’est reparti ! Attention à la lave !', lavaHelp: '🪨 Besoin d’aide ? Voilà un petit pont jusqu’au pilier suivant !', flagReached: '🚩 Drapeau ! Si tu tombes, tu repartiras d’ici.', lavaDone: (n) => `🏆 Parcours de lave réussi${n ? ` (${n} chute${n > 1 ? 's' : ''})` : ' sans tomber !'} Retourne à la fontaine !`, lavaDoneSay: 'Bravo ! Tu as traversé la lave ! Retourne vite à la fontaine.', lavaQuest: '🔥 Défi de la lave', backToFountain: 'Bravo ! Retourne à la fontaine du village ⛲', fountainUp: '⛲ La fontaine s’élève ! Quel champion !', zombiesLabel: 'Zombies la nuit', zombiesNote: 'La nuit, des zombies poursuivent l’enfant dehors (jamais dans une maison). Seule l’épée en diamant les bat ; les autres épées les repoussent. Le lit permet de passer la nuit.', zombieNight: '🌙 La nuit tombe… des zombies sortent ! Rentre dans une maison ou dors dans ton lit 🛏️', zombieNeedDiamond: '🧟 Repoussé ! Il faut l’épée en diamant 💎 pour vaincre un zombie.', zombieDefeated: '🧟 Zombie vaincu ! +1 ★', listsTitle: 'Listes de mots', listLearned: (n) => `✅ Acquis (${n})`, listLearning: (n) => `🌱 En cours (${n})`, listNext: (n) => `🔜 À venir (${n})`, listLearnedNote: 'Mots appris : ils reviennent de temps en temps pour ne pas être oubliés.', listLearningNote: 'Mots rencontrés mais pas encore acquis (ou oubliés) : ils reviennent souvent.', listNextNote: 'Les prochains mots, dans l’ordre où ils arriveront selon l’âge et la progression.', listEmpty: 'Aucun mot pour l’instant.', pageOf: (p, n) => `Page ${p} / ${n}`, wordMisses: (n) => n ? `${n} erreur${n > 1 ? 's' : ''}` : 'aucune erreur', grimoireTitle: 'Grimoire', grimoireLede: 'Écris le mot d’un sort sur un cercle magique violet pour le lancer. Juste du premier coup = pleine puissance !', spellTitle: 'Sort', spellInstruction: 'Écoute et écris le mot magique sur le cercle !', spellCast: (n) => `Sort lancé : ${n} !`, powerStrong: 'Pleine puissance ! ✨', powerWobbly: 'Ça a marché… un peu de travers !', powerWeak: 'Un petit sort. Réessaie pour plus de puissance.', spellLocked: (n, k) => `${n} : à partir de ${k} ★`, spellSoon: 'Bientôt', spellAlready: 'C’est déjà là : ramasse-le d’abord !', spellReady: 'Prêt', spellUsed: 'Lancé', hearWord: 'Touche pour entendre le mot',
+    talkToMageFirst: 'Va d’abord voir Alaric le mage 🧙', travelTitle: 'Où veux-tu aller ?', cancel: 'Annuler', travelSignTitle: 'Panneau de voyage', travelSignInstruction: 'Écris le nom de l’endroit sur le panneau !', travelFixed: (n) => `Le panneau dit de nouveau « ${n} » ! Tu peux maintenant voyager ici.`, placeNames: { village: '🏘️ Village', forest: '🌲 Forêt', marsh: '🪷 Marais', mountain: '🏔️ Montagne', coast: '🏖️ Plage' }, theEnd: 'Fin !', endStats: (w, m, s) => `${w} mots écrits · ${m} Mimots · ${s} ★`, keepPlaying: 'Continuer à jouer', bookLocked: 'Le grand livre est fermé… pour l’instant.', notThere: 'Tu es déjà ici !', signTitle: 'Panneau', signInstruction: 'Écris le nom de la maison sur son panneau !', signBack: (n) => `Le panneau dit de nouveau « ${n} » !`, mimotTitle: 'Un Mimot !', mimotInstruction: 'Écris son mot pour l’apprivoiser !', mimotTamed: 'Tu as apprivoisé un Mimot ! Il se cache dans ton album.', mimotsTamed: (n, k) => `🐣 Mimots apprivoisés : ${n} / ${k}`, chapterDone: 'Chapitre terminé !', familiesTitle: 'Sons et pièges d’orthographe', familyNone: 'pas encore rencontré', familyWords: (n) => `${n} mot${n > 1 ? 's' : ''}`, chapterNow: (c) => `Histoire : ${c}`, spellLockedChapter: (n, c) => `Le sort ${n} s’apprend au chapitre ${c}. Suis l’histoire !`, chapterShort: (c) => `chap. ${c}`, ouch: { lava: 'Aïe ! La lave brûle ! 🔥 Retour au dernier drapeau.', zombie: 'Aïe ! Un zombie t’a attrapé ! 🧟 Retour à la maison.' }, ouchSay: 'Aïe !', reviveTitle: 'Pour repartir, épelle ce mot !', reviveInstruction: 'Écoute et écris le mot pour repartir du drapeau.', reviveInstructionLetter: 'Écoute et écris la lettre pour repartir du drapeau.', reviveDone: 'C’est reparti ! Attention à la lave !', lavaHelp: '🪨 Besoin d’aide ? Voilà un petit pont jusqu’au pilier suivant !', flagReached: '🚩 Drapeau ! Si tu tombes, tu repartiras d’ici.', lavaDone: (n) => `🏆 Parcours de lave réussi${n ? ` (${n} chute${n > 1 ? 's' : ''})` : ' sans tomber !'} Retourne à la fontaine !`, lavaDoneSay: 'Bravo ! Tu as traversé la lave ! Retourne vite à la fontaine.', lavaQuest: '🔥 Défi de la lave', backToFountain: 'Bravo ! Retourne à la fontaine du village ⛲', fountainUp: '⛲ La fontaine s’élève ! Quel champion !', zombiesLabel: 'Zombies la nuit', zombiesNote: 'La nuit, des zombies poursuivent l’enfant dehors (jamais dans une maison). N’importe quelle épée en bat un d’un seul coup (celle en diamant frappe tout autour) ; à mains nues, on les repousse. Le lit permet de passer la nuit.', zombieNight: '🌙 La nuit tombe… des zombies sortent ! Rentre dans une maison ou dors dans ton lit 🛏️', zombieNeedSword: '🧟 Repoussé ! Fabrique une épée ⚔️ (fer + bois + feu) pour vaincre les zombies.', zombieDefeated: '🧟 Zombie vaincu ! +1 ★ Ramasse la viande 🍖', zombieBurnt: '🔥 Zombie brûlé ! +1 ★', zombieHurt: (n) => `🧟 Aïe ! Un zombie t’a touché ! Il te reste ${'❤️'.repeat(n)} : frappe-le avec ton épée ou fuis !`, zombieWordTitle: 'Bonus du chasseur de zombies !', zombieWordInstruction: 'Épelle ce mot pour gagner 2 étoiles de plus !', zombieWordDone: 'Bravo, chasseur de zombies ! +2 étoiles bonus', meatPicked: (n) => `🍖 De la viande ! (${n}) Cuisine une brochette 🍢 pour Rosa`, rosaThanks: '🍢 Miam, une brochette ! Merci ! +5 ★', rosaThanksSay: 'Miam ! Merci !', bucketWait: (n) => `🪣 Le seau se remplit… encore ${n} s`, bucketReady: '🪣 Seau de lave prêt !', listsTitle: 'Listes de mots', listLearned: (n) => `✅ Acquis (${n})`, listLearning: (n) => `🌱 En cours (${n})`, listNext: (n) => `🔜 À venir (${n})`, listLearnedNote: 'Mots appris : ils reviennent de temps en temps pour ne pas être oubliés.', listLearningNote: 'Mots rencontrés mais pas encore acquis (ou oubliés) : ils reviennent souvent.', listNextNote: 'Les prochains mots, dans l’ordre où ils arriveront selon l’âge et la progression.', listEmpty: 'Aucun mot pour l’instant.', pageOf: (p, n) => `Page ${p} / ${n}`, wordMisses: (n) => n ? `${n} erreur${n > 1 ? 's' : ''}` : 'aucune erreur', grimoireTitle: 'Grimoire', grimoireLede: 'Écris le mot d’un sort sur un cercle magique violet pour le lancer. Juste du premier coup = pleine puissance !', spellTitle: 'Sort', spellInstruction: 'Écoute et écris le mot magique sur le cercle !', spellCast: (n) => `Sort lancé : ${n} !`, powerStrong: 'Pleine puissance ! ✨', powerWobbly: 'Ça a marché… un peu de travers !', powerWeak: 'Un petit sort. Réessaie pour plus de puissance.', spellLocked: (n, k) => `${n} : à partir de ${k} ★`, spellSoon: 'Bientôt', spellAlready: 'C’est déjà là : ramasse-le d’abord !', spellReady: 'Prêt', spellUsed: 'Lancé', hearWord: 'Touche pour entendre le mot',
     ageQuestion: 'Quel âge as-tu ?', ageLede: 'Les mots seront adaptés à ton âge, et deviendront plus durs à mesure que tu apprends.', ageTitle: 'Âge', ageYears: 'ans', ageNote: (a, lvl) => `${a} ans : les mots commencent au niveau « ${lvl} » et montent tout seuls quand une liste est maîtrisée.`,
     parentsLede: 'Tous les mots rencontrés par votre enfant, combien de fois ils ont été bien ou mal écrits, et les dernières erreurs. Enregistré sur cet appareil.',
     statWordsSeen: 'mots rencontrés',

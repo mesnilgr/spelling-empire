@@ -1,5 +1,6 @@
 // Night-time zombies: they come out at night, chase a hero who is outside, and never enter houses.
-// Only the diamond sword defeats them; other swords (and bare hands) push them back.
+// Any sword defeats one in a single hit (the diamond sword reaches further and hits all around);
+// bare hands only push them back. A defeated zombie drops a piece of meat to pick up.
 import * as THREE from 'three';
 import { createBlockyCharacter, animateCharacter } from './characters.js';
 import { mergeDirect } from './perf.js';
@@ -12,8 +13,9 @@ export const ZOMBIE = {
   spawnMin: 14,
   spawnMax: 19,
   respawn: 18, // seconds before a defeated zombie comes back (same night)
-  graceAfterCatch: 6, // seconds without attacks after being caught
-  hp: 2, // diamond-sword hits to defeat one
+  graceAfterCatch: 3, // seconds without being touched again
+  meatLife: 150, // seconds a dropped piece of meat stays on the ground
+  pickup: 1.0, // walk this close to a piece of meat to pick it up
 };
 
 export class ZombieManager {
@@ -23,6 +25,8 @@ export class ZombieManager {
     this.enabled = true;
     this.grace = 0;
     this.nextSpawn = 0;
+    this.drops = []; // meat on the ground (stays after dawn)
+    this.dying = []; // zombies playing their defeat animation
   }
 
   get active() { return this.list.filter((z) => z.alive); }
@@ -53,7 +57,7 @@ export class ZombieManager {
     mesh.position.set(at.x, this.s.groundAt(at.x, at.z), at.z);
     mesh.userData.walkPhase = Math.random() * 6;
     this.s.scene.add(mesh);
-    const z = { mesh, alive: true, hp: ZOMBIE.hp, stun: 0, chasing: false, wander: { x: at.x, z: at.z, t: 0 }, rise: 0 };
+    const z = { mesh, alive: true, stun: 0, chasing: false, wander: { x: at.x, z: at.z, t: 0 }, rise: 0 };
     mesh.scale.setScalar(0.01);
     this.list.push(z);
     this.s.particleBurst(mesh.position.clone().add(new THREE.Vector3(0, 0.3, 0)), '#5a6a3a', 14);
@@ -67,35 +71,119 @@ export class ZombieManager {
   }
 
   clear(puff = true) {
-    for (const z of this.list) if (!z.gone) this._remove(z, puff);
-    this.list = [];
+    for (const z of this.list) if (!z.gone && z.alive) this._remove(z, puff);
+    this.list = this.list.filter((z) => !z.alive && !z.gone);
   }
 
-  // Swing: hits zombies in front of the hero. power: 'diamond' | 'sword' | 'hand'.
+  // Swing. power: 'diamond' | 'sword' | 'hand'.
+  // A sword defeats in one hit the zombies in front of the hero; the diamond sword reaches further
+  // and hits every zombie around. Bare hands push them back.
   hit(power) {
     const s = this.s, p = s.player.position, a = s.player.rotation.y;
     const fx = Math.sin(a), fz = Math.cos(a);
+    const range = power === 'diamond' ? 3.2 : power === 'sword' ? 2.3 : 1.8;
     let touched = 0, defeated = 0;
     for (const z of this.active) {
       const dx = z.mesh.position.x - p.x, dz = z.mesh.position.z - p.z, d = Math.hypot(dx, dz);
-      if (d > 2.0 || (dx * fx + dz * fz) / (d || 1) < 0.3) continue;
+      if (d > range) continue;
+      if (power !== 'diamond' && (dx * fx + dz * fz) / (d || 1) < 0.2) continue;
       touched++;
-      // Knock back.
-      const push = power === 'diamond' ? 1.2 : power === 'sword' ? 2.6 : 1.4;
-      const nx = z.mesh.position.x + (dx / (d || 1)) * push, nz = z.mesh.position.z + (dz / (d || 1)) * push;
-      if (!s._checkCollision(nx, nz) && !s._insideAnyHouse(nx, nz, 0.4)) z.mesh.position.set(nx, s.groundAt(nx, nz), nz);
-      z.stun = power === 'hand' ? 0.8 : 1.4;
-      s.particleBurst(z.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), power === 'diamond' ? '#7ae8ff' : '#ffffff', 10);
-      if (power === 'diamond') {
-        z.hp -= 1;
-        if (z.hp <= 0) { this._remove(z); defeated++; this.nextSpawn = Math.max(this.nextSpawn, s.clock.elapsedTime + ZOMBIE.respawn); }
+      const ux = dx / (d || 1), uz = dz / (d || 1);
+      s.particleBurst(z.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), power === 'diamond' ? '#7ae8ff' : '#ffffff', 14);
+      if (power === 'hand') {
+        for (const push of [1.6, 1.0, 0.5]) {
+          const nx = z.mesh.position.x + ux * push, nz = z.mesh.position.z + uz * push;
+          if (s._checkCollision(nx, nz) || s._insideAnyHouse(nx, nz, 0.4) || s.inLava?.(nx, nz)) continue;
+          z.mesh.position.set(nx, s.groundAt(nx, nz), nz);
+          break;
+        }
+        z.stun = 0.8;
+        continue;
+      }
+      this.defeat(z, ux, uz);
+      defeated++;
+    }
+    if (defeated) this.nextSpawn = Math.max(this.nextSpawn, s.clock.elapsedTime + ZOMBIE.respawn * 0.5);
+    return { touched, defeated };
+  }
+
+  // Defeat: the zombie flies back, spins and shrinks into a puff, and leaves a piece of meat.
+  defeat(z, ux = 0, uz = 1, cause = 'sword') {
+    if (!z.alive) return;
+    z.alive = false;
+    z.dyingT = 0;
+    z.fly = { x: ux * 3.5, z: uz * 3.5 };
+    z.cause = cause;
+    this.dying.push(z);
+    this.s.screenShake?.(0.1);
+  }
+
+  _dropMeat(x, z) {
+    const s = this.s;
+    const g = new THREE.Group();
+    const meat = new THREE.MeshStandardMaterial({ color: 0xc8503a, emissive: 0xff7a3a, emissiveIntensity: 0.35, roughness: 0.7 });
+    const bone = new THREE.MeshStandardMaterial({ color: 0xf4ead8, emissive: 0xffffff, emissiveIntensity: 0.2 });
+    const m1 = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.26, 0.26), meat);
+    const b1 = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.07, 0.07), bone);
+    b1.position.x = 0.28;
+    const b2 = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.13, 0.13), bone);
+    b2.position.x = 0.42;
+    g.add(m1, b1, b2);
+    // A soft golden halo so it is easy to spot, even at night.
+    const halo = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.55, 20), new THREE.MeshBasicMaterial({ color: 0xffd36a, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }));
+    halo.rotation.x = -Math.PI / 2;
+    const y = s.groundAt(x, z);
+    halo.position.set(x, y + 0.05, z);
+    g.position.set(x, y + 0.5, z);
+    s.scene.add(g, halo);
+    this.drops.push({ mesh: g, halo, x, z, y, t: 0 });
+  }
+
+  _tickDrops(dt, t) {
+    const s = this.s, p = s.player.position;
+    for (const d of this.drops) {
+      d.t += dt;
+      d.mesh.rotation.y += dt * 2.2;
+      d.mesh.position.y = d.y + 0.5 + Math.sin(t * 3 + d.x) * 0.1;
+      d.halo.material.opacity = 0.4 + Math.sin(t * 4) * 0.2;
+      if (Math.hypot(p.x - d.x, p.z - d.z) < ZOMBIE.pickup && Math.abs(p.y - d.y) < 1.2) {
+        d.gone = true;
+        s.particleBurst(d.mesh.position.clone(), '#ffd36a', 18);
+        s.onMeatPickup?.();
+      } else if (d.t > ZOMBIE.meatLife) d.gone = true;
+      if (d.gone) { s.scene.remove(d.mesh, d.halo); }
+    }
+    this.drops = this.drops.filter((d) => !d.gone);
+  }
+
+  _tickDying(dt) {
+    const s = this.s;
+    for (const z of this.dying) {
+      z.dyingT += dt;
+      const m = z.mesh, k = z.dyingT;
+      if (k < 0.12) { m.scale.setScalar(1 + k * 2.5); } // a quick "hit" swell
+      const nx = m.position.x + z.fly.x * dt, nz = m.position.z + z.fly.z * dt;
+      if (!s._checkCollision(nx, nz)) m.position.set(nx, m.position.y, nz);
+      z.fly.x *= 0.9; z.fly.z *= 0.9;
+      m.position.y += (k < 0.25 ? 3 : -3) * dt;
+      m.rotation.y += dt * 18;
+      if (k >= 0.12) m.scale.setScalar(Math.max(0.01, 1.3 - (k - 0.12) * 2.6));
+      if (k > 0.55) {
+        const at = m.position.clone();
+        s.particleBurst(at.clone().add(new THREE.Vector3(0, 0.6, 0)), '#cfd8c0', 26);
+        s.particleBurst(at.clone().add(new THREE.Vector3(0, 0.6, 0)), z.cause === 'lava' ? '#ff7a1e' : '#ffffff', 12);
+        s.scene.remove(m);
+        z.gone = true;
+        this._dropMeat(at.x, at.z);
       }
     }
-    return { touched, defeated };
+    this.dying = this.dying.filter((z) => !z.gone);
   }
 
   update(dt, t) {
     const s = this.s;
+    this._tickDying(dt);
+    this._tickDrops(dt, t);
     const night = (s.night ?? 0) > 0.5;
     if (!this.enabled || !night) {
       if (this.list.length) this.clear(true); // dawn: they crumble away
@@ -108,7 +196,10 @@ export class ZombieManager {
     // Keep a few zombies around the hero (not while safe inside).
     if (!safe && this.list.length < ZOMBIE.max && t > this.nextSpawn) { this._spawn(); this.nextSpawn = t + 3 + Math.random() * 3; }
     for (const z of this.list) {
+      if (!z.alive) continue;
       const m = z.mesh;
+      // Caught in a lava eruption (the bucket) or a lava pool: defeated.
+      if (s.lavaHurts?.(m.position.x, m.position.z)) { this.defeat(z, 0, 0, 'lava'); s.onZombieBurnt?.(); continue; }
       if (m.scale.x < 1) m.scale.setScalar(Math.min(1, m.scale.x + dt * 1.5));
       const dx = p.x - m.position.x, dz = p.z - m.position.z, d = Math.hypot(dx, dz);
       z.chasing = !safe && d < ZOMBIE.sight;
@@ -147,7 +238,16 @@ export class ZombieManager {
       // Caught!
       if (z.chasing && d < ZOMBIE.reach && this.grace <= 0 && z.stun <= 0) {
         this.grace = ZOMBIE.graceAfterCatch;
-        s.onZombieCatch?.();
+        // It bounces back after touching the hero (the hero has two hearts).
+        const ux = -dx / (d || 1), uz = -dz / (d || 1);
+        for (const push of [2.5, 1.5, 0.8]) {
+          const nx = m.position.x + ux * push, nz = m.position.z + uz * push;
+          if (s._checkCollision(nx, nz) || s._insideAnyHouse(nx, nz, 0.4) || s.inLava?.(nx, nz)) continue;
+          m.position.set(nx, s.groundAt(nx, nz), nz);
+          break;
+        }
+        z.stun = 1.5;
+        s.onZombieCatch?.(z);
       }
     }
   }

@@ -38,13 +38,18 @@ const CRAFTABLES = [
   { id: 'boat', emoji: '⛵', name: { en: 'Boat', fr: 'Bateau' }, parts: ['wood', 'wood', 'cloth'] },
   { id: 'pickaxe_diamond', emoji: '💎', name: { en: 'Diamond pickaxe', fr: 'Pioche en diamant' }, parts: ['diamond', 'diamond', 'wood'], requires: ['pickaxe', 'hammer'] },
   { id: 'sword_diamond', emoji: '💎', name: { en: 'Diamond sword', fr: 'Épée en diamant' }, parts: ['diamond', 'diamond', 'iron'], requires: ['sword', 'hammer'] },
+  // Repeatable recipes (`repeat`): the result goes into the bag, as many times as you like.
+  { id: 'brochette', emoji: '🍢', name: { en: 'Skewer', fr: 'Brochette' }, parts: ['meat', 'wood', 'fire'], repeat: true },
+  { id: 'bucket', emoji: '🪣', name: { en: 'Lava bucket', fr: 'Seau de lave' }, parts: ['iron', 'fire', 'stone'] },
   { id: 'axe_obsidian', emoji: '🟪', name: { en: 'Obsidian axe', fr: 'Hache en obsidienne' }, parts: ['obsidian', 'obsidian', 'diamond'], requires: ['axe', 'hammer'] },
 ];
 const itemName = (item) => item.name[lang] ?? item.name.en;
 const craftable = (id) => CRAFTABLES.find((c) => c.id === id);
+// Recipes that count towards finishing the game (repeatable ones do not).
+const FINITE_CRAFTS = CRAFTABLES.filter((c) => !c.repeat);
 
 // Crafted objects the hero can carry and use with the action button.
-const HOLDABLE_IDS = ['pickaxe', 'axe', 'scythe', 'hammer', 'sword', 'torch', 'lantern', 'rod', 'wand', 'potion', 'bread'];
+const HOLDABLE_IDS = ['pickaxe', 'axe', 'scythe', 'hammer', 'sword', 'torch', 'lantern', 'rod', 'wand', 'potion', 'bread', 'bucket'];
 // Best owned version of a tool (diamond beats iron, obsidian beats diamond).
 function bestVersion(base) {
   const owned = (game?.crafted ?? []).filter((id) => id === base || id.startsWith(`${base}_`));
@@ -55,7 +60,7 @@ const ownsTool = (base) => !!bestVersion(base);
 
 const MATERIAL_EMOJI = {
   iron: '⛓️', wood: '🪵', fire: '🔥', stone: '🪨', wheat: '🌾',
-  water: '💧', cloth: '🧵', flower: '🌸', crystal: '🔮', diamond: '💎', obsidian: '🟪', mushroom: '🍄', fish: '🐟',
+  water: '💧', cloth: '🧵', flower: '🌸', crystal: '🔮', diamond: '💎', obsidian: '🟪', mushroom: '🍄', fish: '🐟', meat: '🍖', brochette: '🍢',
 };
 
 // Each building yields its own materials. Spelling words come from the level word list,
@@ -63,7 +68,7 @@ const MATERIAL_EMOJI = {
 const MATERIAL_FR = {
   iron: 'fer', wood: 'bois', fire: 'feu', stone: 'pierre', wheat: 'blé',
   water: 'eau', cloth: 'toile', flower: 'fleur', crystal: 'cristal', diamond: 'diamant', obsidian: 'obsidienne',
-  mushroom: 'champignon', fish: 'poisson', chest: 'trésor',
+  mushroom: 'champignon', fish: 'poisson', chest: 'trésor', meat: 'viande', brochette: 'brochette',
 };
 const TOOL_NAMES = { pickaxe: { en: 'a pickaxe', fr: 'une pioche' }, axe: { en: 'an axe', fr: 'une hache' }, scythe: { en: 'a scythe', fr: 'une faux' }, rod: { en: 'a fishing rod', fr: 'une canne à pêche' } };
 // Every house offers wood among its materials so the first tools are easy to make.
@@ -279,7 +284,7 @@ function pickMaterial(houseType, exclude = []) {
   const all = HOUSE_MATERIALS[houseType] ?? ['wood', 'stone', 'iron'];
   const offered = all.filter((m) => !exclude.includes(m)).length ? all.filter((m) => !exclude.includes(m)) : all;
   const need = {};
-  for (const item of CRAFTABLES) {
+  for (const item of FINITE_CRAFTS) {
     if (game?.crafted.includes(item.id)) continue;
     for (const part of item.parts) need[part] = (need[part] ?? 0) + 1;
   }
@@ -502,7 +507,9 @@ function init3DScene() {
   if (!container) return;
   scene3D = new GameScene(container);
   scene3D.onLava = () => knockOut('lava');
-  scene3D.onZombieCatch = () => knockOut('zombie');
+  scene3D.onZombieCatch = zombieTouch;
+  scene3D.onMeatPickup = onMeatPickup;
+  scene3D.onZombieBurnt = onZombieBurnt;
   scene3D.canBeAttacked = () => !!game && document.body.dataset.screen === 'game' && $('#spell-modal').hidden && $('#dialog').hidden && $('#travel-modal').hidden && $('#quest-modal')?.hidden !== false && !knocking;
   scene3D.zombies.enabled = progress.zombies !== false;
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
@@ -689,6 +696,7 @@ function interactWith(obj) {
     if (storyAt('finale')) playScene('finale', () => { advanceStory('finale'); showEnding(); });
     return;
   }
+  if (obj.kind === 'npc' && obj.npcId === 'merchant' && (game.materials.brochette ?? 0) > 0) { giveBrochette(); return; }
   if (obj.kind === 'npc') { openQuest(obj); return; }
   if (obj.kind === 'bed') { goToSleep(); return; }
   if (obj.kind === 'circle') {
@@ -890,7 +898,7 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐' });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); }, 300);
 
 // Show / hide the story things to match where the child is in the story.
 function applyStoryState() {
@@ -1041,6 +1049,14 @@ function knockOut(reason) {
 // After a fall in the lava: spell a word (from the child's easiest list) to set off again.
 // A spelling word after a fall in the lava, one time in five (always in tests that ask for it).
 function reviveChance() { return window.__se?.reviveAlways ? 1 : 0.2; }
+// After a zombie victory, one time in four: a bonus word to spell (+2 ★ more).
+const ZOMBIE_WORD_CHANCE = 0.25;
+function beginZombieWord() {
+  if (!game || !$('#spell-modal').hidden) return;
+  const word = pickWord(levelAt(0));
+  spellContext = { type: 'zombieWord', word, tries: 0 };
+  openSpellModal(`🧟 ${t.zombieWordTitle}`, word.level === 'letters' ? t.reviveInstructionLetter : t.zombieWordInstruction, '🧟');
+}
 function beginRevive() {
   if (!game || !$('#spell-modal').hidden) return;
   const word = pickWord(levelAt(0));
@@ -1149,12 +1165,12 @@ function hasParts(item) {
 function renderCraftMenu() {
   const container = $('#craft-list');
   if (!container) return;
-  const ready = CRAFTABLES.filter((item) => !game?.crafted.includes(item.id) && (item.requires ?? []).every((r) => game?.crafted.includes(r)) && hasParts(item)).length;
+  const ready = FINITE_CRAFTS.filter((item) => !game?.crafted.includes(item.id) && (item.requires ?? []).every((r) => game?.crafted.includes(r)) && hasParts(item)).length;
   const badge = $('#craft-badge');
   if (badge) { badge.hidden = ready === 0; badge.textContent = ready; }
   $('#craft-open-btn')?.classList.toggle('has-ready', ready > 0);
   container.replaceChildren(...CRAFTABLES.map((item) => {
-    const already = game?.crafted.includes(item.id);
+    const already = !item.repeat && game?.crafted.includes(item.id);
     const reqOk = (item.requires ?? []).every((r) => game?.crafted.includes(r));
     const canCraft = !already && reqOk && hasParts(item);
     const node = el('div', `craft-card ${canCraft ? 'is-available' : ''} ${already ? 'is-done' : ''} ${reqOk ? '' : 'is-locked'}`);
@@ -1163,7 +1179,8 @@ function renderCraftMenu() {
     if (item.requires) {
       node.append(el('span', 'craft-requires', `${t.requires} ${item.requires.map((r) => craftable(r)?.emoji ?? r).join(' + ')}`));
     }
-    node.append(el('span', 'craft-status', already ? '✓' : canCraft ? '→' : ''));
+    const have = item.repeat ? game?.materials[item.id] ?? 0 : 0;
+    node.append(el('span', 'craft-status', already ? '✓' : canCraft ? '→' : have ? `×${have}` : ''));
     if (canCraft) {
       node.addEventListener('click', () => beginCraft(item));
       node.classList.add('is-clickable');
@@ -1190,13 +1207,16 @@ function finishCrafting() {
     game.materials[part] = Math.max(0, (game.materials[part] ?? 1) - 1);
     if (game.materials[part] === 0) delete game.materials[part];
   }
-  game.crafted.push(item.id);
   const base = item.id.split('_')[0];
-  if (HOLDABLE_IDS.includes(base)) { game.equipped = null; equipItem(bestVersion(base)); }
-  else scene3D?.spawnTrophy(item.id);
+  if (item.repeat) game.materials[item.id] = (game.materials[item.id] ?? 0) + 1;
+  else {
+    game.crafted.push(item.id);
+    if (HOLDABLE_IDS.includes(base)) { game.equipped = null; equipItem(bestVersion(base)); }
+    else scene3D?.spawnTrophy(item.id);
+  }
   saveGame();
   progress.victories += 1;
-  const earned = 10;
+  const earned = item.repeat ? 2 : 10;
   progress.stars += earned;
   game.starsEarned += earned;
   sfxCraft();
@@ -1215,7 +1235,7 @@ function finishCrafting() {
   speak(`${t.craftedText} ${info.name}!`, 0.9);
 
   // Check if all items crafted
-  if (game.crafted.length >= CRAFTABLES.length) {
+  if (FINITE_CRAFTS.every((c) => game.crafted.includes(c.id))) {
     setTimeout(() => finishGame(true), 1500);
   }
 }
@@ -1394,6 +1414,16 @@ function handleSpellSuccess() {
     speak(t.signBack(name), 0.9);
     const ctxDone = () => { advanceStory('signs'); if (storyAt('mimot')) playScene('signsDone'); };
     spellContext.after = ctxDone;
+  } else if (type === 'zombieWord') {
+    sfxCraft();
+    if (!copied) { progress.stars += 2; game.starsEarned += 2; }
+    spellResultEl.replaceChildren(
+      el('p', 'spell-success', `🧟 ${t.zombieWordDone}`),
+      el('p', 'spell-sentence', spellContext.word.sentence ?? buildSentence(wordStr, lang)),
+      el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned + 2} ${t.stars}`),
+    );
+    spellResultEl.hidden = false;
+    speak(t.zombieWordDone, 0.95);
   } else if (type === 'revive') {
     sfxCraft();
     spellResultEl.replaceChildren(
@@ -1606,7 +1636,7 @@ function renderMenu() {
     const s = progress.save;
     cont.hidden = !s;
     if (s) {
-      cont.textContent = `${t.continueGame} · ${s.crafted.length}/${CRAFTABLES.length} ${t.objectsCrafted}`;
+      cont.textContent = `${t.continueGame} · ${s.crafted.length}/${FINITE_CRAFTS.length} ${t.objectsCrafted}`;
     }
   }
   const cards = LEVELS[lang].map((level) => {
@@ -1834,7 +1864,11 @@ function updateInteractHint() {
   const hint = $('#interact-hint');
   if (!btn || !hint || !scene3D || !game) return;
   const obj = scene3D.getNearbyInteractable();
+  btn.hidden = !obj;
   if (obj) {
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : '⛏️';
+    const ic = btn.querySelector('.interact-icon');
+    if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');
     hint.classList.add('is-visible');
     hint.textContent = `${t.mineHint} ${obj.name}!`;
@@ -2182,18 +2216,69 @@ function swordPower() {
   const sw = owned.find((id) => id.startsWith('sword'));
   return sw ? { power: 'sword', id: sw } : { power: 'hand', id: null };
 }
-let diamondHintShown = false;
+let swordHintShown = false;
+// A happy face pops up above the hero.
+function smile() {
+  const pos = scene3D?.getPlayerScreenPosition();
+  if (pos) showFloatingText(pos.x, pos.y - 70, '😄', '#ffd34a');
+}
+function sfxHit() { playNoise({ freq: 300, q: 0.7, volume: 0.12, duration: 0.12 }); playTone(180, 0.12, 'square', 0.06); }
+function sfxPop() { playTone(660, 0.07, 'triangle', 0.12); playTone(990, 0.12, 'triangle', 0.12, 0.06); }
 function zombieAttack(power = swordPower().power) {
   if (!scene3D?.zombies) return;
   const res = scene3D.zombies.hit(power);
+  if (res.touched) sfxHit();
   if (res.defeated) {
     progress.stars += res.defeated; game.starsEarned += res.defeated;
-    toast(t.zombieDefeated); sfxVictory(); updateGameUI(); saveGame();
-  } else if (res.touched) {
-    sfxBreak?.();
-    if (power !== 'diamond' && !diamondHintShown) { diamondHintShown = true; toast(t.zombieNeedDiamond, 4200); }
-  }
+    toast(t.zombieDefeated); smile(); updateGameUI(); saveGame();
+    setTimeout(sfxPop, 450);
+    if (Math.random() < (window.__se?.zombieWordAlways ?? ZOMBIE_WORD_CHANCE)) setTimeout(beginZombieWord, 1300);
+  } else if (res.touched && power === 'hand' && !swordHintShown) { swordHintShown = true; toast(t.zombieNeedSword, 4200); }
 }
+// Two hearts: the first touch only hurts, the second sends the hero back to bed.
+// The hearts come back after a while without being touched.
+const HEARTS = 2, HEART_REGEN = 20000;
+let hearts = HEARTS, hurtAt = 0;
+function zombieTouch() {
+  hearts -= 1;
+  hurtAt = performance.now();
+  if (hearts <= 0) { hearts = HEARTS; renderHearts(); knockOut('zombie'); return 'ko'; }
+  sfxHit(); sfxError();
+  toast(t.zombieHurt(hearts));
+  speak(t.ouchSay, 1);
+  const f = $('#hurt-flash');
+  if (f) { f.hidden = false; f.classList.remove('is-on'); void f.offsetWidth; f.classList.add('is-on'); setTimeout(() => { f.hidden = true; }, 600); }
+  renderHearts();
+  return 'hurt';
+}
+function renderHearts() {
+  const h = $('#hearts');
+  if (!h || !scene3D?.zombies) return;
+  if (hearts < HEARTS && performance.now() - hurtAt > HEART_REGEN) hearts = HEARTS;
+  h.hidden = !(hearts < HEARTS || (scene3D.zombies.active.length && scene3D.zombies.nearest() < 14));
+  h.textContent = '❤️'.repeat(hearts) + '🤍'.repeat(HEARTS - hearts);
+}
+function onMeatPickup() {
+  game.materials.meat = (game.materials.meat ?? 0) + 1;
+  sfxCraft(); smile();
+  toast(t.meatPicked(game.materials.meat));
+  updateGameUI(); renderCraftMenu(); saveGame();
+}
+function onZombieBurnt() {
+  progress.stars += 1; game.starsEarned += 1;
+  toast(t.zombieBurnt); smile(); updateGameUI(); saveGame();
+}
+function giveBrochette() {
+  game.materials.brochette -= 1;
+  if (!game.materials.brochette) delete game.materials.brochette;
+  progress.stars += 5; game.starsEarned += 5;
+  sfxVictory(); smile(); launchConfetti();
+  toast(t.rosaThanks); speak(t.rosaThanksSay, 0.95);
+  updateGameUI(); renderCraftMenu(); saveGame();
+}
+// The lava bucket refills in 30 seconds.
+const BUCKET_RECHARGE = 30;
+let bucketReadyAt = 0;
 function attackButton() {
   if (!game || !scene3D) return;
   initAudio();
@@ -2213,8 +2298,16 @@ function useEquipped() {
   if (!game?.equipped || !scene3D) return;
   if (!$('#spell-modal').hidden) return;
   initAudio();
+  if (game.equipped === 'bucket') {
+    const wait = Math.ceil((bucketReadyAt - performance.now()) / 1000);
+    if (wait > 0) { toast(t.bucketWait(wait)); return; }
+  }
   if (scene3D.useItem(game.equipped)) {
     sfxMine();
+    if (game.equipped === 'bucket') {
+      bucketReadyAt = performance.now() + BUCKET_RECHARGE * 1000;
+      setTimeout(() => { if (game) toast(t.bucketReady); }, BUCKET_RECHARGE * 1000);
+    }
     if (game.equipped.startsWith('sword')) zombieAttack(game.equipped === 'sword_diamond' ? 'diamond' : 'sword');
     // Swinging the pickaxe at a glowing spot starts mining there.
     if (game.equipped.startsWith('pickaxe')) setTimeout(() => { if (scene3D.getNearbyInteractable()) tryInteract(); }, 450);

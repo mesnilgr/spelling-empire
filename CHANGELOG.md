@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.11.0 — Combat, viande, brochettes, seau de lave et mots mieux rangés
+
+- ⚔️ **N'importe quelle épée bat un zombie d'un seul coup.** L'épée en diamant 💎 va plus loin et frappe **tout autour** (même derrière). À mains nues, on les repousse seulement.
+- 💥 **Des coups qui se sentent** : éclats, son d'impact, petite secousse ; le zombie vaincu s'envole en tournant et disparaît dans un nuage.
+- 🍖 **Il laisse un morceau de viande** qui brille par terre : on marche dessus pour le ramasser. Un 😄 apparaît après chaque victoire et chaque viande ramassée.
+- 🍢 **Nouvelle recette « Brochette »** (viande + bois + feu), à fabriquer autant de fois qu'on veut. **Rosa la marchande** l'échange contre **5 ★**.
+- 🪣 **Nouveau : le seau de lave** (fer + feu + pierre). Avec le bouton d'action, la lave jaillit devant le héros pendant 3 s : les zombies qui y entrent sont vaincus (+1 ★), le héros ne craint rien. Il se remplit en 30 s.
+- ❤️ **Deux cœurs face aux zombies** : un premier contact fait seulement « Aïe ! » (le zombie recule et le héros perd un cœur, l'écran rougit un instant). Au deuxième, retour au lit. Les cœurs reviennent après 20 s sans être touché.
+- 🧟 **Une fois sur quatre, après une victoire, un mot bonus à épeler** (+2 ★ en plus).
+- ⛏️ **Le bouton d'action en bas à droite n'apparaît plus que s'il y a quelque chose à côté**, avec l'icône de ce qu'il fait (💬 parler, 🛏️ dormir, 🔮 sort, ⛏️ récolter…). Toucher un objet marche toujours aussi.
+- 🔤 **Les mots de niveau 2 ont exactement une orthographe complexe** (un e muet final, OU un son en plusieurs lettres comme ou, an, ch, eau, OU une lettre muette). Les mots qui en avaient plusieurs (chat, mouton, voiture, champignon…) passent au niveau 3, et 19 nouveaux mots arrivent au niveau 2 (lune, robe, tortue, dragon, lion, train, copain, bureau…). Un compteur vérifie la règle dans les tests : niveau 1 = aucune, niveau 2 = une, niveau 3 = au moins deux (« balançoire » en a quatre : an, ç, oi, e).
+- 🧪 **Tests 8 fois plus rapides** : la suite complète passe de ~25 min à ~3 min (les scénarios qui ne vérifient que la logique ne dessinent plus chaque image, et les scénarios tournent en parallèle). `npm run test:quick` lance une vérification rapide (~1 min) ; `npm run test:quick -- zombies` y ajoute les scénarios concernés.
+
 ## v1.10.0 — Un parcours de lave bien plus facile
 
 - 🌋 **Le parcours a été refait pour les petits** : 7 piliers larges (3 blocs), tous à la même hauteur, avec au plus un bloc de vide entre deux. Un drapeau tous les deux piliers (3 drapeaux).

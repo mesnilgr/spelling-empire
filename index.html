@@ -96,6 +96,7 @@
             </div>
             <div class="action-buttons">
               <button class="jump-btn" id="jump-btn" type="button" aria-label="Jump"><span>⤒</span></button>
+              <div class="hearts" id="hearts" hidden aria-live="polite">❤️❤️</div>
               <button class="attack-btn" id="attack-btn" type="button" hidden aria-label="Attack"><span>⚔️</span></button>
               <button class="use-btn" id="use-btn" type="button" hidden aria-label="Use">
                 <span class="use-icon">⚔️</span>
@@ -118,6 +119,7 @@
 
           <!-- Message banner (night falls, new card, quest done…) -->
           <div class="toast" id="toast" hidden></div>
+          <div class="hurt-flash" id="hurt-flash" hidden></div>
 
           <!-- Fishing: wait for a bite, then pull! -->
           <div class="fish-prompt" id="fish-prompt" hidden>

@@ -1,4 +1,4 @@
-import { LANGUAGES, LEVELS, WORDS, UI, buildSentence, AGE_LADDER, AGE_START, AGES } from './language-engine.js';
+import { LANGUAGES, LEVELS, WORDS, UI, buildSentence, AGE_LADDER, AGE_START, AGES, frComplexity } from './language-engine.js';
 import { SRS, ensureCard, grade, gradeFromAttempt, chooseWord } from './srs.js';
 
 let pass = 0;
@@ -278,11 +278,14 @@ for (const w of frEasy) {
   assert(!FR_COMPLEX.test(w), `fr/easy "${w}": only simple one-letter sounds`);
   assert(!/[cg][eéiy]/.test(w), `fr/easy "${w}": no soft c/g`);
 }
-for (const w of frMedium) {
-  // Level 2: a final mute e, or a sound written with several letters (ch, ou, on, an/en, in/ain/ein, au/eau, oi, gn).
-  assert(/e$|ch|ou|on|om|an|am|en|em|in|ain|ein|au|eau|oi|gn/.test(w), `fr/medium "${w}": mute e or multi-letter sound`);
-  assert(!/ph|qu|ill|ss|tt|mm|pp|rr/.test(w), `fr/medium "${w}": no level-3 traps`);
-}
+// Complex spellings (frComplexity): level 1 none, level 2 exactly one, level 3 at least two.
+// "balançoire" counts four (an, ç, oi, final e).
+assert(frComplexity('balançoire').length === 4, 'frComplexity: balançoire = an + ç + oi + e');
+assert(frComplexity('tomate').length === 1 && frComplexity('lapin').length === 1 && frComplexity('chat').length === 2, 'frComplexity: tomate 1, lapin 1, chat 2');
+for (const w of frEasy) assert(frComplexity(w).length === 0, `fr/easy "${w}": no complex spelling (${frComplexity(w)})`);
+for (const w of frMedium) assert(frComplexity(w).length === 1, `fr/medium "${w}": exactly one complex spelling (${frComplexity(w)})`);
+for (const w of WORDS.fr.filter(x => x.level === 'challenge').map(x => x.word)) assert(frComplexity(w).length >= 2, `fr/challenge "${w}": at least two complex spellings (${frComplexity(w)})`);
+assert(frMedium.length >= 45, `fr/medium: enough words (${frMedium.length})`);
 for (const w of WORDS.en.filter(x => x.level === 'easy').map(x => x.word)) {
   assert(/^[^aeiou][aeiou][^aeiouwy]$/.test(w) || w === 'yes', `en/easy "${w}": consonant-vowel-consonant`);
 }

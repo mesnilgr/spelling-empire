@@ -32,6 +32,7 @@ export const HOLDABLE = {
   wand: { action: 'raise', duration: 0.9, upright: false },
   potion: { action: 'drink', duration: 1.1, upright: true },
   bread: { action: 'drink', duration: 1.0, upright: true },
+  bucket: { action: 'raise', duration: 0.9, upright: true },
 };
 
 // Head/blade colours for each tier of tool.
@@ -146,6 +147,12 @@ export function buildItem(fullId) {
     box(g, 0.34, 0.14, 0.17, 0xd8a050, 0, 0.08, 0);
     box(g, 0.3, 0.06, 0.13, 0xe8bc70, 0, 0.17, 0);
     for (const x of [-0.09, 0, 0.09]) box(g, 0.025, 0.02, 0.11, 0x9a6024, x, 0.205, 0);
+  } else if (id === 'bucket') {
+    // An iron bucket full of glowing lava.
+    box(g, 0.3, 0.04, 0.3, 0x6a7078, 0, 0.0, 0, { metalness: 0.6, roughness: 0.4 });
+    for (const [x, z, w, d] of [[-0.14, 0, 0.04, 0.3], [0.14, 0, 0.04, 0.3], [0, -0.14, 0.3, 0.04], [0, 0.14, 0.3, 0.04]]) box(g, w, 0.28, d, 0x9aa2ac, x, 0.15, z, { metalness: 0.6, roughness: 0.4 });
+    box(g, 0.24, 0.03, 0.24, 0xff6a1a, 0, 0.26, 0, { emissive: 0xff5a00, emissiveIntensity: 1.2 });
+    box(g, 0.03, 0.03, 0.34, 0x5a5f66, 0, 0.36, 0, { metalness: 0.6 });
   }
 
   const spec = HOLDABLE[id];

@@ -109,6 +109,7 @@ export class GameScene {
     this.torchLight = new THREE.PointLight(0xff9a40, 0, 7, 1.4);
     this.scene.add(this.torchLight);
     if (!new URLSearchParams(location.search).has('nomerge')) this._optimizeStatic();
+    this.noRender = new URLSearchParams(location.search).has('norender');
     this.quality = new QualityManager(this);
     // ?fps in the address shows a small frame counter (to check smoothness on the iPad).
     if (new URLSearchParams(location.search).has('fps')) {
@@ -629,6 +630,40 @@ export class GameScene {
     this.walkways.push({ axis: 'z', x: LAVA.exit.x, z0: zTop + 0.05, z1: zBottom, hw: 0.8, y: (x, z) => Math.max(0, fin[3] * (z - zBottom) / (zTop - zBottom)) });
   }
   inLava(x, z) { return x > LAVA.x0 - 0.3 && x < LAVA.x1 + 0.3 && z > LAVA.z0 - 0.3 && z < LAVA.z1 + 0.3; }
+  // The lava bucket: a pool of lava bubbles up in front of the hero for a few seconds. It burns
+  // zombies, never the hero.
+  eruptLava(seconds = 3) {
+    const p = this.player.position, a = this.player.rotation.y;
+    const x = p.x + Math.sin(a) * 2.4, z = p.z + Math.cos(a) * 2.4;
+    const y = this.groundAt(x, z);
+    const tex = this.lavaCourse?.lavaTex;
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(2.2, 28), new THREE.MeshStandardMaterial({ color: 0xff7a1e, emissive: 0xff4a00, emissiveIntensity: 1.1, map: tex ?? null, transparent: true, opacity: 0.95, depthWrite: false }));
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.set(x, y + 0.06, z);
+    disc.scale.setScalar(0.1);
+    this.scene.add(disc);
+    this.eruptions ??= [];
+    this.eruptions.push({ disc, x, z, y, r: 2.2, t: 0, life: seconds });
+    this.screenShake(0.15);
+    for (const c of ['#ff7a1e', '#ffd36a', '#ff3a1a']) this.particleBurst({ x, y: y + 0.5, z }, c, 18);
+    return { x, z };
+  }
+  _tickEruptions(dt) {
+    if (!this.eruptions?.length) return;
+    for (const e of this.eruptions) {
+      e.t += dt;
+      const grow = Math.min(1, e.t / 0.3), shrink = Math.min(1, (e.life - e.t) / 0.4);
+      e.disc.scale.setScalar(Math.max(0.01, Math.min(grow, shrink)));
+      if (Math.random() < dt * 10) this.particleBurst({ x: e.x + (Math.random() - 0.5) * 3, y: e.y + 0.3, z: e.z + (Math.random() - 0.5) * 3 }, Math.random() < 0.5 ? '#ff7a1e' : '#ffd36a', 4);
+      if (e.t >= e.life) { this.scene.remove(e.disc); e.done = true; }
+    }
+    this.eruptions = this.eruptions.filter((e) => !e.done);
+  }
+  // Is this spot burning? (an eruption from the bucket)
+  lavaHurts(x, z) {
+    return !!this.eruptions?.some((e) => e.t < e.life - 0.2 && Math.hypot(x - e.x, z - e.z) < e.r);
+  }
+
   // After a few falls on the same jump: a stone footbridge to the next pillar.
   addLavaHelp(index) {
     const A = LAVA.pillars[index], B = LAVA.pillars[index + 1];
@@ -1489,6 +1524,8 @@ export class GameScene {
     } else if (id === 'potion') {
       this.speedBoostUntil = this.clock.elapsedTime + 8;
       at(500, () => { const p = this.player.position.clone(); p.y = 1.4; this.particleBurst(p, '#c06aff', 24); });
+    } else if (id === 'bucket') {
+      at(350, () => this.eruptLava());
     } else if (id === 'bread') {
       at(500, () => { const p = this.player.position.clone(); p.y = 1.6; this.particleBurst(p, '#ff5a7a', 16); });
     }
@@ -2242,7 +2279,7 @@ export class GameScene {
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
     this._tickRegions();
-    if (this.mode === 'play') this.zombies?.update(dt, elapsed);
+    this._tickEruptions(dt); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;
@@ -2325,6 +2362,8 @@ export class GameScene {
     // Water shimmer
     for (const m of this.waterMats) m.opacity = 0.65 + Math.sin(elapsed * 2) * 0.08;
 
+    // Tests that only check the game's logic skip drawing (?norender): one frame a second is drawn.
+    if (this.noRender && (this._skipN = (this._skipN ?? 0) + 1) % 60) { this.scene.updateMatrixWorld(); this.camera.updateMatrixWorld(); return; }
     if (this.quality?.current.bloom) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
   }

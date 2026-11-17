@@ -11,7 +11,9 @@ export async function launch() {
 }
 
 // A fresh page on the game, with speech replaced by a recorder and the given saved progress.
-export async function openGame(browser, base, progress, { quality = 1, width = 1180, height = 820 } = {}) {
+// render: false skips drawing most frames (much faster in the test browser); keep it for checks on
+// what is drawn (display budget, screenshots).
+export async function openGame(browser, base, progress, { quality = 1, width = 1180, height = 820, render = false } = {}) {
   const page = await browser.newPage({ viewport: { width, height } });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -19,7 +21,7 @@ export async function openGame(browser, base, progress, { quality = 1, width = 1
     window.__spoken = [];
     if (window.speechSynthesis) window.speechSynthesis.speak = (u) => window.__spoken.push(u.text);
   });
-  await page.goto(`${base}/?test&quality=${quality}`);
+  await page.goto(`${base}/?test&quality=${quality}${render ? '' : '&norender'}`);
   await page.evaluate(([key, p]) => { localStorage.clear(); localStorage.setItem(key, JSON.stringify(p)); }, [STORE, progress]);
   await page.reload();
   await page.waitForSelector('#loading.is-done', { timeout: 180000 });
@@ -81,14 +83,16 @@ function api(page) {
 }
 
 // Checks: print each one, remember failures.
-export function checker(name) {
+export function checker(name, { quiet = false } = {}) {
   const failures = [];
+  const lines = [];
   let count = 0;
   const check = (ok, label, detail = '') => {
     count++;
-    console.log(`  ${ok ? '✓' : '✗'} ${label}${!ok && detail ? ` — ${detail}` : ''}`);
+    const line = `  ${ok ? '✓' : '✗'} ${label}${!ok && detail ? ` — ${detail}` : ''}`;
+    if (quiet) lines.push(line); else console.log(line);
     if (!ok) failures.push(`${name}: ${label}${detail ? ` — ${detail}` : ''}`);
     return ok;
   };
-  return { check, failures, get count() { return count; } };
+  return { check, failures, lines, get count() { return count; } };
 }
