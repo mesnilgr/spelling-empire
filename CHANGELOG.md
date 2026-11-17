@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.10.0 — Un parcours de lave bien plus facile
+
+- 🌋 **Le parcours a été refait pour les petits** : 7 piliers larges (3 blocs), tous à la même hauteur, avec au plus un bloc de vide entre deux. Un drapeau tous les deux piliers (3 drapeaux).
+- 🦘 **Des sauts qui pardonnent** :
+  - on peut encore sauter juste après avoir quitté le bord ;
+  - un saut un peu court est rattrapé sur le pilier ;
+  - une ombre sous le héros montre où il va atterrir ;
+  - le prochain pilier est encadré en jaune.
+- 🪨 **Après 3 chutes au même saut, un petit pont apparaît** jusqu'au pilier suivant.
+- 🎲 **Après une chute, un mot à épeler une fois sur cinq seulement** (au lieu de chaque fois) : on repart plus vite.
+- Testé avec des sauts imparfaits (trop tôt, trop tard, en biais, lentement) : les 28 réussissent.
+
 ## v1.9.0 — Meilleur « e » et listes pour les parents
 
 - ✍️ **Le « e » écrit à la main est bien mieux reconnu** : le réseau ne connaissait que deux façons de l'écrire. Il apprend maintenant les « e » d'enfant (barre haute avec un petit œil, boucle ouverte, e aplati ou étroit, e rond attaché avec une petite queue). Sur des centaines de « e » variés, la reconnaissance passe de 80 % à 99 %, sans perte sur les autres lettres.

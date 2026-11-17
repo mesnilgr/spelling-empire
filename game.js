@@ -6,7 +6,7 @@ import { loadModel, recognize, inkBox } from './handwriting.js';
 import { SPELLS, spellById, spellWord } from './magic.js';
 import { SRS, ensureCard, grade as srsGrade, gradeFromAttempt, chooseWord } from './srs.js';
 import { CHAPTERS, SCENES, SPEAKERS, SIGNS, signWord, MIMOTS } from './story.js';
-import { TRAVEL, LAVA } from './regions.js';
+import { TRAVEL, LAVA, LAVA_FLAGS } from './regions.js';
 import { setSignText } from './story3d.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
@@ -1003,6 +1003,7 @@ function useTravelSign(o) {
 
 /* ===== KNOCK-OUT (lava, zombies): "Ouch!", fade, back to the last flag or the cottage bed ===== */
 let knocking = false;
+const lavaFallsAt = {};
 function knockOut(reason) {
   if (knocking || !scene3D) return;
   knocking = true;
@@ -1014,9 +1015,15 @@ function knockOut(reason) {
   setTimeout(() => {
     let to = null;
     if (reason === 'lava') {
-      if (game.parkour) game.parkour.falls = (game.parkour.falls ?? 0) + 1;
+      game.parkour ??= { cp: null, done: false, falls: 0 };
+      game.parkour.falls = (game.parkour.falls ?? 0) + 1;
+      // Three falls on the same jump: a footbridge appears.
+      const at = scene3D.lavaFailAt ?? -1;
+      lavaFallsAt[at] = (lavaFallsAt[at] ?? 0) + 1;
+      if (lavaFallsAt[at] >= 3 && scene3D.addLavaHelp(at)) setTimeout(() => toast(t.lavaHelp, 4000), 1600);
       const cp = game.parkour?.cp && scene3D.lavaPillar(game.parkour.cp);
       to = cp ?? { x: LAVA.start.x, z: LAVA.start.z };
+      scene3D.lavaIndex = cp ? LAVA.pillars.findIndex((pp) => pp[4] === game.parkour.cp) : -1;
     } else {
       const bed = scene3D.interactables.find((i) => i.kind === 'bed');
       to = bed ? { x: bed.worldPos.x + 1.0, z: bed.worldPos.z + 0.6 } : { x: 0, z: 6 };
@@ -1026,12 +1033,14 @@ function knockOut(reason) {
     scene3D.onKnockOut?.(reason);
     setTimeout(() => {
       fade.classList.add('is-out');
-      setTimeout(() => { fade.hidden = true; knocking = false; if (reason === 'lava') beginRevive(); }, 700);
+      setTimeout(() => { fade.hidden = true; knocking = false; if (reason === 'lava' && Math.random() < reviveChance()) beginRevive(); }, 700);
     }, 350);
   }, 650);
 }
 
 // After a fall in the lava: spell a word (from the child's easiest list) to set off again.
+// A spelling word after a fall in the lava, one time in five (always in tests that ask for it).
+function reviveChance() { return window.__se?.reviveAlways ? 1 : 0.2; }
 function beginRevive() {
   if (!game || !$('#spell-modal').hidden) return;
   const word = pickWord(levelAt(0));
@@ -1044,21 +1053,26 @@ function beginRevive() {
 function restoreLava() {
   if (!scene3D) return;
   const pk = game.parkour;
-  for (const role of ['cp1', 'cp2']) scene3D.setLavaFlag(role, !!pk && (pk.cp === role || (role === 'cp1' && pk.cp === 'cp2') || pk.done));
+  const reached = pk?.done ? LAVA_FLAGS.length : LAVA_FLAGS.indexOf(pk?.cp) + 1;
+  LAVA_FLAGS.forEach((role, i) => scene3D.setLavaFlag(role, i < reached));
   if (pk?.done) scene3D.openLavaExit();
   if (game.fountainRaised) scene3D.raiseFountain(true);
 }
 function onLavaPillar(role) {
   game.parkour ??= { cp: null, done: false, falls: 0 };
   const pk = game.parkour;
-  if (role === 'cp1' && !pk.cp) { pk.cp = 'cp1'; scene3D.setLavaFlag('cp1'); toast(t.flagReached); sfxCraft(); saveGame(); }
-  if (role === 'cp2' && pk.cp !== 'cp2') { pk.cp = 'cp2'; scene3D.setLavaFlag('cp1'); scene3D.setLavaFlag('cp2'); toast(t.flagReached); sfxCraft(); saveGame(); }
-  if (role === 'finish' && pk.cp === 'cp2' && !pk.done) {
+  const i = LAVA_FLAGS.indexOf(role), cur = LAVA_FLAGS.indexOf(pk.cp);
+  if (i >= 0 && i > cur) {
+    pk.cp = role;
+    LAVA_FLAGS.forEach((r, k) => scene3D.setLavaFlag(r, k <= i));
+    toast(t.flagReached); sfxCraft(); saveGame();
+  }
+  if (role === 'finish' && !pk.done && LAVA_FLAGS.indexOf(pk.cp) === LAVA_FLAGS.length - 1) {
     pk.done = true;
     pk.doneAt = Date.now();
     scene3D.openLavaExit();
     const p = scene3D.player.position;
-    for (let i = 0; i < 4; i++) setTimeout(() => scene3D.particleBurst({ x: p.x, y: p.y + 2, z: p.z }, ['#ffd36a', '#ff7a1e', '#ffffff'][i % 3], 28), i * 300);
+    for (let k = 0; k < 4; k++) setTimeout(() => scene3D.particleBurst({ x: p.x, y: p.y + 2, z: p.z }, ['#ffd36a', '#ff7a1e', '#ffffff'][k % 3], 28), k * 300);
     sfxVictory();
     toast(t.lavaDone(pk.falls ?? 0));
     speak(t.lavaDoneSay, 0.95);

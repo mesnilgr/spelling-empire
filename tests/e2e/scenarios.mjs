@@ -305,37 +305,41 @@ export const SCENARIOS = [
       const g = await openGame(browser, base, { lang: 'fr', age: 7, save: save(story(2, 0)) }, { quality: 0 });
       await g.click('#continue-btn');
       await g.page.waitForTimeout(1000);
-      // Every jump is possible: simulate the hero with the game's own physics and collisions.
+      // Every jump is easy: simulate the hero with the game's own physics, jumping early, late,
+      // at an angle and at half speed (as a child would), and check he lands on the next pillar.
       const sim = await g.page.evaluate(async () => {
         const { LAVA } = await import('/regions.js');
         const s = window.__se.scene;
-        const SPEED = 4.5, JUMP = 8.2, G = 24, dt = 1 / 60;
+        const JUMP = 8.2, G = 24, dt = 1 / 60;
         const path = [{ x: LAVA.start.x, z: LAVA.start.z, y: 0, size: 2.6 }, ...LAVA.pillars.map(([x, z, size, h, role]) => ({ x, z, y: h, size, role }))];
+        const styles = { 'tôt': { early: 0.9, side: 0, speed: 4.5 }, 'tard': { early: 0.02, side: 0, speed: 4.5 }, 'en biais': { early: 0.3, side: 0.9, speed: 4.5 }, 'lent': { early: 0.3, side: 0, speed: 2.2 } };
         const out = [];
-        for (let k = 0; k + 1 < path.length; k++) {
-          const A = path[k], B = path[k + 1];
-          const p = { x: A.x, z: A.z, y: A.y }; let vy = 0, ground = true, jumped = false, landed = null;
-          const dx = B.x - A.x, dz = B.z - A.z, d = Math.hypot(dx, dz), ux = dx / d, uz = dz / d;
-          for (let t = 0; t < 4 && !landed; t += dt) {
-            // Jump when about to leave A (its edge along the way to B).
-            const along = (p.x - A.x) * ux + (p.z - A.z) * uz;
-            if (!jumped && ground && along > A.size / 2 - 0.2) { vy = JUMP; ground = false; jumped = true; }
-            const nx = p.x + ux * SPEED * dt, nz = p.z + uz * SPEED * dt;
-            if (!s._blocked(nx, p.z, p.y)) p.x = nx;
-            if (!s._blocked(p.x, nz, p.y)) p.z = nz;
-            vy -= G * dt; p.y += vy * dt;
-            const gr = s.groundAt(p.x, p.z);
-            if (p.y <= gr) { p.y = gr; vy = 0; if (jumped) landed = s._walkwayAt(p.x, p.z) ? 'pilier' : 'lave'; ground = true; }
+        for (const [style, st] of Object.entries(styles)) {
+          for (let k = 0; k + 1 < path.length; k++) {
+            const A = path[k], B = path[k + 1];
+            const dx = B.x - A.x, dz = B.z - A.z, d = Math.hypot(dx, dz), ux = dx / d, uz = dz / d;
+            // Start off-centre for the "at an angle" jumps.
+            const p = { x: A.x - uz * st.side, z: A.z + ux * st.side, y: A.y }; let vy = 0, ground = true, jumped = false, landed = null;
+            for (let t = 0; t < 5 && !landed; t += dt) {
+              const along = (p.x - A.x) * ux + (p.z - A.z) * uz;
+              if (!jumped && ground && along > A.size / 2 - st.early) { vy = JUMP; ground = false; jumped = true; }
+              const nx = p.x + ux * st.speed * dt, nz = p.z + uz * st.speed * dt;
+              if (!s._blocked(nx, p.z, p.y)) p.x = nx;
+              if (!s._blocked(p.x, nz, p.y)) p.z = nz;
+              vy -= G * dt; p.y += vy * dt;
+              const gr = s.groundAt(p.x, p.z);
+              if (p.y <= gr) { p.y = gr; vy = 0; if (jumped) landed = s._walkwayAt(p.x, p.z) ? 'pilier' : 'lave'; ground = true; }
+            }
+            const ok = landed === 'pilier' && Math.abs(p.x - B.x) <= B.size / 2 && Math.abs(p.z - B.z) <= B.size / 2;
+            if (!ok) out.push(`${style} → pilier ${k + 1} (${landed} @${p.x.toFixed(1)},${p.z.toFixed(1)})`);
           }
-          const ok = landed === 'pilier' && Math.abs(p.x - B.x) <= B.size / 2 && Math.abs(p.z - B.z) <= B.size / 2;
-          out.push({ k: k + 1, ok, landed, at: `${p.x.toFixed(1)},${p.z.toFixed(1)}` });
         }
-        return out;
+        return { bad: out, jumps: (path.length - 1) * Object.keys(styles).length };
       });
-      const badJumps = sim.filter((j) => !j.ok);
-      check(badJumps.length === 0, `les ${sim.length} sauts sont tous faisables`, JSON.stringify(badJumps));
+      check(sim.bad.length === 0, `les ${sim.jumps} sauts réussissent, même tôt, tard, en biais ou lentement`, sim.bad.join(' ; '));
       // Falling in the lava: "Ouch!" and back to the start.
-      await g.page.evaluate(() => window.__se.scene.teleport(33, -42.5));
+      await g.page.evaluate(() => { window.__se.reviveAlways = true; });
+      await g.page.evaluate(() => window.__se.scene.teleport(31.5, -39.6));
       await g.page.waitForTimeout(2200);
       const after = await g.page.evaluate(() => { const p = window.__se.scene.player.position; return { x: p.x, z: p.z }; });
       check(Math.hypot(after.x - 29, after.z + 37.4) < 1.5, 'tomber dans la lave ramène au départ', JSON.stringify(after));
@@ -343,23 +347,35 @@ export const SCENARIOS = [
       check(asked, 'après la chute, il faut épeler un mot pour repartir');
       const rv = await g.spell();
       check(rv.result.includes('reparti'), 'le mot réussi, on repart', rv.result);
+      // Three falls on the same jump: a footbridge appears.
+      for (let k = 0; k < 2; k++) {
+        await g.page.evaluate(() => window.__se.scene.teleport(31.5, -39.6));
+        if (await g.page.waitForFunction(() => window.__se.spell()?.type === 'revive', null, { timeout: 8000 }).then(() => true, () => false)) await g.spell();
+      }
+      await g.page.waitForTimeout(1200);
+      check(await g.page.evaluate(() => window.__se.scene.walkways.some((w) => w.help)), 'après 3 chutes au même saut, une passerelle d’aide apparaît');
+      // Most falls (4 in 5) need no word: back on your feet straight away.
+      await g.page.evaluate(() => { window.__se.reviveAlways = false; window.__rnd = Math.random; Math.random = () => 0.9; window.__se.scene.teleport(31.5, -39.6); });
+      await g.page.waitForTimeout(3000);
+      check(await g.page.evaluate(() => window.__se.spell()?.type !== 'revive' && document.querySelector('#spell-modal').hidden), 'la plupart des chutes ne demandent pas de mot (1 sur 5 seulement)');
+      await g.page.evaluate(() => { Math.random = window.__rnd; window.__se.reviveAlways = true; });
       // Flags, then the finish.
-      for (const role of ['cp1', 'cp2']) {
+      for (const role of ['cp1', 'cp2', 'cp3']) {
         await g.page.evaluate((r) => { const s = window.__se.scene; const c = s.lavaPillar(r); s.teleport(c.x, c.z); }, role);
         await g.page.waitForTimeout(700);
       }
-      check(await g.page.evaluate(() => window.__se.game().parkour?.cp === 'cp2'), 'les drapeaux sont enregistrés');
-      await g.page.evaluate(() => window.__se.scene.teleport(33, -46));
+      check(await g.page.evaluate(() => window.__se.game().parkour?.cp === 'cp3'), 'les drapeaux sont enregistrés');
+      await g.page.evaluate(() => window.__se.scene.teleport(33, -56));
       await g.page.waitForTimeout(2200);
       if (await g.page.waitForFunction(() => window.__se.spell()?.type === 'revive', null, { timeout: 8000 }).then(() => true, () => false)) await g.spell();
       const cpBack = await g.page.evaluate(() => { const p = window.__se.scene.player.position; return { x: p.x, z: p.z }; });
-      check(Math.hypot(cpBack.x - 39.2, cpBack.z + 50.8) < 1.5, 'après le drapeau 2, une chute ramène au drapeau 2', JSON.stringify(cpBack));
+      check(Math.hypot(cpBack.x - 36.8, cpBack.z + 52.7) < 1.5, 'après le drapeau 3, une chute ramène au drapeau 3', JSON.stringify(cpBack));
       await g.page.evaluate(() => { const s = window.__se.scene; const c = s.lavaPillar('finish'); s.teleport(c.x, c.z); });
       await g.page.waitForTimeout(900);
       check(await g.page.evaluate(() => window.__se.game().parkour?.done === true), 'l’arrivée valide le parcours');
       check((await g.objective()).includes('fontaine'), 'objectif : retourner à la fontaine', await g.objective());
-      const down = await g.page.evaluate(() => { const s = window.__se.scene; const p = { x: 35.9, z: -61.4, y: 0.6 }; for (let k = 0; k < 40 && p.z > -65.8; k++) { const nz = p.z - 0.15; if (!s._blocked(p.x, nz, p.y)) { p.z = nz; p.y = s.groundAt(p.x, p.z); } } return p; });
-      check(down.z < -65.5 && down.y < 0.3, 'la rampe de sortie descend hors de la lave', JSON.stringify(down));
+      const down = await g.page.evaluate(() => { const s = window.__se.scene; const p = { x: 36.8, z: -56.6, y: 0.6 }; for (let k = 0; k < 40 && p.z > -60.8; k++) { const nz = p.z - 0.15; if (!s._blocked(p.x, nz, p.y)) { p.z = nz; p.y = s.groundAt(p.x, p.z); } } return p; });
+      check(down.z < -60.5 && down.y < 0.3, 'la rampe de sortie descend hors de la lave', JSON.stringify(down));
       check(await g.page.evaluate(() => window.__se.scene.village.fountain.position.y) === 0, 'la fontaine ne bouge pas avant d’y retourner');
       await g.page.evaluate(() => window.__se.scene.teleport(0, 3.4));
       await g.page.waitForTimeout(3600);

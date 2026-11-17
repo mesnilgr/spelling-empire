@@ -415,25 +415,22 @@ export function buildCoast(ctx) {
 // The lava pool and the pillars to jump on: [x, z, size, top height, role].
 // Gaps grow from 0.8 to 1.8 blocks; the hero's jump carries about 2.8 blocks.
 export const LAVA = {
-  x0: 26, x1: 42, z0: -64, z1: -39,
+  x0: 26, x1: 40, z0: -59, z1: -39,
   start: { x: 29, z: -37.4 },
-  exit: { x: 35.9, z: -65.6 },
-  // Each pillar is sized so that a full-speed jump from the edge of the previous one lands on it
-  // (gap + size ≥ 3.2 blocks), and gaps stay ≤ 1.7 blocks. Checked by the playthrough test.
+  exit: { x: 36.8, z: -60.4 },
+  // Easy on purpose (children found the first version too hard): wide pillars (3 blocks), short
+  // gaps (≤ 1 block), all at the same height, and a flag every two pillars.
   pillars: [
-    [29, -40.85, 2.3, 0.5],
-    [29, -44.1, 2.2, 0.8],
-    [29, -47.4, 2.0, 1.0],
-    [29, -50.8, 2.4, 0.8, 'cp1'],
-    [32.5, -50.8, 1.8, 1.0],
-    [35.7, -50.8, 1.8, 1.2],
-    [39.2, -50.8, 2.4, 1.0, 'cp2'],
-    [39.2, -54.4, 1.6, 1.2],
-    [39.2, -57.6, 1.6, 1.0],
-    [35.9, -57.6, 1.6, 1.2],
-    [35.9, -61.4, 2.6, 0.6, 'finish'],
+    [29, -40.9, 3.0, 0.6],
+    [29, -44.9, 3.0, 0.6, 'cp1'],
+    [32.9, -44.9, 3.0, 0.6],
+    [36.8, -44.9, 3.0, 0.6, 'cp2'],
+    [36.8, -48.8, 3.0, 0.6],
+    [36.8, -52.7, 3.0, 0.6, 'cp3'],
+    [36.8, -56.6, 3.0, 0.6, 'finish'],
   ],
 };
+export const LAVA_FLAGS = ['cp1', 'cp2', 'cp3'];
 
 function lavaTexture() {
   const c = document.createElement('canvas');
@@ -497,7 +494,9 @@ export function buildLavaCourse(ctx) {
   // Start: a stone pad and stairs-free entrance; exit ramp appears once the course is won.
   texBox(g, 4.2, 0.12, 2.8, blockMat('stoneBricks'), LAVA.start.x, 0.06, LAVA.start.z, { tile: 0.5 });
   const exitRamp = new THREE.Group();
-  for (let k = 0; k < 5; k++) texBox(exitRamp, 1.6, 0.6 - k * 0.12, 0.6, blockMat('stoneBricks'), LAVA.exit.x, (0.6 - k * 0.12) / 2, -62.7 - 0.3 - k * 0.6, { tile: 0.5 });
+  const fin = LAVA.pillars.find((pp) => pp[4] === 'finish');
+  const zEdge = fin[1] - fin[2] / 2;
+  for (let k = 0; k < 4; k++) texBox(exitRamp, 1.6, fin[3] - k * 0.15, 0.62, blockMat('stoneBricks'), LAVA.exit.x, (fin[3] - k * 0.15) / 2, zEdge - 0.31 - k * 0.62, { tile: 0.5 });
   exitRamp.visible = false;
   exitRamp.userData.dynamic = true;
   g.add(exitRamp);

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { SIGNS, MIMOTS, PAGES, REGION_NPCS } from './story.js';
-import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh, buildMountain, buildCoast, STAIRS, SUMMIT, PIER, ISLAND, BOOK, LAVA, buildLavaCourse } from './regions.js';
+import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh, buildMountain, buildCoast, STAIRS, SUMMIT, PIER, ISLAND, BOOK, LAVA, LAVA_FLAGS, buildLavaCourse } from './regions.js';
 import { mergeStatic as mergeGroup, mergeDirect as mergeGroupParts } from './perf.js';
 import { ZombieManager } from './zombies.js';
 import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
@@ -555,7 +555,17 @@ export class GameScene {
     (this.walkways ??= []).push({ axis: 'z', x: PIER.x, z0: PIER.z0, z1: PIER.z1, hw: PIER.hw, y: () => 0.26 });
     this.walkways.push({ circle: true, x: ISLAND.x, z: ISLAND.z, r: ISLAND.r - 0.1, y: () => 0.32 });
     this.lavaCourse = buildLavaCourse(ctx);
-    for (const [x, z, sz, h, role] of LAVA.pillars) this.walkways.push({ box: true, x0: x - sz / 2, x1: x + sz / 2, z0: z - sz / 2, z1: z + sz / 2, y: () => h, role, center: { x, z, y: h } });
+    LAVA.pillars.forEach(([x, z, sz, h, role], i) => this.walkways.push({ box: true, x0: x - sz / 2, x1: x + sz / 2, z0: z - sz / 2, z1: z + sz / 2, y: () => h, role, index: i, center: { x, z, y: h } }));
+    // Jump helpers for the course: a shadow under the hero and a frame around the next pillar.
+    this.jumpShadow = new THREE.Mesh(new THREE.CircleGeometry(0.42, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4, depthWrite: false }));
+    this.jumpShadow.rotation.x = -Math.PI / 2;
+    this.jumpShadow.visible = false;
+    this.scene.add(this.jumpShadow);
+    this.nextMark = new THREE.Mesh(new THREE.RingGeometry(1.15, 1.45, 4, 1), new THREE.MeshBasicMaterial({ color: 0xffd34a, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+    this.nextMark.rotation.set(-Math.PI / 2, 0, Math.PI / 4);
+    this.nextMark.visible = false;
+    this.scene.add(this.nextMark);
+    this.lavaIndex = -1;
     REGIONS.lava = { x: (LAVA.x0 + LAVA.x1) / 2, z: (LAVA.z0 + LAVA.z1) / 2, show: 34 };
     this.regionGroups = [];
     for (const [name, group] of [['forest', forest], ['marsh', marsh.group], ['mountain', this.mountain.group], ['coast', this.coast.group], ['lava', this.lavaCourse.group]]) {
@@ -619,6 +629,25 @@ export class GameScene {
     this.walkways.push({ axis: 'z', x: LAVA.exit.x, z0: zTop + 0.05, z1: zBottom, hw: 0.8, y: (x, z) => Math.max(0, fin[3] * (z - zBottom) / (zTop - zBottom)) });
   }
   inLava(x, z) { return x > LAVA.x0 - 0.3 && x < LAVA.x1 + 0.3 && z > LAVA.z0 - 0.3 && z < LAVA.z1 + 0.3; }
+  // After a few falls on the same jump: a stone footbridge to the next pillar.
+  addLavaHelp(index) {
+    const A = LAVA.pillars[index], B = LAVA.pillars[index + 1];
+    if (!B) return false;
+    this.lavaHelps ??= new Set();
+    if (this.lavaHelps.has(index)) return false;
+    this.lavaHelps.add(index);
+    const from = A ?? [LAVA.start.x, LAVA.start.z, 2.8, 0];
+    const h = B[3];
+    const x0 = Math.min(from[0], B[0]) - 0.6, x1 = Math.max(from[0], B[0]) + 0.6;
+    const z0 = Math.min(from[1], B[1]) - 0.6, z1 = Math.max(from[1], B[1]) + 0.6;
+    const g = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.14, z1 - z0), new THREE.MeshStandardMaterial({ color: 0xa8a29a, roughness: 0.9 }));
+    g.position.set((x0 + x1) / 2, h - 0.07, (z0 + z1) / 2);
+    g.receiveShadow = true;
+    this.scene.add(g);
+    this.walkways.push({ box: true, x0, x1, z0, z1, y: () => h, help: true });
+    this.particleBurst(g.position.clone().add(new THREE.Vector3(0, 0.4, 0)), '#ffd36a', 26);
+    return true;
+  }
   lavaPillar(role) { const pp = LAVA.pillars.find((q) => q[4] === role); return pp ? { x: pp[0], z: pp[1], y: pp[3] } : null; }
   raiseFountain(instant = false) {
     const f = this.village.fountain, base = this.village.fountainBase, jet = this.village.fountainBigJet;
@@ -644,12 +673,38 @@ export class GameScene {
     const p = this.player.position;
     this.lavaCourse.lavaTex.offset.y = (this.lavaCourse.lavaTex.offset.y + dt * 0.04) % 1;
     for (const f of Object.values(this.lavaCourse.flags)) f.userData.cloth.rotation.y = Math.sin(this.clock.elapsedTime * 3 + f.position.x) * 0.3;
-    if (p.x < LAVA.x0 || p.x > LAVA.x1 || p.z < LAVA.z0 || p.z > LAVA.z1) return;
-    const w = this._walkwayAt(p.x, p.z);
-    if (this.onGround && w?.role && w.role !== this.lavaLastRole) { this.lavaLastRole = w.role; this.onLavaPillar?.(w.role); }
+    const near = p.x > LAVA.x0 - 4 && p.x < LAVA.x1 + 4 && p.z > LAVA.z0 - 4 && p.z < LAVA.z1 + 4;
+    // Shadow under the hero while in the air, and the next pillar framed in gold.
+    this.jumpShadow.visible = near && !this.onGround;
+    if (this.jumpShadow.visible) this.jumpShadow.position.set(p.x, this.groundAt(p.x, p.z) + 0.04, p.z);
+    const next = LAVA.pillars[this.lavaIndex + 1];
+    this.nextMark.visible = near && !!next;
+    if (next) { this.nextMark.position.set(next[0], next[3] + 0.06, next[1]); this.nextMark.scale.setScalar(next[2] / 2.6 * (1 + Math.sin(this.clock.elapsedTime * 4) * 0.04)); }
+    if (p.x < LAVA.x0 || p.x > LAVA.x1 || p.z < LAVA.z0 || p.z > LAVA.z1) {
+      if (p.z > LAVA.z1) this.lavaIndex = -1; // back at the start
+      return;
+    }
+    let w = this._walkwayAt(p.x, p.z);
+    // Landing just short of a pillar: pull the hero onto it (falling, at pillar height).
+    if (!w && !this.onGround && (this.playerVY ?? 0) < 0) {
+      for (const ww of this.walkways) {
+        if (!ww.box || ww.index === undefined) continue;
+        const h = ww.y();
+        if (p.y > h + 0.15 || p.y < h - 0.35) continue;
+        const cx = Math.min(ww.x1 - 0.3, Math.max(ww.x0 + 0.3, p.x)), cz = Math.min(ww.z1 - 0.3, Math.max(ww.z0 + 0.3, p.z));
+        if (Math.hypot(cx - p.x, cz - p.z) > 0.75) continue;
+        p.x = cx; p.z = cz; p.y = h; this.playerVY = 0; this.onGround = true; w = ww;
+        break;
+      }
+    }
+    if (this.onGround && w?.index !== undefined && w.index !== this.lavaIndex) {
+      this.lavaIndex = Math.max(this.lavaIndex, w.index);
+      if (w.role && w.role !== this.lavaLastRole) { this.lavaLastRole = w.role; this.onLavaPillar?.(w.role); }
+    }
     // Touching the lava (on the ground, not on a pillar): ouch.
     if (!w && p.y < 0.35 && !this.lavaBurnt) {
       this.lavaBurnt = true;
+      this.lavaFailAt = this.lavaIndex; // the jump from this pillar to the next one failed
       this.particleBurst(p.clone().add(new THREE.Vector3(0, 0.3, 0)), '#ff7a1e', 24);
       this.onLava?.();
     }
@@ -1751,6 +1806,7 @@ export class GameScene {
       } else {
         this.onGround = p.y - ground < 0.02;
       }
+      if (this.onGround) this.lastGroundAt = this.clock.elapsedTime;
     }
 
     // Companions follow
@@ -1820,7 +1876,8 @@ export class GameScene {
   }
 
   jump() {
-    if (!this.onGround) return false;
+    // A little forgiveness: a jump still works just after walking off an edge.
+    if (!this.onGround && this.clock.elapsedTime - (this.lastGroundAt ?? -9) > 0.18) return false;
     this.playerVY = 8.2;
     this.onGround = false;
     this.onJump?.();
