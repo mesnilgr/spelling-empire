@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { SIGNS, MIMOTS, PAGES, REGION_NPCS } from './story.js';
-import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh, buildMountain, buildCoast, STAIRS, SUMMIT, PIER, ISLAND, BOOK } from './regions.js';
+import { WORLD_RADIUS, REGIONS, BRIDGES, MIST_X, BOARDWALK, TRAVEL, buildForest, buildMarsh, buildMountain, buildCoast, STAIRS, SUMMIT, PIER, ISLAND, BOOK, LAVA, buildLavaCourse } from './regions.js';
 import { mergeStatic as mergeGroup, mergeDirect as mergeGroupParts } from './perf.js';
 import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
 import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
@@ -552,8 +552,11 @@ export class GameScene {
     // Pier and paper island are walkable (the island is reached by the coast bridge).
     (this.walkways ??= []).push({ axis: 'z', x: PIER.x, z0: PIER.z0, z1: PIER.z1, hw: PIER.hw, y: () => 0.26 });
     this.walkways.push({ circle: true, x: ISLAND.x, z: ISLAND.z, r: ISLAND.r - 0.1, y: () => 0.32 });
+    this.lavaCourse = buildLavaCourse(ctx);
+    for (const [x, z, sz, h, role] of LAVA.pillars) this.walkways.push({ box: true, x0: x - sz / 2, x1: x + sz / 2, z0: z - sz / 2, z1: z + sz / 2, y: () => h, role, center: { x, z, y: h } });
+    REGIONS.lava = { x: (LAVA.x0 + LAVA.x1) / 2, z: (LAVA.z0 + LAVA.z1) / 2, show: 34 };
     this.regionGroups = [];
-    for (const [name, group] of [['forest', forest], ['marsh', marsh.group], ['mountain', this.mountain.group], ['coast', this.coast.group]]) {
+    for (const [name, group] of [['forest', forest], ['marsh', marsh.group], ['mountain', this.mountain.group], ['coast', this.coast.group], ['lava', this.lavaCourse.group]]) {
       mergeGroup(group);
       group.userData.dynamic = true;
       this.scene.add(group);
@@ -579,6 +582,16 @@ export class GameScene {
     setSignText(this.cliffSign, 'Pierre ?');
     this.scene.add(this.cliffSign);
     this.collidables.push({ x: -2.2, z: -53.6, r: 0.18 });
+    this.lavaSign = buildSign();
+    this.lavaSign.position.set(LAVA.start.x + 2.6, 0, LAVA.start.z + 0.6);
+    this.lavaSign.userData.dynamic = true;
+    setSignText(this.lavaSign, 'Lave !');
+    this.scene.add(this.lavaSign);
+    this.collidables.push({ x: LAVA.start.x + 2.6, z: LAVA.start.z + 0.6, r: 0.18 });
+    this.lavaGlow = new THREE.Object3D();
+    this.lavaGlow.position.set((LAVA.x0 + LAVA.x1) / 2, 1.5, (LAVA.z0 + LAVA.z1) / 2);
+    this.scene.add(this.lavaGlow);
+    this.kit.pointLight(this.lavaGlow, 0xff6a1e, 2.5, 18, 1.4, 0, 0, 0, { amp: 0.15, speed: 3 });
     this.bookObj = this._addInteractable({ kind: 'book', worldPos: new THREE.Vector3(BOOK.x, SUMMIT.level, BOOK.z), iconY: 2.0, reach: 1.8, hitRadius: 0.9 });
   }
   setNpcVisible(id, on) {
@@ -590,9 +603,59 @@ export class GameScene {
     o.iconHolder.visible = on;
     if (!on && o.labelEl) o.labelEl.style.display = 'none';
   }
+  // Lava course: flags, exit ramp, and the fountain that rises when it is won.
+  setLavaFlag(role, on = true) {
+    const f = this.lavaCourse?.flags[role];
+    if (f && role !== 'finish') f.userData.cloth.material.color.set(on ? 0xffd34a : 0x9a9aa6);
+  }
+  openLavaExit() {
+    if (this.lavaExitOpen) return;
+    this.lavaExitOpen = true;
+    this.lavaCourse.exitRamp.visible = true;
+    const fin = LAVA.pillars.find((pp) => pp[4] === 'finish');
+    const zTop = fin[1] - fin[2] / 2, zBottom = LAVA.z0 - 1.6;
+    this.walkways.push({ axis: 'z', x: LAVA.exit.x, z0: zTop + 0.05, z1: zBottom, hw: 0.8, y: (x, z) => Math.max(0, fin[3] * (z - zBottom) / (zTop - zBottom)) });
+  }
+  lavaPillar(role) { const pp = LAVA.pillars.find((q) => q[4] === role); return pp ? { x: pp[0], z: pp[1], y: pp[3] } : null; }
+  raiseFountain(instant = false) {
+    const f = this.village.fountain, base = this.village.fountainBase, jet = this.village.fountainBigJet;
+    if (!f || this.fountainRaised) return;
+    this.fountainRaised = true;
+    base.visible = true;
+    jet.visible = true;
+    const H = 1.26;
+    if (instant) { f.position.y = H; return; }
+    base.scale.y = 0.01;
+    const start = this.clock.elapsedTime;
+    (this.tweens ??= []).push((t) => {
+      const k = Math.min(1, (t - start) / 2.6), e = 1 - (1 - k) ** 3;
+      f.position.y = H * e; base.scale.y = Math.max(0.01, e);
+      if (k >= 1) return false;
+      return true;
+    });
+    this.screenShake(0.15);
+    for (let i = 0; i < 5; i++) setTimeout(() => this.particleBurst(new THREE.Vector3((Math.random() - 0.5) * 3, 3 + Math.random() * 2, (Math.random() - 0.5) * 3), ['#7ac0ff', '#ffd36a', '#ffffff'][i % 3], 30), i * 400);
+  }
+  _tickLava(dt) {
+    if (!this.lavaCourse) return;
+    const p = this.player.position;
+    this.lavaCourse.lavaTex.offset.y = (this.lavaCourse.lavaTex.offset.y + dt * 0.04) % 1;
+    for (const f of Object.values(this.lavaCourse.flags)) f.userData.cloth.rotation.y = Math.sin(this.clock.elapsedTime * 3 + f.position.x) * 0.3;
+    if (p.x < LAVA.x0 || p.x > LAVA.x1 || p.z < LAVA.z0 || p.z > LAVA.z1) return;
+    const w = this._walkwayAt(p.x, p.z);
+    if (this.onGround && w?.role && w.role !== this.lavaLastRole) { this.lavaLastRole = w.role; this.onLavaPillar?.(w.role); }
+    // Touching the lava (on the ground, not on a pillar): ouch.
+    if (!w && p.y < 0.35 && !this.lavaBurnt) {
+      this.lavaBurnt = true;
+      this.particleBurst(p.clone().add(new THREE.Vector3(0, 0.3, 0)), '#ff7a1e', 24);
+      this.onLava?.();
+    }
+  }
+
   _tickRegions() {
     const p = this.player.position;
     const t = this.clock.elapsedTime;
+    this._tickLava(1 / 60);
     if (this.lighthouseOn) this.coast.beamPivot.rotation.y = t * 0.8;
     if (this.coast) for (const b of this.coast.island.children) if (b.userData.float) { const f = b.userData.float; b.position.y = 1.2 + Math.sin(t * 1.5 + f.i) * 0.25; b.rotation.y = t * 0.6 + f.a; }
     if (this.mountain) this.mountain.book.position.y = SUMMIT.level + 1.08 + Math.sin(t * 2) * 0.04;
@@ -1648,7 +1711,7 @@ export class GameScene {
       if (!this._blocked(p.x, nz, p.y)) p.z = nz;
       // Near a magic bridge, gently pull the hero onto its axis (easy to cross with the joystick).
       for (const w of this.walkways ?? []) {
-        if (w.circle || w.axis === 'z' || p.x < w.x0 - 1.4 || p.x > w.x1 + 1.4 || Math.abs(p.z - w.z) > 1.4) continue;
+        if (w.circle || w.box || w.axis === 'z' || p.x < w.x0 - 1.4 || p.x > w.x1 + 1.4 || Math.abs(p.z - w.z) > 1.4) continue;
         const nzw = p.z + (w.z - p.z) * Math.min(1, dt * 7);
         if (!this._blocked(p.x, nzw, p.y)) p.z = nzw;
       }
@@ -1733,7 +1796,7 @@ export class GameScene {
   // Bridges built by magic: walkable strips over the water, with their own height.
   _walkwayAt(x, z) {
     for (const w of this.walkways ?? []) {
-      if (w.circle ? Math.hypot(x - w.x, z - w.z) < w.r : w.axis === 'z' ? Math.abs(x - w.x) < w.hw && z > Math.min(w.z0, w.z1) && z < Math.max(w.z0, w.z1) : x > w.x0 && x < w.x1 && Math.abs(z - w.z) < w.hw) return w;
+      if (w.box ? x > w.x0 && x < w.x1 && z > w.z0 && z < w.z1 : w.circle ? Math.hypot(x - w.x, z - w.z) < w.r : w.axis === 'z' ? Math.abs(x - w.x) < w.hw && z > Math.min(w.z0, w.z1) && z < Math.max(w.z0, w.z1) : x > w.x0 && x < w.x1 && Math.abs(z - w.z) < w.hw) return w;
     }
     return null;
   }

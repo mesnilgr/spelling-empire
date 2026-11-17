@@ -300,6 +300,76 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'Parcours de lave et fontaine',
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, save: save(story(2, 0)) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1000);
+      // Every jump is possible: simulate the hero with the game's own physics and collisions.
+      const sim = await g.page.evaluate(async () => {
+        const { LAVA } = await import('/regions.js');
+        const s = window.__se.scene;
+        const SPEED = 4.5, JUMP = 8.2, G = 24, dt = 1 / 60;
+        const path = [{ x: LAVA.start.x, z: LAVA.start.z, y: 0, size: 2.6 }, ...LAVA.pillars.map(([x, z, size, h, role]) => ({ x, z, y: h, size, role }))];
+        const out = [];
+        for (let k = 0; k + 1 < path.length; k++) {
+          const A = path[k], B = path[k + 1];
+          const p = { x: A.x, z: A.z, y: A.y }; let vy = 0, ground = true, jumped = false, landed = null;
+          const dx = B.x - A.x, dz = B.z - A.z, d = Math.hypot(dx, dz), ux = dx / d, uz = dz / d;
+          for (let t = 0; t < 4 && !landed; t += dt) {
+            // Jump when about to leave A (its edge along the way to B).
+            const along = (p.x - A.x) * ux + (p.z - A.z) * uz;
+            if (!jumped && ground && along > A.size / 2 - 0.2) { vy = JUMP; ground = false; jumped = true; }
+            const nx = p.x + ux * SPEED * dt, nz = p.z + uz * SPEED * dt;
+            if (!s._blocked(nx, p.z, p.y)) p.x = nx;
+            if (!s._blocked(p.x, nz, p.y)) p.z = nz;
+            vy -= G * dt; p.y += vy * dt;
+            const gr = s.groundAt(p.x, p.z);
+            if (p.y <= gr) { p.y = gr; vy = 0; if (jumped) landed = s._walkwayAt(p.x, p.z) ? 'pilier' : 'lave'; ground = true; }
+          }
+          const ok = landed === 'pilier' && Math.abs(p.x - B.x) <= B.size / 2 && Math.abs(p.z - B.z) <= B.size / 2;
+          out.push({ k: k + 1, ok, landed, at: `${p.x.toFixed(1)},${p.z.toFixed(1)}` });
+        }
+        return out;
+      });
+      const badJumps = sim.filter((j) => !j.ok);
+      check(badJumps.length === 0, `les ${sim.length} sauts sont tous faisables`, JSON.stringify(badJumps));
+      // Falling in the lava: "Ouch!" and back to the start.
+      await g.page.evaluate(() => window.__se.scene.teleport(33, -42.5));
+      await g.page.waitForTimeout(2200);
+      const after = await g.page.evaluate(() => { const p = window.__se.scene.player.position; return { x: p.x, z: p.z }; });
+      check(Math.hypot(after.x - 29, after.z + 37.4) < 1.5, 'tomber dans la lave ramène au départ', JSON.stringify(after));
+      // Flags, then the finish.
+      for (const role of ['cp1', 'cp2']) {
+        await g.page.evaluate((r) => { const s = window.__se.scene; const c = s.lavaPillar(r); s.teleport(c.x, c.z); }, role);
+        await g.page.waitForTimeout(700);
+      }
+      check(await g.page.evaluate(() => window.__se.game().parkour?.cp === 'cp2'), 'les drapeaux sont enregistrés');
+      await g.page.evaluate(() => window.__se.scene.teleport(33, -46));
+      await g.page.waitForTimeout(2200);
+      const cpBack = await g.page.evaluate(() => { const p = window.__se.scene.player.position; return { x: p.x, z: p.z }; });
+      check(Math.hypot(cpBack.x - 39.2, cpBack.z + 50.8) < 1.5, 'après le drapeau 2, une chute ramène au drapeau 2', JSON.stringify(cpBack));
+      await g.page.evaluate(() => { const s = window.__se.scene; const c = s.lavaPillar('finish'); s.teleport(c.x, c.z); });
+      await g.page.waitForTimeout(900);
+      check(await g.page.evaluate(() => window.__se.game().parkour?.done === true), 'l’arrivée valide le parcours');
+      check((await g.objective()).includes('fontaine'), 'objectif : retourner à la fontaine', await g.objective());
+      const down = await g.page.evaluate(() => { const s = window.__se.scene; const p = { x: 35.9, z: -61.4, y: 0.6 }; for (let k = 0; k < 40 && p.z > -65.8; k++) { const nz = p.z - 0.15; if (!s._blocked(p.x, nz, p.y)) { p.z = nz; p.y = s.groundAt(p.x, p.z); } } return p; });
+      check(down.z < -65.5 && down.y < 0.3, 'la rampe de sortie descend hors de la lave', JSON.stringify(down));
+      check(await g.page.evaluate(() => window.__se.scene.village.fountain.position.y) === 0, 'la fontaine ne bouge pas avant d’y retourner');
+      await g.page.evaluate(() => window.__se.scene.teleport(0, 3.4));
+      await g.page.waitForTimeout(3600);
+      const fy = await g.page.evaluate(() => window.__se.scene.village.fountain.position.y);
+      check(fy > 1.2, 'de retour à la fontaine, elle s’élève', String(fy));
+      await g.page.reload();
+      await g.page.waitForSelector('#loading.is-done', { timeout: 180000 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1000);
+      check(await g.page.evaluate(() => window.__se.scene.village.fountain.position.y > 1.2), 'la fontaine reste levée après rechargement');
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
     name: 'Accessibilité de toute la carte',
     async run(browser, base, check) {
       const g = await openGame(browser, base, { lang: 'fr', age: 7, stars: 200, save: save(story(6, 0, { travel: { forest: true, marsh: true, mountain: true, coast: true } })) }, { quality: 0 });

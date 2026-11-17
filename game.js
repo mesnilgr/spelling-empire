@@ -6,7 +6,7 @@ import { loadModel, recognize, inkBox } from './handwriting.js';
 import { SPELLS, spellById, spellWord } from './magic.js';
 import { SRS, ensureCard, grade as srsGrade, gradeFromAttempt, chooseWord } from './srs.js';
 import { CHAPTERS, SCENES, SPEAKERS, SIGNS, signWord, MIMOTS } from './story.js';
-import { TRAVEL } from './regions.js';
+import { TRAVEL, LAVA } from './regions.js';
 import { setSignText } from './story3d.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
@@ -501,6 +501,8 @@ function init3DScene() {
   const container = $('#canvas-container');
   if (!container) return;
   scene3D = new GameScene(container);
+  scene3D.onLava = () => knockOut('lava');
+  scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
     window.__se = { scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, levelAt: (tier) => levelAt(tier), pickWord: (lvl) => pickWord(lvl) };
@@ -562,6 +564,8 @@ function saveGame() {
     fish: game.fish ?? 0,
     spells: game.spells ?? {},
     story: game.story,
+    parkour: game.parkour ?? null,
+    fountainRaised: !!game.fountainRaised,
     savedAt: Date.now(),
   };
   saveProgress();
@@ -581,6 +585,8 @@ function continueGame() {
     fish: s.fish ?? 0,
     spells: { ...(s.spells ?? {}) },
     story: { ...newStory(), ...(s.story ?? {}) },
+    parkour: s.parkour ?? null,
+    fountainRaised: !!s.fountainRaised,
   });
   // Lasting spells come back: the bridge, the lit braziers.
   for (const [key, power] of Object.entries(game.spells)) {
@@ -595,6 +601,7 @@ function continueGame() {
   updateGameUI();
   renderCraftMenu();
   applyStoryState();
+  restoreLava();
   if (!game.story.intro) { game.story.intro = true; setTimeout(() => playScene('intro'), 600); }
 }
 
@@ -864,6 +871,10 @@ function updateObjectiveUI() {
   const ch = chapterDef();
   const n = o?.count ? ` (${game.story.counts[o.id] ?? 0}/${o.count})` : '';
   box.classList.add('is-objective');
+  if (game.parkour?.done && !game.fountainRaised) {
+    box.replaceChildren(el('span', 'obj-chapter', t.lavaQuest), document.createTextNode(t.backToFountain));
+    return;
+  }
   box.replaceChildren(el('span', 'obj-chapter', ch.title[lang] ?? ch.title.fr), document.createTextNode(o ? `${o.text[lang] ?? o.text.fr}${n}` : ''));
 }
 function updateMapPins() {
@@ -871,11 +882,12 @@ function updateMapPins() {
   const pins = [];
   const bed = scene3D.interactables.find((i) => i.kind === 'bed');
   if (bed) pins.push({ x: bed.worldPos.x, z: bed.worldPos.z, text: t.bedPin });
-  const p = objectivePos();
+  pins.push({ x: LAVA.start.x, z: LAVA.start.z, text: '🔥' });
+  const p = game.parkour?.done && !game.fountainRaised ? { x: 0, z: 0 } : objectivePos();
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐' });
   scene3D.mapPins = pins;
 }
-setInterval(updateMapPins, 500);
+setInterval(() => { updateMapPins(); checkFountain(); }, 500);
 
 // Show / hide the story things to match where the child is in the story.
 function applyStoryState() {
@@ -984,6 +996,75 @@ function useTravelSign(o) {
     return b;
   }));
   $('#travel-modal').hidden = false;
+}
+
+/* ===== KNOCK-OUT (lava, zombies): "Ouch!", fade, back to the last flag or the cottage bed ===== */
+let knocking = false;
+function knockOut(reason) {
+  if (knocking || !scene3D) return;
+  knocking = true;
+  sfxError();
+  toast(t.ouch[reason] ?? t.ouch.lava);
+  speak(t.ouchSay, 1);
+  const fade = $('#sleep-fade');
+  fade.hidden = false; fade.classList.remove('is-out');
+  setTimeout(() => {
+    let to = null;
+    if (reason === 'lava') {
+      if (game.parkour) game.parkour.falls = (game.parkour.falls ?? 0) + 1;
+      const cp = game.parkour?.cp && scene3D.lavaPillar(game.parkour.cp);
+      to = cp ?? { x: LAVA.start.x, z: LAVA.start.z };
+    } else {
+      const bed = scene3D.interactables.find((i) => i.kind === 'bed');
+      to = bed ? { x: bed.worldPos.x + 1.0, z: bed.worldPos.z + 0.6 } : { x: 0, z: 6 };
+    }
+    scene3D.teleport(to.x, to.z);
+    scene3D.lavaBurnt = false;
+    scene3D.onKnockOut?.(reason);
+    setTimeout(() => { fade.classList.add('is-out'); setTimeout(() => { fade.hidden = true; knocking = false; }, 700); }, 350);
+  }, 650);
+}
+
+/* ===== LAVA COURSE (side quest) ===== */
+function restoreLava() {
+  if (!scene3D) return;
+  const pk = game.parkour;
+  for (const role of ['cp1', 'cp2']) scene3D.setLavaFlag(role, !!pk && (pk.cp === role || (role === 'cp1' && pk.cp === 'cp2') || pk.done));
+  if (pk?.done) scene3D.openLavaExit();
+  if (game.fountainRaised) scene3D.raiseFountain(true);
+}
+function onLavaPillar(role) {
+  game.parkour ??= { cp: null, done: false, falls: 0 };
+  const pk = game.parkour;
+  if (role === 'cp1' && !pk.cp) { pk.cp = 'cp1'; scene3D.setLavaFlag('cp1'); toast(t.flagReached); sfxCraft(); saveGame(); }
+  if (role === 'cp2' && pk.cp !== 'cp2') { pk.cp = 'cp2'; scene3D.setLavaFlag('cp1'); scene3D.setLavaFlag('cp2'); toast(t.flagReached); sfxCraft(); saveGame(); }
+  if (role === 'finish' && pk.cp === 'cp2' && !pk.done) {
+    pk.done = true;
+    pk.doneAt = Date.now();
+    scene3D.openLavaExit();
+    const p = scene3D.player.position;
+    for (let i = 0; i < 4; i++) setTimeout(() => scene3D.particleBurst({ x: p.x, y: p.y + 2, z: p.z }, ['#ffd36a', '#ff7a1e', '#ffffff'][i % 3], 28), i * 300);
+    sfxVictory();
+    toast(t.lavaDone(pk.falls ?? 0));
+    speak(t.lavaDoneSay, 0.95);
+    progress.stars += 10; game.starsEarned += 10;
+    updateGameUI();
+    updateObjectiveUI();
+    saveGame();
+  }
+}
+// Back at the fountain after winning the course: it rises.
+function checkFountain() {
+  if (!scene3D || !game?.parkour?.done || game.fountainRaised) return;
+  const p = scene3D.player.position;
+  if (Math.hypot(p.x, p.z) > 4.5) return;
+  game.fountainRaised = true;
+  scene3D.raiseFountain();
+  sfxVictory();
+  toast(t.fountainUp);
+  speak(t.fountainUp, 0.95);
+  updateObjectiveUI();
+  saveGame();
 }
 
 /* ===== WORD MAGIC ===== */

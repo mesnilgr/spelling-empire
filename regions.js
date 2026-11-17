@@ -266,6 +266,7 @@ export function buildMountain(ctx) {
   for (let i = 0; i < 160; i++) {
     const x = (rnd() - 0.5) * 70, z = -44 - rnd() * 38;
     if (Math.hypot(x, z) > WORLD_RADIUS - 1 || Math.abs(x) < 3.5 || Math.hypot(x - SUMMIT.x, z - SUMMIT.z) < SUMMIT.r + 1.5) continue;
+    if (x > LAVA.x0 - 3 && x < LAVA.x1 + 3 && z > LAVA.z0 - 4 && z < LAVA.z1 + 4) continue; // the lava course
     if (rnd() < 0.55) { const s = 0.5 + rnd() * 0.9; rocks.push([x, h(x, z) + s * 0.35, z, s, s * 0.7, s * 0.9, rnd() * 3]); ctx.collidables.push({ x, z, r: s * 0.45 }); }
     else if (spots.length < 40 && !spots.some(([sx, , sz]) => Math.hypot(sx - x, sz - z) < 3)) spots.push([x, h(x, z), z, 0.7 + rnd() * 0.4]);
   }
@@ -408,4 +409,97 @@ export function buildCoast(ctx) {
   isl.userData.dynamic = true;
   g.add(isl);
   return { group: g, lamp, beamPivot, island: isl };
+}
+
+/* ===== Lava parkour (north-east) ===== */
+// The lava pool and the pillars to jump on: [x, z, size, top height, role].
+// Gaps grow from 0.8 to 1.8 blocks; the hero's jump carries about 2.8 blocks.
+export const LAVA = {
+  x0: 26, x1: 42, z0: -64, z1: -39,
+  start: { x: 29, z: -37.4 },
+  exit: { x: 35.9, z: -65.6 },
+  // Each pillar is sized so that a full-speed jump from the edge of the previous one lands on it
+  // (gap + size ≥ 3.2 blocks), and gaps stay ≤ 1.7 blocks. Checked by the playthrough test.
+  pillars: [
+    [29, -40.85, 2.3, 0.5],
+    [29, -44.1, 2.2, 0.8],
+    [29, -47.4, 2.0, 1.0],
+    [29, -50.8, 2.4, 0.8, 'cp1'],
+    [32.5, -50.8, 1.8, 1.0],
+    [35.7, -50.8, 1.8, 1.2],
+    [39.2, -50.8, 2.4, 1.0, 'cp2'],
+    [39.2, -54.4, 1.6, 1.2],
+    [39.2, -57.6, 1.6, 1.0],
+    [35.9, -57.6, 1.6, 1.2],
+    [35.9, -61.4, 2.6, 0.6, 'finish'],
+  ],
+};
+
+function lavaTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const rnd = seededRandom(5);
+  for (let i = 0; i < 64; i++) for (let j = 0; j < 64; j++) {
+    const v = rnd();
+    x.fillStyle = v > 0.82 ? '#ffe066' : v > 0.5 ? '#ff8a1e' : v > 0.2 ? '#f0561a' : '#c8320f';
+    x.fillRect(i, j, 1, 1);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = THREE.NearestFilter;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(4, 6);
+  return t;
+}
+
+export function buildLavaCourse(ctx) {
+  const g = new THREE.Group();
+  const tex = lavaTexture();
+  const lavaMat = new THREE.MeshStandardMaterial({ map: tex, emissive: 0xff5a14, emissiveMap: tex, emissiveIntensity: 1.1, roughness: 0.6 });
+  const lava = new THREE.Mesh(new THREE.PlaneGeometry(LAVA.x1 - LAVA.x0, LAVA.z1 - LAVA.z0), lavaMat);
+  lava.rotation.x = -Math.PI / 2;
+  lava.position.set((LAVA.x0 + LAVA.x1) / 2, 0.06, (LAVA.z0 + LAVA.z1) / 2);
+  lava.userData.dynamic = true;
+  g.add(lava);
+  // Basalt rim around the pool (open at the start and at the exit).
+  const rim = [];
+  for (let x = LAVA.x0 - 0.5; x <= LAVA.x1 + 0.5; x += 1) {
+    if (Math.abs(x - LAVA.start.x) > 2.2) rim.push([x, 0.2, LAVA.z1 + 0.5, 1, 0.4, 1]);
+    if (Math.abs(x - LAVA.exit.x) > 1.8) rim.push([x, 0.2, LAVA.z0 - 0.5, 1, 0.4, 1]);
+  }
+  for (let z = LAVA.z0 + 0.5; z < LAVA.z1; z += 1) { rim.push([LAVA.x0 - 0.5, 0.2, z, 1, 0.4, 1]); rim.push([LAVA.x1 + 0.5, 0.2, z, 1, 0.4, 1]); }
+  instanced(g, mat(0x2e2a30), rim, { cast: false });
+  // Pillars: basalt columns with a stone top.
+  const cols = [], tops = [], marks = [];
+  for (const [x, z, s, h, role] of LAVA.pillars) {
+    cols.push([x, (h - 0.06) / 2, z, s * 0.92, h - 0.06, s * 0.92]);
+    tops.push([x, h - 0.04, z, s, 0.1, s]);
+    if (role) marks.push([x, h + 0.025, z, s * 0.6, 0.02, s * 0.6]);
+  }
+  instanced(g, mat(0x3a3438), cols);
+  instanced(g, mat(0x8a8590), tops, { cast: false });
+  instanced(g, mat(0xf2c84b, { emissive: 0xf2c84b, emissiveIntensity: 0.3 }), marks, { cast: false });
+  // Checkpoint flags (grey until reached) and the finish flag.
+  const flags = {};
+  for (const [x, z, s, h, role] of LAVA.pillars) {
+    if (!role) continue;
+    const f = new THREE.Group();
+    f.position.set(x + s / 2 - 0.25, h, z - s / 2 + 0.25);
+    const pole = new THREE.Mesh(BOX, mat(0xdddddd)); pole.scale.set(0.07, 1.6, 0.07); pole.position.y = 0.8; f.add(pole);
+    const cloth = new THREE.Mesh(BOX, new THREE.MeshStandardMaterial({ color: role === 'finish' ? 0xffd34a : 0x9a9aa6 }));
+    cloth.scale.set(0.6, 0.38, 0.04); cloth.position.set(0.32, 1.38, 0); f.add(cloth);
+    f.userData.cloth = cloth;
+    f.userData.dynamic = true;
+    g.add(f);
+    flags[role] = f;
+  }
+  // Start: a stone pad and stairs-free entrance; exit ramp appears once the course is won.
+  texBox(g, 4.2, 0.12, 2.8, blockMat('stoneBricks'), LAVA.start.x, 0.06, LAVA.start.z, { tile: 0.5 });
+  const exitRamp = new THREE.Group();
+  for (let k = 0; k < 5; k++) texBox(exitRamp, 1.6, 0.6 - k * 0.12, 0.6, blockMat('stoneBricks'), LAVA.exit.x, (0.6 - k * 0.12) / 2, -62.7 - 0.3 - k * 0.6, { tile: 0.5 });
+  exitRamp.visible = false;
+  exitRamp.userData.dynamic = true;
+  g.add(exitRamp);
+  return { group: g, lavaTex: tex, flags, exitRamp };
 }

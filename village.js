@@ -197,7 +197,10 @@ export class VillageBuilder {
   }
 
   buildFountain() {
+    // The fountain stays its own group (not merged) so it can rise when the lava course is won.
     const g = new THREE.Group();
+    g.userData.dynamic = true;
+    this.fountain = g;
     this.scene.add(g);
     // Cobbled plaza.
     const plaza = new THREE.Mesh(new THREE.CircleGeometry(3.2, 8), new THREE.MeshStandardMaterial({ map: this.tex.stone, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }));
@@ -205,7 +208,7 @@ export class VillageBuilder {
     plaza.rotation.z = Math.PI / 8;
     plaza.position.y = 0.02;
     plaza.receiveShadow = true;
-    g.add(plaza);
+    this.scene.add(plaza);
     // Octagonal basin from stone blocks.
     const R = 1.55;
     for (let i = 0; i < 8; i++) {
@@ -236,6 +239,26 @@ export class VillageBuilder {
       jet.userData.dynamic = true;
       this.fountainJets.push(jet);
     }
+    // Hidden until the fountain rises: an octagonal stone base and a tall water jet.
+    const base = new THREE.Group();
+    for (let k = 0; k < 3; k++) {
+      const r = 1.95 - k * 0.12;
+      const step = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.42, 8), this.mats.stone);
+      step.rotation.y = Math.PI / 8;
+      step.position.y = 0.21 + k * 0.42;
+      step.castShadow = true; step.receiveShadow = true;
+      base.add(step);
+    }
+    base.visible = false;
+    base.userData.dynamic = true;
+    this.scene.add(base);
+    this.fountainBase = base;
+    const bigJet = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 3.2, 8), jetMat);
+    bigJet.position.y = 3.2;
+    bigJet.visible = false;
+    bigJet.userData.dynamic = true;
+    g.add(bigJet);
+    this.fountainBigJet = bigJet;
     this.ctx.collidables.push({ x: 0, z: 0, r: 1.9 });
   }
 
@@ -461,6 +484,7 @@ export class VillageBuilder {
     for (const [i, jet] of (this.fountainJets ?? []).entries()) {
       jet.scale.y = 0.5 + Math.sin(elapsed * 6 + i) * 0.08;
     }
+    if (this.fountainBigJet?.visible) this.fountainBigJet.scale.y = 1 + Math.sin(elapsed * 5) * 0.1;
   }
 }
 

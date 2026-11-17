@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.7.0 — Le défi de la lave
+
+- 🔥 **Parcours de lave** au nord-est du village (repère 🔥 sur la minicarte, panneau « Lave ! » à l'entrée) : 11 piliers à sauter au-dessus d'un bassin de lave, en zigzag, de plus en plus hauts et espacés.
+- **Des sauts toujours faisables** : chaque pilier est dimensionné pour qu'un saut à pleine vitesse depuis le bord retombe dessus. Le test de parcours simule chaque saut avec la vraie physique du jeu.
+- **Deux drapeaux** de sauvegarde. Si on touche la lave : « Aïe ! », un fondu au noir, et on repart du dernier drapeau, sans rien perdre.
+- **À l'arrivée** : feu d'artifice, +10 ★, une rampe pour sortir, et l'objectif « Retourne à la fontaine du village ». En y arrivant, **la fontaine s'élève** sur un socle de pierre avec un grand jet d'eau, et elle reste levée.
+
 ## v1.6.1 — Corrections signalées par les joueurs
 
 - **La rivière n'est plus coupée** : les collines du bord du monde recouvraient la rivière de la forêt au nord et au sud (et une mare du marais). Le terrain laisse maintenant toujours passer l'eau, avec des berges en pente.
