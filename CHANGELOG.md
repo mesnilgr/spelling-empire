@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.12.0 — Zombies armés
+
+- 🪖 **Un zombie sur quatre est armé** : casque de fer et vieille épée qui brille dans la nuit.
+- ⚔️ **Il faut deux coups d'épée pour le battre** : au premier, son épée s'envole en tournoyant (« Son épée s'envole ! Encore un coup ! »), au deuxième il est vaincu. **L'épée en diamant 💎 le bat toujours d'un seul coup.**
+
 ## v1.11.0 — Combat, viande, brochettes, seau de lave et mots mieux rangés
 
 - ⚔️ **N'importe quelle épée bat un zombie d'un seul coup.** L'épée en diamant 💎 va plus loin et frappe **tout autour** (même derrière). À mains nues, on les repousse seulement.

@@ -1,6 +1,8 @@
 // Night-time zombies: they come out at night, chase a hero who is outside, and never enter houses.
 // Any sword defeats one in a single hit (the diamond sword reaches further and hits all around);
 // bare hands only push them back. A defeated zombie drops a piece of meat to pick up.
+// One zombie in four is armed (iron helmet and an old sword): it takes two sword hits (the first
+// knocks its sword away), or a single hit of the diamond sword.
 import * as THREE from 'three';
 import { createBlockyCharacter, animateCharacter } from './characters.js';
 import { mergeDirect } from './perf.js';
@@ -16,6 +18,7 @@ export const ZOMBIE = {
   graceAfterCatch: 3, // seconds without being touched again
   meatLife: 150, // seconds a dropped piece of meat stays on the ground
   pickup: 1.0, // walk this close to a piece of meat to pick it up
+  armedChance: 0.25, // one zombie in four is armed
 };
 
 export class ZombieManager {
@@ -52,15 +55,73 @@ export class ZombieManager {
   _spawn() {
     const at = this._spot();
     if (!at) return;
-    const mesh = createBlockyCharacter('zombie');
+    const armed = Math.random() < (this.armedChance ?? ZOMBIE.armedChance);
+    const mesh = createBlockyCharacter(armed ? 'zombieArmed' : 'zombie');
     mergeDirect(mesh);
+    if (armed) this._giveSword(mesh);
     mesh.position.set(at.x, this.s.groundAt(at.x, at.z), at.z);
     mesh.userData.walkPhase = Math.random() * 6;
     this.s.scene.add(mesh);
-    const z = { mesh, alive: true, stun: 0, chasing: false, wander: { x: at.x, z: at.z, t: 0 }, rise: 0 };
+    const z = { mesh, alive: true, armed, hp: armed ? 2 : 1, stun: 0, chasing: false, wander: { x: at.x, z: at.z, t: 0 }, rise: 0 };
     mesh.scale.setScalar(0.01);
     this.list.push(z);
     this.s.particleBurst(mesh.position.clone().add(new THREE.Vector3(0, 0.3, 0)), '#5a6a3a', 14);
+  }
+
+  // An old rusty sword in the right hand (it points forward, like the arms).
+  _giveSword(mesh) {
+    const arm = mesh.userData.parts?.rightArm;
+    if (!arm) return;
+    const g = new THREE.Group();
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.66, 0.16), new THREE.MeshStandardMaterial({ color: 0xd0d4da, metalness: 0.4, roughness: 0.5, emissive: 0x6a7080, emissiveIntensity: 0.5 }));
+    blade.position.y = -0.36;
+    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.32), new THREE.MeshStandardMaterial({ color: 0x5a3a22 }));
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.16, 0.07), new THREE.MeshStandardMaterial({ color: 0x3a2616 }));
+    grip.position.y = 0.1;
+    g.add(blade, guard, grip);
+    g.position.set(0, -0.62, 0.06);
+    arm.add(g);
+    mesh.userData.sword = g;
+  }
+  // First hit on an armed zombie: its sword flies away and it staggers back.
+  _disarm(z, ux, uz) {
+    const s = this.s, sw = z.mesh.userData.sword;
+    z.armed = false;
+    z.hp = 1;
+    if (sw) {
+      const at = new THREE.Vector3();
+      sw.getWorldPosition(at);
+      sw.parent.remove(sw);
+      sw.position.copy(at);
+      sw.rotation.set(0, Math.random() * 6, Math.PI / 2);
+      s.scene.add(sw);
+      this.flying ??= [];
+      this.flying.push({ mesh: sw, vx: ux * 3 + (Math.random() - 0.5) * 2, vz: uz * 3 + (Math.random() - 0.5) * 2, vy: 5, t: 0 });
+      z.mesh.userData.sword = null;
+    }
+    s.particleBurst(z.mesh.position.clone().add(new THREE.Vector3(0, 1.3, 0)), '#ffd36a', 16);
+    for (const push of [1.8, 1.0, 0.5]) {
+      const nx = z.mesh.position.x + ux * push, nz = z.mesh.position.z + uz * push;
+      if (s._checkCollision(nx, nz) || s._insideAnyHouse(nx, nz, 0.4) || s.inLava?.(nx, nz)) continue;
+      z.mesh.position.set(nx, s.groundAt(nx, nz), nz);
+      break;
+    }
+    z.stun = 1.0;
+  }
+  _tickFlying(dt) {
+    if (!this.flying?.length) return;
+    const s = this.s;
+    for (const f of this.flying) {
+      f.t += dt;
+      const m = f.mesh, gy = s.groundAt(m.position.x, m.position.z) + 0.05;
+      if (m.position.y > gy || f.vy > 0) {
+        f.vy -= 18 * dt;
+        m.position.x += f.vx * dt; m.position.z += f.vz * dt; m.position.y = Math.max(gy, m.position.y + f.vy * dt);
+        m.rotation.x += dt * 12;
+      }
+      if (f.t > 1.4) { s.particleBurst(m.position.clone(), '#cfd8c0', 8); s.scene.remove(m); f.done = true; }
+    }
+    this.flying = this.flying.filter((f) => !f.done);
   }
 
   _remove(z, puff = true) {
@@ -82,7 +143,7 @@ export class ZombieManager {
     const s = this.s, p = s.player.position, a = s.player.rotation.y;
     const fx = Math.sin(a), fz = Math.cos(a);
     const range = power === 'diamond' ? 3.2 : power === 'sword' ? 2.3 : 1.8;
-    let touched = 0, defeated = 0;
+    let touched = 0, defeated = 0, disarmed = 0;
     for (const z of this.active) {
       const dx = z.mesh.position.x - p.x, dz = z.mesh.position.z - p.z, d = Math.hypot(dx, dz);
       if (d > range) continue;
@@ -100,11 +161,12 @@ export class ZombieManager {
         z.stun = 0.8;
         continue;
       }
+      if (z.armed && power !== 'diamond') { this._disarm(z, ux, uz); disarmed++; continue; }
       this.defeat(z, ux, uz);
       defeated++;
     }
     if (defeated) this.nextSpawn = Math.max(this.nextSpawn, s.clock.elapsedTime + ZOMBIE.respawn * 0.5);
-    return { touched, defeated };
+    return { touched, defeated, disarmed };
   }
 
   // Defeat: the zombie flies back, spins and shrinks into a puff, and leaves a piece of meat.
@@ -184,6 +246,7 @@ export class ZombieManager {
     const s = this.s;
     this._tickDying(dt);
     this._tickDrops(dt, t);
+    this._tickFlying(dt);
     const night = (s.night ?? 0) > 0.5;
     if (!this.enabled || !night) {
       if (this.list.length) this.clear(true); // dawn: they crumble away

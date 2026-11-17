@@ -135,6 +135,7 @@ export const CHARACTER_SPECS = {
   merchant: { skin: 0xd99f74, hair: 0x2a1c14, hairStyle: 'short', mustache: 0x2a1c14, eyes: 0x5a3a20, shirt: 0xd8a03a, trim: 0x8a3b2e, pants: 0x4a3a2a, shoes: 0x2e2018, apron: 0xf0e6d0 },
   guard: { skin: 0xf0c49c, hair: 0x6a4a2a, hairStyle: 'short', eyes: 0x3a5a8a, shirt: 0xb8322c, trim: 0xd8d8de, pants: 0x3a3a46, shoes: 0x22222a, helmet: 0xb8bcc4, belt: 0x2a2224 },
   barkeep: { skin: 0xe6b08a, hair: 0x8a4a2a, hairStyle: 'bald', mustache: 0x8a4a2a, eyes: 0x4a3020, shirt: 0xf0ead8, trim: 0x7a2a22, pants: 0x3a2a22, shoes: 0x22180f, apron: 0x7a2a22 },
+  zombieArmed: { skin: 0x6aa84f, hair: 0x2f3a22, hairStyle: 'short', eyes: 0x1a1a1a, shirt: 0x6a3a2a, trim: 0x4a2a1e, pants: 0x3a3a3a, shoes: 0x2e2a24, hat: { type: 'helmet', color: 0x8a929c } },
   zombie: { skin: 0x6aa84f, hair: 0x2f3a22, hairStyle: 'short', eyes: 0x1a1a1a, shirt: 0x2f6a9a, trim: 0x24506f, pants: 0x3a3a6a, shoes: 0x2e2a24 },
   forester: { skin: 0xe2a882, hair: 0x6a3a1a, hairStyle: 'short', beard: 0x7a4a22, eyes: 0x3a5a2a, shirt: 0x3a6a3a, trim: 0xb8322c, pants: 0x5a4a2a, shoes: 0x2e2018, belt: 0x3a2414 },
   fisher: { skin: 0xc98a62, hair: 0x2a2a3a, hairStyle: 'long', eyes: 0x3a6a8a, shirt: 0x2f6a8a, trim: 0xf2c84b, pants: 0x3a4a5a, shoes: 0x22222a, blush: true },
@@ -253,6 +254,12 @@ export function createBlockyCharacter(specOrName) {
       part(headPivot, 0.54, 0.1, 0.54, gold, 0, 0.55, 0);
       for (const [x, z] of [[-0.22, 0.22], [0.22, 0.22], [-0.22, -0.22], [0.22, -0.22], [0, 0.24], [0, -0.24], [0.24, 0], [-0.24, 0]]) part(headPivot, 0.09, 0.14, 0.09, gold, x, 0.66, z);
       part(headPivot, 0.08, 0.08, 0.04, lambert({ color: 0xd8382e, emissive: 0x8a1a10, emissiveIntensity: 0.5 }), 0, 0.56, 0.28);
+    } else if (kind === 'helmet') {
+      const iron = lambert({ color: spec.hat.color, metalness: 0.5, roughness: 0.45 });
+      part(headPivot, 0.58, 0.18, 0.58, iron, 0, 0.55, 0);
+      part(headPivot, 0.06, 0.34, 0.58, iron, 0.29, 0.36, 0);
+      part(headPivot, 0.06, 0.34, 0.58, iron, -0.29, 0.36, 0);
+      part(headPivot, 0.08, 0.2, 0.06, iron, 0, 0.36, 0.3); // nose guard
     } else if (kind === 'chef') {
       const w = lambert({ color: 0xffffff });
       part(headPivot, 0.54, 0.1, 0.54, w, 0, 0.55, 0);

@@ -2228,6 +2228,7 @@ function zombieAttack(power = swordPower().power) {
   if (!scene3D?.zombies) return;
   const res = scene3D.zombies.hit(power);
   if (res.touched) sfxHit();
+  if (res.disarmed) { playTone(1200, 0.08, 'square', 0.08); playTone(800, 0.14, 'square', 0.06, 0.05); toast(t.zombieDisarmed, 3200); }
   if (res.defeated) {
     progress.stars += res.defeated; game.starsEarned += res.defeated;
     toast(t.zombieDefeated); smile(); updateGameUI(); saveGame();

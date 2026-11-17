@@ -436,14 +436,16 @@ export const SCENARIOS = [
       const inside = await g.page.evaluate(() => { const s = window.__se.scene; return { ko: window.__ko, inHouse: s.zombies.active.some((z) => s._insideAnyHouse(z.mesh.position.x, z.mesh.position.z, 0)) }; });
       check(inside.ko === 1 && !inside.inHouse, 'aucun zombie n’entre ni n’attaque dans une maison', JSON.stringify(inside));
       // Defend. Bare hands push back; any sword defeats in one hit; the diamond sword hits all around.
-      const place = (spots) => g.page.evaluate((spots) => {
+      const place = (spots, armed = false) => g.page.evaluate(([spots, armed]) => {
         const s = window.__se.scene; s.zombies.grace = 30;
         s.teleport(8, 24); s.player.rotation.y = 0; s.player.userData.action = null;
+        s.zombies.clear(false); s.zombies.armedChance = armed ? 1 : 0;
         while (s.zombies.active.length < spots.length) s.zombies._spawn();
+        s.zombies.armedChance = 0;
         s.zombies.active.forEach((z, k) => { const sp = spots[k] ?? [30, 40]; z.mesh.position.set(sp[0], s.groundAt(sp[0], sp[1]), sp[1]); z.mesh.scale.setScalar(1); z.stun = 0; });
         window.__targets = s.zombies.active.slice(0, spots.length);
         window.__starsBefore = window.__se.progress().stars;
-      }, spots);
+      }, [spots, armed]);
       const stepDeaths = () => g.page.evaluate(() => { const s = window.__se.scene; for (let k = 0; k < 30; k++) s.zombies._tickDying(1 / 30); });
       await place([[8, 25.2]]);
       await g.page.evaluate(() => { window.__se.game().crafted = []; });
@@ -489,6 +491,23 @@ export const SCENARIOS = [
       await stepDeaths();
       const ring = await g.page.evaluate(() => ({ alive: window.__targets.filter((z) => z.alive).length, stars: window.__se.progress().stars - window.__starsBefore }));
       check(ring.alive === 0 && ring.stars === 3, 'l’épée en diamant frappe tout autour : 3 zombies d’un coup, même derrière', JSON.stringify(ring));
+      // Armed zombie (one in four): helmet and sword; two hits of an ordinary sword, one of the diamond sword.
+      await place([[8, 25.2]], true);
+      const look = await g.page.evaluate(() => ({ armed: window.__targets[0].armed, sword: !!window.__targets[0].mesh.userData.sword }));
+      check(look.armed && look.sword, 'un zombie armé porte un casque et une épée', JSON.stringify(look));
+      await g.page.evaluate(() => { window.__se.game().crafted = ['sword']; });
+      await g.click('#attack-btn');
+      const first = await g.page.evaluate(() => ({ alive: window.__targets[0].alive, armed: window.__targets[0].armed, sword: !!window.__targets[0].mesh.userData.sword }));
+      check(first.alive && !first.armed && !first.sword, 'premier coup : son épée s’envole, il est encore debout', JSON.stringify(first));
+      await g.page.evaluate(() => { const s = window.__se.scene, z = window.__targets[0]; z.mesh.position.set(8, s.groundAt(8, 25.2), 25.2); z.stun = 0; s.player.userData.action = null; s.player.rotation.y = 0; });
+      await g.click('#attack-btn');
+      await stepDeaths();
+      check(await g.page.evaluate(() => !window.__targets[0].alive), 'deuxième coup : le zombie armé est vaincu');
+      await place([[8, 25.2]], true);
+      await g.page.evaluate(() => { window.__se.game().crafted = ['sword', 'hammer', 'sword_diamond']; });
+      await g.click('#attack-btn');
+      await stepDeaths();
+      check(await g.page.evaluate(() => !window.__targets[0].alive), 'l’épée en diamant bat un zombie armé d’un seul coup');
       // A skewer for Rosa: meat + wood + fire, then give it to her.
       await g.page.evaluate(() => { const m = window.__se.game().materials; m.meat = 1; m.wood = (m.wood ?? 0) + 1; m.fire = (m.fire ?? 0) + 1; });
       await g.click('#craft-open-btn');
