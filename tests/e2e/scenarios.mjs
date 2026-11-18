@@ -596,8 +596,13 @@ export const SCENARIOS = [
       const fed = await g.page.evaluate(() => ({ day: window.__se.game().pet.fedDay, meat: window.__se.game().materials.meat ?? 0, stars: window.__se.progress().stars - window.__starsBefore }));
       check(!!fed.day && fed.meat === 0 && fed.stars === 2, 'on nourrit le chiot avec de la viande (+2 ★)', JSON.stringify(fed));
       // Meals make it grow: a dog after 3 meals (it is bigger).
-      await g.page.evaluate(() => { window.__se.game().materials.meat = 2; });
+      await g.page.evaluate(() => { window.__se.game().materials.meat = 3; });
       await g.use("i.kind === 'pet'"); await g.use("i.kind === 'pet'");
+      // A puppy eats 2 meals every 10 minutes at most.
+      const full = await g.page.evaluate(() => ({ meals: window.__se.game().pet.meals, toast: document.querySelector('#toast')?.textContent ?? '', meat: window.__se.game().materials.meat }));
+      check(full.meals === 2 && /n’a plus faim/.test(full.toast) && full.meat === 2, 'le chiot ne mange que 2 morceaux en 10 minutes', JSON.stringify(full));
+      await g.page.evaluate(() => { window.__se.game().pet.mealTimes = []; });
+      await g.use("i.kind === 'pet'");
       const grown = await g.page.evaluate(() => ({ meals: window.__se.game().pet.meals, scale: window.__se.scene.pet.mesh.scale.x, stage: window.__se.scene.pet.stage }));
       check(grown.meals === 3 && grown.stage === 1 && grown.scale > 1.2, 'après 3 repas, le chiot grandit et devient un chien', JSON.stringify(grown));
       // A grown dog bites zombies now and then: a normal one is beaten, an armed one loses its helmet.
@@ -629,6 +634,38 @@ export const SCENARIOS = [
       check(await g.page.evaluate(() => window.__se.game().crafted.includes('dog_armor') && !!window.__se.scene.pet.armor), 'l’armure du chien se fabrique et il la porte');
       await g.page.keyboard.press('Escape');
       await g.page.evaluate(() => { document.querySelector('#craft-close-btn')?.click(); });
+      // Level 5: the dog golem, which beats even armed zombies with one bite.
+      const golem = await g.page.evaluate(() => {
+        const s = window.__se.scene, pet = s.pet, gm = window.__se.game();
+        gm.pet.meals = 17; gm.pet.mealTimes = []; gm.materials.meat = 1;
+        return true;
+      });
+      await g.use("i.kind === 'pet'");
+      const gl = await g.page.evaluate(() => {
+        const s = window.__se.scene, pet = s.pet;
+        const eyes = []; pet.mesh.traverse((o) => { if (o.material?.emissiveIntensity > 1.5) eyes.push(o); });
+        s.dayTime = 0.8 * 420; s.night = 1;
+        s.zombies.clear(false); s.zombies.armedChance = 1; s.zombies._spawn(); s.zombies.armedChance = 0;
+        const z = s.zombies.active[0];
+        z.mesh.scale.setScalar(1); z.stun = 9;
+        z.mesh.position.set(pet.mesh.position.x + 2.5, pet.mesh.position.y, pet.mesh.position.z);
+        pet.biteCooldown = 0; pet.guardCooldown = 9;
+        for (let k = 0; k < 30; k++) pet.update(1 / 30, k / 30);
+        const r = { stage: pet.stage, scale: pet.mesh.scale.x, glowing: eyes.length >= 2, armedBeaten: !z.alive };
+        s.zombies.clear(false); s.dayTime = 0.3 * 420;
+        return r;
+      });
+      check(gl.stage === 4 && gl.scale > 1.8 && gl.glowing, 'au niveau 5, le chien se transforme en golem chien', JSON.stringify(gl));
+      check(gl.armedBeaten, 'le golem chien bat un zombie armé d’une seule morsure', JSON.stringify(gl));
+      // Hearts: the heart pie gives one more (up to 5).
+      await g.page.evaluate(() => { const m = window.__se.game().materials; m.wheat = (m.wheat ?? 0) + 1; m.flower = (m.flower ?? 0) + 1; m.fire = (m.fire ?? 0) + 1; window.__heartsBefore = window.__se.game().maxHearts ?? 2; });
+      await g.click('#craft-open-btn');
+      await g.page.waitForTimeout(300);
+      await g.page.evaluate(() => [...document.querySelectorAll('#craft-list .craft-card.is-clickable')].find((e) => e.textContent.includes('Tarte du cœur'))?.click());
+      await g.page.waitForTimeout(400);
+      await g.page.evaluate(() => { document.querySelector('#craft-close-btn')?.click(); });
+      const pie = await g.page.evaluate(() => ({ before: window.__heartsBefore, after: window.__se.game().maxHearts, shown: document.querySelector('#hearts').textContent }));
+      check(pie.after === pie.before + 1 && pie.shown === '❤️'.repeat(pie.after), 'la tarte du cœur donne un cœur de plus', JSON.stringify(pie));
       // It digs things up, and pushes zombies away.
       const dug = await g.page.evaluate(() => { const m = window.__se.game().materials, n = Object.values(m).reduce((a, b) => a + b, 0); window.__se.scene.pet.onDig(); return Object.values(m).reduce((a, b) => a + b, 0) - n; });
       check(dug === 1, 'le chiot creuse et trouve un matériau');
@@ -688,6 +725,9 @@ export const SCENARIOS = [
       const boss = await g.page.evaluate(() => ({ won: window.__se.game().bosses.includes('mossGolem'), gone: !window.__se.scene.bosses.get('mossGolem').mesh.visible, stars: window.__se.progress().stars - window.__starsBefore, bar: document.querySelector('#boss-bar').hidden }));
       check(boss.won && boss.gone && boss.bar, 'trois mots réussis : le Golem de mousse est vaincu', JSON.stringify(boss));
       check(boss.stars >= 23, 'la victoire rapporte au moins 20 ★', JSON.stringify(boss));
+      await g.page.waitForTimeout(3800);
+      const bh = await g.page.evaluate(() => ({ max: window.__se.game().maxHearts, from: window.__se.game().heartsFrom }));
+      check(bh.from?.includes('boss:mossGolem') && bh.max >= 4, 'battre un boss donne un cœur de plus', JSON.stringify(bh));
       // Decorations bought with stars appear in the cottage.
       await g.page.evaluate(() => { window.__se.progress().stars = 100; });
       await g.click('#wardrobe-btn');

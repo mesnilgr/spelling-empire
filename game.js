@@ -47,6 +47,7 @@ const CRAFTABLES = [
   { id: 'brochette', emoji: '🍢', name: { en: 'Skewer', fr: 'Brochette' }, parts: ['meat', 'wood', 'fire'], repeat: true },
   { id: 'bucket', emoji: '🪣', name: { en: 'Lava bucket', fr: 'Seau de lave' }, parts: ['iron', 'fire', 'stone'] },
   // For the puppy (shown once it is tamed); it does not count towards finishing the game.
+  { id: 'heart_pie', emoji: '🥧', name: { en: 'Heart pie', fr: 'Tarte du cœur' }, parts: ['wheat', 'flower', 'fire'], extra: true },
   { id: 'dog_armor', emoji: '🛡️', name: { en: 'Dog armour', fr: 'Armure du chien' }, parts: ['iron', 'iron', 'wood'], needsPet: true, extra: true },
   { id: 'axe_obsidian', emoji: '🟪', name: { en: 'Obsidian axe', fr: 'Hache en obsidienne' }, parts: ['obsidian', 'obsidian', 'diamond'], requires: ['axe', 'hammer'] },
 ];
@@ -595,6 +596,8 @@ function saveGame() {
     bosses: game.bosses ?? [],
     places: game.places ?? [],
     portalLit: !!game.portalLit,
+    maxHearts: game.maxHearts ?? 2,
+    heartsFrom: game.heartsFrom ?? [],
     savedAt: Date.now(),
   };
   saveProgress();
@@ -620,6 +623,8 @@ function continueGame() {
     bosses: [...(s.bosses ?? [])],
     places: [...(s.places ?? [])],
     portalLit: !!s.portalLit,
+    maxHearts: s.maxHearts ?? 2,
+    heartsFrom: [...(s.heartsFrom ?? [])],
   });
   // Lasting spells come back: the bridge, the lit braziers.
   for (const [key, power] of Object.entries(game.spells)) {
@@ -961,7 +966,7 @@ function checkPlaces() {
     toast(t.placeFound(pl.emoji, pl.name[lang], game.places.length, PLACES.length), 3800);
     speak(t.placeFoundSay(pl.name[lang]), 0.95);
     updateGameUI(); saveGame();
-    if (game.places.length === PLACES.length) setTimeout(() => { progress.stars += 15; game.starsEarned += 15; launchConfetti(); sfxVictory(); toast(t.allPlaces, 5000); updateGameUI(); saveGame(); }, 4200);
+    if (game.places.length === PLACES.length) setTimeout(() => { progress.stars += 15; game.starsEarned += 15; launchConfetti(); sfxVictory(); toast(t.allPlaces, 5000); updateGameUI(); saveGame(); setTimeout(() => gainHeart('places'), 5200); }, 4200);
   }
 }
 // The Nether portal: lit with a word, then it takes the hero to the lava course.
@@ -1009,7 +1014,7 @@ function applyExtras() {
   if (pet && game.pet?.tamed && !pet.tamed) { pet.tamed = true; pet.catchUp(); }
   applyPetLook();
   if (po && !po.labelSet) { po.labelSet = true; scene3D.setSpotMaterial(po, 'talk', game.pet?.tamed ? `🐶 ${game.pet.name}` : '🐶 ?'); }
-  if (po && game.pet?.tamed && po.labelText !== game.pet.name) { po.labelText = game.pet.name; scene3D.setSpotMaterial(po, 'talk', `${['🐶', '🐕', '🐕‍🦺'][petStage()]} ${game.pet.name}${petHungry() ? ' 🍖' : ''}`); }
+  if (po && game.pet?.tamed && po.labelText !== game.pet.name) { po.labelText = game.pet.name; scene3D.setSpotMaterial(po, 'talk', `${['🐶', '🐕', '🐕‍🦺', '🐺', '🗿'][petStage()]} ${game.pet.name}${petHungry() ? ' 🍖' : ''}`); }
   // The puppy shows only its name (no spinning icon hiding it).
   if (po) po.iconHolder.children.filter((c) => !c.isCSS2DObject && c.isObject3D && !c.userData.label).forEach((c) => { c.visible = false; });
   for (const id of progress.decor ?? []) scene3D.placeDecor(id);
@@ -1055,6 +1060,7 @@ function winBoss() {
   game.bosses ??= [];
   game.bosses.push(b.id);
   progress.stars += 20; game.starsEarned += 20;
+  setTimeout(() => gainHeart(`boss:${b.id}`), 3500);
   setTimeout(() => { sfxVictory(); launchConfetti(); smile(); }, 900);
   toast(t.bossWon(b.name[lang]), 4500);
   speak(t.bossWonSay, 0.95);
@@ -1064,10 +1070,12 @@ function winBoss() {
 // The puppy.
 const today = () => new Date().toISOString().slice(0, 10);
 const petHungry = () => !!game?.pet?.tamed && game.pet.fedDay !== today();
-// Meals make the puppy grow: a dog after 3, a big dog after 8. The first meal of the day
-// (when it is hungry) also gives 2 stars.
-const PET_STAGES = [0, 3, 8];
-const petStage = (meals = game?.pet?.meals ?? 0) => (meals >= PET_STAGES[2] ? 2 : meals >= PET_STAGES[1] ? 1 : 0);
+// Meals make the puppy grow through 5 levels: puppy, dog, big dog, giant dog and, at the end,
+// a dog golem. A dog can only eat so much: a few meals (more when it is bigger) every 10 minutes.
+// The first meal of the day (when it is hungry) also gives 2 stars.
+const PET_STAGES = [0, 3, 7, 12, 18];
+const PET_MEALS_MAX = [2, 3, 3, 4, 5], PET_MEAL_WINDOW = 10 * 60 * 1000;
+const petStage = (meals = game?.pet?.meals ?? 0) => PET_STAGES.reduce((st, need, i) => (meals >= need ? i : st), 0);
 function applyPetLook() {
   const pet = scene3D?.pet;
   if (!pet || !game?.pet?.tamed) return;
@@ -1082,7 +1090,17 @@ function petInteract() {
   }
   const pet = scene3D.pet;
   const food = ['meat', 'fish', 'brochette'].find((f) => (game.materials[f] ?? 0) > 0);
+  const now = Date.now();
+  game.pet.mealTimes = (game.pet.mealTimes ?? []).filter((at) => now - at < PET_MEAL_WINDOW);
+  if (food && game.pet.mealTimes.length >= PET_MEALS_MAX[petStage()]) {
+    const wait = Math.ceil((PET_MEAL_WINDOW - (now - game.pet.mealTimes[0])) / 60000);
+    pet.trick();
+    toast(t.petFull(game.pet.name, wait), 3600);
+    speak(t.petFull(game.pet.name, wait).replace(/^\S+ /, ''), 0.95);
+    return;
+  }
   if (food) {
+    game.pet.mealTimes.push(now);
     const hungry = petHungry();
     const before = petStage();
     game.materials[food] -= 1;
@@ -1482,6 +1500,7 @@ function finishCrafting() {
   else {
     game.crafted.push(item.id);
     if (HOLDABLE_IDS.includes(base)) { game.equipped = null; equipItem(bestVersion(base)); }
+    else if (item.id === 'heart_pie') { if (!gainHeart('pie')) setTimeout(() => toast(t.pieYum, 3000), 1200); }
     else if (item.id === 'dog_armor') { scene3D?.pet?.setArmor(true); setTimeout(() => toast(t.petArmor(game.pet?.name ?? ''), 4000), 1200); }
     else scene3D?.spawnTrophy(item.id);
   }
@@ -1599,6 +1618,7 @@ function handleSpellSuccess() {
   } else if (firstTry) {
     if (game?.pet?.tamed) scene3D?.pet?.joy();
     streak += 1;
+    if (streak >= 10) gainHeart('streak10');
     if (streak > (progress.bestStreak || 0)) progress.bestStreak = streak;
   } else { streak = 0; }
 
@@ -2553,14 +2573,15 @@ function zombieAttack(power = swordPower().power) {
     if (Math.random() < (window.__se?.zombieWordAlways ?? ZOMBIE_WORD_CHANCE)) setTimeout(beginZombieWord, 1300);
   } else if (res.touched && power === 'hand' && !swordHintShown) { swordHintShown = true; toast(t.zombieNeedSword, 4200); }
 }
-// Two hearts: the first touch only hurts, the second sends the hero back to bed.
-// The hearts come back after a while without being touched.
-const HEARTS = 2, HEART_REGEN = 20000;
-let hearts = HEARTS, hurtAt = 0;
+// Hearts: 2 at the start, up to 5 won by playing well (a boss, 10 words in a row, every place
+// found, the heart pie). Losing them all sends the hero back to bed; they come back with time.
+const HEART_REGEN = 20000, HEARTS_MAX = 5;
+const maxHearts = () => Math.min(HEARTS_MAX, game?.maxHearts ?? 2);
+let hearts = 2, hurtAt = 0;
 function zombieTouch() {
-  hearts -= 1;
+  hearts = Math.min(hearts, maxHearts()) - 1;
   hurtAt = performance.now();
-  if (hearts <= 0) { hearts = HEARTS; renderHearts(); knockOut('zombie'); return 'ko'; }
+  if (hearts <= 0) { hearts = maxHearts(); renderHearts(); knockOut('zombie'); return 'ko'; }
   sfxHit(); sfxError();
   toast(t.zombieHurt(hearts));
   speak(t.ouchSay, 1);
@@ -2569,12 +2590,31 @@ function zombieTouch() {
   renderHearts();
   return 'hurt';
 }
+let heartShownUntil = 0;
+function gainHeart(reason) {
+  if (!game) return false;
+  game.heartsFrom ??= [];
+  if (game.heartsFrom.includes(reason) || maxHearts() >= HEARTS_MAX) return false;
+  game.heartsFrom.push(reason);
+  game.maxHearts = maxHearts() + 1;
+  hearts = game.maxHearts;
+  heartShownUntil = performance.now() + 6000;
+  renderHearts();
+  setTimeout(() => {
+    sfxVictory(); launchConfetti();
+    toast(t.heartGained(game.maxHearts), 4500);
+    speak(t.heartGained(game.maxHearts).replace(/^\S+ /, ''), 0.95);
+  }, 1200);
+  saveGame();
+  return true;
+}
 function renderHearts() {
   const h = $('#hearts');
   if (!h || !scene3D?.zombies) return;
-  if (hearts < HEARTS && performance.now() - hurtAt > HEART_REGEN) hearts = HEARTS;
-  h.hidden = !(hearts < HEARTS || (scene3D.zombies.active.length && scene3D.zombies.nearest() < 14));
-  h.textContent = '❤️'.repeat(hearts) + '🤍'.repeat(HEARTS - hearts);
+  const max = maxHearts();
+  if (hearts > max || (hearts < max && performance.now() - hurtAt > HEART_REGEN)) hearts = max;
+  h.hidden = !(hearts < max || performance.now() < heartShownUntil || (scene3D.zombies.active.length && scene3D.zombies.nearest() < 14));
+  h.textContent = '❤️'.repeat(hearts) + '🤍'.repeat(max - hearts);
 }
 function onMeatPickup() {
   game.materials.meat = (game.materials.meat ?? 0) + 1;

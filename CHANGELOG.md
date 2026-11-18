@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.17.0 — Jusqu'à 5 cœurs, 5 niveaux de chien et le golem chien
+
+- ❤️ **Jusqu'à 5 cœurs.** On commence avec 2 ; chaque exploit en donne un de plus (pour toujours, dans la partie) :
+  - battre un boss ;
+  - réussir 10 mots d'affilée du premier coup ;
+  - découvrir tous les lieux du monde ;
+  - cuisiner la **Tarte du cœur** 🥧 (blé + fleur + feu), une nouvelle recette.
+  
+  Fête, confettis et message lu à voix haute à chaque cœur gagné. Les cœurs perdus reviennent toujours après 20 s sans être touché.
+- 🐶 **5 niveaux pour le chien**, selon le nombre de repas : chiot 🐶, chien 🐕 (3 repas), grand chien 🐕‍🦺 (7), chien géant 🐺 (12) et, au dernier niveau, **golem chien** 🗿 (18) : il se transforme dans une explosion d'étincelles en un chien de pierre et de fer, avec des yeux bleus lumineux et des fissures qui brillent. Plus il est grand, plus il creuse et mord souvent ; le golem bat même les zombies armés d'une seule morsure.
+- 🍖 **Le chien ne peut manger qu'un certain nombre de morceaux en 10 minutes**, selon sa taille : 2 pour le chiot, 3 pour le chien et le grand chien, 4 pour le chien géant, 5 pour le golem. Au-delà : « Caramel a bien mangé ! Il n'a plus faim : reviens dans 6 minutes. » (écrit et dit).
+
 ## v1.16.0 — Le chien grandit, mord les zombies et porte une armure
 
 - 🍖 **On peut nourrir le chien à chaque viande** (ou poisson, ou brochette), pas seulement une fois par jour. Le premier repas de la journée, quand il a faim, rapporte toujours +2 ★.

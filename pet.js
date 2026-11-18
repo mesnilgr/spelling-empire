@@ -17,10 +17,13 @@ function box(parent, w, h, d, mat, x, y, z) {
   return m;
 }
 
-export function buildPuppy() {
+// golem: the last level, a dog made of stone and iron with glowing eyes and moss.
+export function buildPuppy(golem = false) {
   const g = new THREE.Group();
   g.userData.dynamic = true;
-  const fur = lambert(0xd8a46a), light = lambert(0xf4e2c4), dark = lambert(0x6a4428);
+  const fur = golem ? new THREE.MeshStandardMaterial({ color: 0x9aa0a8, metalness: 0.35, roughness: 0.6 }) : lambert(0xd8a46a);
+  const light = golem ? lambert(0x6e747c) : lambert(0xf4e2c4);
+  const dark = golem ? lambert(0x4f9a3a) : lambert(0x6a4428);
   const body = new THREE.Group();
   g.add(body);
   box(body, 0.42, 0.34, 0.7, fur, 0, 0.42, 0);
@@ -32,7 +35,7 @@ export function buildPuppy() {
   box(head, 0.22, 0.16, 0.18, light, 0, -0.07, 0.24); // muzzle
   box(head, 0.09, 0.07, 0.05, lambert(0x1a1a1a), 0, -0.02, 0.34); // nose
   for (const sx of [-0.11, 0.11]) {
-    box(head, 0.07, 0.07, 0.03, lambert(0x1a1a1a), sx, 0.06, 0.18);
+    box(head, 0.07, 0.07, 0.03, golem ? new THREE.MeshStandardMaterial({ color: 0x7ae8ff, emissive: 0x4ad8ff, emissiveIntensity: 1.8 }) : lambert(0x1a1a1a), sx, 0.06, 0.18);
     const ear = box(head, 0.1, 0.22, 0.12, dark, sx * 1.9, 0.12, -0.02);
     ear.rotation.z = sx > 0 ? -0.35 : 0.35;
   }
@@ -48,6 +51,16 @@ export function buildPuppy() {
     box(leg, 0.11, 0.3, 0.11, fur, 0, -0.15, 0);
     body.add(leg);
     legs.push(leg);
+  }
+  if (golem) {
+    // Iron plates, moss and glowing cracks.
+    const iron = new THREE.MeshStandardMaterial({ color: 0xd8dce2, metalness: 0.6, roughness: 0.35 });
+    const glow = new THREE.MeshStandardMaterial({ color: 0xffb02a, emissive: 0xff8a1a, emissiveIntensity: 1.3 });
+    box(body, 0.46, 0.06, 0.4, iron, 0, 0.61, -0.05);
+    box(body, 0.03, 0.18, 0.04, glow, 0.215, 0.42, 0.1);
+    box(body, 0.03, 0.04, 0.2, glow, -0.215, 0.45, -0.1);
+    box(head, 0.3, 0.06, 0.3, lambert(0x4f9a3a), 0.02, 0.2, -0.02);
+    box(head, 0.12, 0.05, 0.04, glow, 0, -0.12, 0.33);
   }
   g.userData.parts = { body, head, tail, legs, collar };
   return g;
@@ -74,11 +87,27 @@ export class PetManager {
     this.still = 0;
   }
   tame() { this.tamed = true; this.joy(); }
-  // Growing up: puppy (0), dog (1), big dog (2). Bigger dogs dig and bite more often.
+  // Growing up: puppy (0), dog (1), big dog (2), giant dog (3), dog golem (4).
+  // Bigger dogs dig and bite more often; the golem is a new body of stone and iron.
   setStage(stage) {
     if (this.stage === stage) return;
+    const wasGolem = this.stage === 4;
     this.stage = stage;
-    this.mesh.scale.setScalar([1, 1.3, 1.6][stage] ?? 1);
+    if ((stage === 4) !== wasGolem) {
+      const old = this.mesh, armor = !!this.armor;
+      if (armor) this.setArmor(false);
+      this.mesh = buildPuppy(stage === 4);
+      this.mesh.position.copy(old.position);
+      this.mesh.rotation.y = old.rotation.y;
+      this.s.scene.remove(old);
+      this.s.scene.add(this.mesh);
+      if (armor) this.setArmor(true);
+      if (stage === 4 && this.tamed) {
+        for (const c of ['#7ae8ff', '#ffffff', '#ffb02a']) this.s.particleBurst(this.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), c, 30);
+        this.s.screenShake?.(0.3);
+      }
+    }
+    this.mesh.scale.setScalar([1, 1.25, 1.5, 1.8, 1.9][stage] ?? 1);
     this.obj.iconY = 1.2 * this.mesh.scale.x;
   }
   setArmor(on) {
@@ -176,7 +205,7 @@ export class PetManager {
         this.lunge = null;
         if (z.alive) {
           const d = Math.hypot(tx - L.from.x, tz - L.from.z) || 1, ux = (tx - L.from.x) / d, uz = (tz - L.from.z) / d;
-          if (z.armed) { s.zombies._disarm(z, ux, uz); this.onBite?.(true); }
+          if (z.armed && this.stage < 4) { s.zombies._disarm(z, ux, uz); this.onBite?.(true); }
           else { s.zombies.defeat(z, ux, uz); this.onBite?.(false); }
           this.joyT = 0.6;
         }
@@ -204,7 +233,7 @@ export class PetManager {
       this.biteCooldown -= dt;
       if (this.stage >= 1 && this.biteCooldown <= 0 && !this.lunge) {
         const z = zs.find((zz) => zz.alive && Math.hypot(zz.mesh.position.x - m.position.x, zz.mesh.position.z - m.position.z) < 3.5 && Math.hypot(zz.mesh.position.x - p.x, zz.mesh.position.z - p.z) < 10);
-        if (z) { this.lunge = { z, t: 0, from: m.position.clone() }; this.biteCooldown = (this.stage >= 2 ? 15 : 25) * (this.armor ? 0.6 : 1); }
+        if (z) { this.lunge = { z, t: 0, from: m.position.clone() }; this.biteCooldown = [99, 25, 18, 12, 7][this.stage] * (this.armor ? 0.6 : 1); }
       }
       for (const z of zs) {
         const zd = Math.hypot(z.mesh.position.x - m.position.x, z.mesh.position.z - m.position.z);
@@ -226,7 +255,7 @@ export class PetManager {
       }
       // Now and then, outside, it digs something up.
       this.digT += dt;
-      if (this.digT > PET.digEvery * [1, 0.75, 0.55][this.stage] && !moving && !s._insideAnyHouse?.(m.position.x, m.position.z, 0)) { this.digT = 0; this.digging = 1.6; }
+      if (this.digT > PET.digEvery * [1, 0.8, 0.65, 0.5, 0.4][this.stage] && !moving && !s._insideAnyHouse?.(m.position.x, m.position.z, 0)) { this.digT = 0; this.digging = 1.6; }
     }
     if (this.digging > 0) {
       this.digging -= dt;
