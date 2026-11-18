@@ -127,7 +127,10 @@ function defaultProgress() {
 function loadProgress() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return { ...defaultProgress(), ...saved };
+    const p = { ...defaultProgress(), ...saved };
+    // v1.15: at 6 the grey model now comes now and then (it used to be always on).
+    if (p.age === 6 && p.traceGuide === true && !p.guideAutoV15) { p.traceGuide = 'auto'; p.guideAutoV15 = true; }
+    return p;
   } catch {
     return defaultProgress();
   }
