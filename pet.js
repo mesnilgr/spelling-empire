@@ -2,6 +2,7 @@
 // Then it follows the hero, hops for joy at every good word, barks when a zombie comes, chases
 // zombies off, and now and then digs up something useful.
 import * as THREE from 'three';
+import { LAVA } from './regions.js';
 
 export const PET = { x: 3.2, z: 17.6, digEvery: 150, barkRange: 10, guardRange: 2.6 };
 export const PET_NAMES = { fr: ['Biscuit', 'Caramel', 'Noisette', 'Pirouette'], en: ['Biscuit', 'Toffee', 'Hazel', 'Pepper'] };
@@ -75,6 +76,9 @@ export class PetManager {
   // Put the puppy next to the hero (after a teleport, or when it is left too far behind).
   catchUp() {
     const p = this.s.player.position, a = this.s.player.rotation.y;
+    this.hop = null;
+    const w = this.s._walkwayAt?.(p.x, p.z);
+    if (w?.box) { this.mesh.position.set(Math.min(w.x1 - 0.35, Math.max(w.x0 + 0.35, p.x - 0.6)), w.y(), Math.min(w.z1 - 0.35, Math.max(w.z0 + 0.35, p.z + 0.6))); return; }
     for (const [dx, dz] of [[-Math.sin(a) * 1.4, -Math.cos(a) * 1.4], [1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2], [0, 0]]) {
       const x = p.x + dx, z = p.z + dz;
       if (this.s._checkCollision(x, z) || this.s.inLava?.(x, z)) continue;
@@ -82,10 +86,56 @@ export class PetManager {
       return;
     }
   }
+  // On the lava course the puppy jumps from pillar to pillar behind the hero, and never touches
+  // the lava. Returns true while it is in charge of the puppy's movement.
+  _course(dt) {
+    const m = this.mesh, s = this.s, p = s.player.position;
+    const inside = (x, z) => x > LAVA.x0 - 0.3 && x < LAVA.x1 + 0.3 && z > LAVA.z0 - 0.3 && z < LAVA.z1 + 0.3;
+    if (!this.hop && !inside(p.x, p.z) && !inside(m.position.x, m.position.z)) return false;
+    if (this.hop) {
+      const h = this.hop;
+      h.k = Math.min(1, h.k + dt / h.time);
+      m.position.x = h.from.x + (h.to.x - h.from.x) * h.k;
+      m.position.z = h.from.z + (h.to.z - h.from.z) * h.k;
+      m.position.y = h.from.y + (h.to.y - h.from.y) * h.k + Math.sin(h.k * Math.PI) * h.lift;
+      m.rotation.y = Math.atan2(h.to.x - h.from.x, h.to.z - h.from.z);
+      if (h.k >= 1) { this.hop = null; m.position.y = h.to.y; }
+      return true;
+    }
+    // Where the hero stands (only when he is on something solid).
+    if (!s.onGround) return true;
+    const heroSupport = s._walkwayAt(p.x, p.z) ?? (inside(p.x, p.z) ? null : 'ground');
+    if (!heroSupport) return true;
+    const a = s.player.rotation.y;
+    let tx = p.x - Math.sin(a) * 0.9, tz = p.z - Math.cos(a) * 0.9;
+    if (heroSupport !== 'ground') { tx = Math.min(heroSupport.x1 - 0.35, Math.max(heroSupport.x0 + 0.35, tx)); tz = Math.min(heroSupport.z1 - 0.35, Math.max(heroSupport.z0 + 0.35, tz)); }
+    else if (inside(tx, tz)) { tx = p.x; tz = p.z; }
+    const mine = s._walkwayAt(m.position.x, m.position.z) ?? (inside(m.position.x, m.position.z) ? null : 'ground');
+    const d = Math.hypot(tx - m.position.x, tz - m.position.z);
+    if (mine === heroSupport && mine !== null) {
+      // Same pillar (or both on the ground): trot over.
+      if (d > 0.4) {
+        const k = Math.min(1, (3.5 * dt) / d);
+        m.position.x += (tx - m.position.x) * k; m.position.z += (tz - m.position.z) * k;
+        m.position.y = s.groundAt(m.position.x, m.position.z);
+        m.rotation.y = Math.atan2(tx - m.position.x, tz - m.position.z);
+        this.trotting = true;
+      }
+      return true;
+    }
+    // Another pillar: jump to it (far away or lost: appear next to the hero).
+    const ty = s.groundAt(tx, tz);
+    if (d > 7 || mine === null) { m.position.set(tx, ty, tz); return true; }
+    this.hop = { from: m.position.clone(), to: new THREE.Vector3(tx, ty, tz), k: 0, time: 0.35 + d * 0.06, lift: 0.9 + d * 0.12 };
+    return true;
+  }
   update(dt, t) {
     const m = this.mesh, parts = m.userData.parts, s = this.s, p = s.player.position;
     let moving = false;
-    if (this.tamed && this.digging <= 0) {
+    this.trotting = false;
+    const onCourse = this.tamed && this._course(dt);
+    if (onCourse) moving = !!this.hop || this.trotting;
+    if (this.tamed && this.digging <= 0 && !onCourse) {
       const dx = p.x - m.position.x, dz = p.z - m.position.z, d = Math.hypot(dx, dz);
       if (d > 14 || Math.abs(p.y - m.position.y) > 2.5) this.catchUp();
       else if (d > 1.7) {

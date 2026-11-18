@@ -83,9 +83,20 @@ export class ZombieManager {
     arm.add(g);
     mesh.userData.sword = g;
   }
-  // First hit on an armed zombie: its sword flies away and it staggers back.
+  // First hit on an armed zombie: its helmet and its sword fly away and it staggers back.
   _disarm(z, ux, uz) {
     const s = this.s, sw = z.mesh.userData.sword;
+    const head = z.mesh.userData.parts?.head;
+    const helmet = head?.children.find((c) => c.isMesh && c.material?.color?.getHex() === 0x8a929c);
+    if (helmet) {
+      const at = new THREE.Vector3();
+      helmet.getWorldPosition(at);
+      head.remove(helmet);
+      helmet.position.copy(at);
+      s.scene.add(helmet);
+      this.flying ??= [];
+      this.flying.push({ mesh: helmet, vx: -uz * 2 + ux, vz: ux * 2 + uz, vy: 6, t: 0 });
+    }
     z.armed = false;
     z.hp = 1;
     if (sw) {

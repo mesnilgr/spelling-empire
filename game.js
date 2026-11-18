@@ -221,8 +221,10 @@ function childLevels() {
   return ladder.slice(a, Math.min(ladder.length, ladderStart() + 3));
 }
 // Helps that suit each age (the parents can still change them).
+// At 6 the grey model letter comes now and then ('auto'): often for a new word, rarely for a word
+// already known, so it helps to memorise without doing the work for the child.
 function applyAgeDefaults(age) {
-  progress.traceGuide = age <= 6;
+  progress.traceGuide = age <= 5 ? true : age === 6 ? 'auto' : false;
   if (age === 5) progress.inputMode = 'draw';
 }
 function setAge(age, { defaults = true } = {}) {
@@ -327,11 +329,12 @@ function initAudio() {
   try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch { audioCtx = null; }
 }
 
-function playTone(freq, duration, type = 'sine', volume = 0.15, delay = 0) {
+function playTone(freq, duration, type = 'sine', volume = 0.15, delay = 0, glideTo = 0) {
   if (!audioCtx) return;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.type = type; osc.frequency.value = freq;
+  if (glideTo) { osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay); osc.frequency.exponentialRampToValueAtTime(glideTo, audioCtx.currentTime + delay + duration); }
   gain.gain.setValueAtTime(0, audioCtx.currentTime + delay);
   gain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + delay + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
@@ -763,11 +766,13 @@ function beginMine(mineObj) {
 function openSpellModal(title, instruction, emoji) {
   const word = spellContext.word;
   spellContext.startedAt = Date.now();
+  playSinceWord = 0;
   const stat = wordStat(word);
   stat.seen += 1;
   stat.lastSeen = Date.now();
   saveProgress();
   $('#spell-title').textContent = title;
+  hw.wordGuide = progress.traceGuide === 'auto' && Math.random() < (stat.correct === 0 ? 0.75 : stat.correct < 3 ? 0.4 : 0.15);
   setTimeout(() => { hw.strokes = []; hw.current = null; hw.misses = 0; hw.forceGuide = false; hwFeedback(); $('#hw-alts')?.replaceChildren(); setInputMode(progress.inputMode ?? 'keys'); }, 0);
   $('#spell-instruction').textContent = instruction;
   // Homophones: show the sentence with a blank where the little word goes.
@@ -918,7 +923,25 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐' });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); }, 300);
+
+/* ===== FLASH CHALLENGE: never more than 2 minutes of play without a word ===== */
+const FLASH_AFTER = 120; // seconds of play
+let playSinceWord = 0, flashLast = performance.now();
+function tickFlash() {
+  const now = performance.now(), dt = Math.min(1, (now - flashLast) / 1000);
+  flashLast = now;
+  if (!game || !scene3D || scene3D.mode !== 'play' || document.hidden) return;
+  if (document.body.dataset.screen !== 'game' || !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight || !$('#sleep-fade').hidden) return;
+  playSinceWord += dt;
+  if (playSinceWord < (window.__se?.flashAfter ?? FLASH_AFTER)) return;
+  playSinceWord = 0;
+  const word = pickWord(levelAt(0));
+  spellContext = { type: 'flash', word, tries: 0 };
+  sfxPop();
+  openSpellModal(`⚡ ${t.flashTitle}`, word.level === 'letters' ? t.reviveInstructionLetter : t.flashInstruction, '⚡');
+  speak(t.flashSay, 0.95);
+}
 
 /* ===== PLACES TO DISCOVER, THE PORTAL, ANIMALS ===== */
 function checkPlaces() {
@@ -1059,7 +1082,13 @@ function petInteract() {
   sfxBark();
   toast(petHungry() ? t.petHungry(game.pet.name) : t.petTrick(game.pet.name), 3000);
 }
-function sfxBark() { playTone(520, 0.07, 'square', 0.08); playTone(380, 0.1, 'square', 0.07, 0.08); }
+// A short dog bark made of filtered noise and a falling tone, twice ("wouf wouf").
+function sfxBark() {
+  for (const at of [0, 0.22]) {
+    playNoise({ freq: 900, q: 1.2, volume: 0.2, duration: 0.12, delay: at });
+    playTone(620, 0.1, 'sawtooth', 0.09, at, 330);
+  }
+}
 function petNamePicker(after) {
   const box = el('div', 'pet-names');
   for (const n of PET_NAMES[lang] ?? PET_NAMES.fr) {
@@ -1085,6 +1114,13 @@ function setupPet() {
   pet.onBark = () => {
     if (!game?.pet?.tamed) return;
     sfxBark();
+    // The first time: say what it means, written and out loud.
+    if (!progress.petBarkExplained) {
+      progress.petBarkExplained = true;
+      saveProgress();
+      toast(t.petBarkExplain(game.pet.name), 5000);
+      speak(t.petBarkExplain(game.pet.name).replace(/^🐶 /, ''), 0.95);
+    }
     const pos = scene3D.worldToScreen?.(pet.mesh.position.clone().setY(pet.mesh.position.y + 1.2));
     if (pos) showFloatingText(pos.x, pos.y, t.petBark, '#ffffff');
   };
@@ -1650,6 +1686,17 @@ function handleSpellSuccess() {
     speak(t.petTamed + ' ' + t.petChooseName, 0.95);
     // A name must be chosen before going on (a default one if the child just taps Continue).
     spellContext.after = () => { if (!game.pet?.tamed) { game.pet = { tamed: true, name: (PET_NAMES[lang] ?? PET_NAMES.fr)[0], fedDay: null }; scene3D.pet.tame(); scene3D.pet.obj.labelText = null; applyExtras(); saveGame(); } };
+  } else if (type === 'flash') {
+    sfxCraft();
+    if (!copied) { progress.stars += 2; game.starsEarned += 2; }
+    spellResultEl.replaceChildren(
+      el('p', 'spell-success', `⚡ ${t.flashDone}`),
+      el('p', 'spell-sentence', spellContext.word.sentence ?? buildSentence(wordStr, lang)),
+      el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned + 2} ${t.stars}`),
+    );
+    spellResultEl.hidden = false;
+    if (game?.pet?.tamed) scene3D?.pet?.joy();
+    speak(t.flashDone, 0.95);
   } else if (type === 'zombieWord') {
     sfxCraft();
     if (!copied) { progress.stars += 2; game.starsEarned += 2; }
@@ -2878,7 +2925,7 @@ function redrawHw() {
   g.clearRect(0, 0, hwCanvas.width, hwCanvas.height);
   // Grey model letter to trace over (for younger children). It shows the next letter of the word.
   const expected = spellContext?.word?.word[spellInput.value.length];
-  if (expected && (progress.traceGuide !== false || hw.forceGuide) && !isLocked) {
+  if (expected && (progress.traceGuide === true || (progress.traceGuide === 'auto' && hw.wordGuide) || hw.forceGuide) && !isLocked) {
     const w = hwCanvas.width / dpr, h = hwCanvas.height / dpr;
     g.save();
     g.fillStyle = 'rgba(31, 42, 68, 0.2)';
@@ -2896,7 +2943,7 @@ function redrawHw() {
     if (s.length === 1) g.lineTo(s[0][0] + 0.5, s[0][1]);
     g.stroke();
   }
-  $('#hw-hint').hidden = hw.strokes.length > 0 || !!hw.current || (progress.traceGuide !== false && !!spellContext);
+  $('#hw-hint').hidden = hw.strokes.length > 0 || !!hw.current || ((progress.traceGuide === true || hw.wordGuide) && !!spellContext);
 }
 
 function hwPoint(e) {
@@ -2997,7 +3044,7 @@ $('#hw-clear')?.addEventListener('click', () => { hwFeedback(); hw.strokes = [];
 $('#hw-back')?.addEventListener('click', () => { hwFeedback(); deleteLetter(); $('#hw-alts').replaceChildren(); redrawHw(); });
 $('#hw-keyboard')?.addEventListener('click', () => setInputMode('keys'));
 $('#hw-guide')?.addEventListener('click', () => {
-  progress.traceGuide = progress.traceGuide === false;
+  progress.traceGuide = progress.traceGuide === false ? ((progress.age ?? 6) === 6 ? 'auto' : true) : false;
   saveProgress();
   $('#hw-guide').classList.toggle('is-off', progress.traceGuide === false);
   redrawHw();

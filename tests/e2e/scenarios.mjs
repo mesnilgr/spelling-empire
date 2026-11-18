@@ -497,8 +497,8 @@ export const SCENARIOS = [
       check(look.armed && look.sword, 'un zombie armé porte un casque et une épée', JSON.stringify(look));
       await g.page.evaluate(() => { window.__se.game().crafted = ['sword']; });
       await g.click('#attack-btn');
-      const first = await g.page.evaluate(() => ({ alive: window.__targets[0].alive, armed: window.__targets[0].armed, sword: !!window.__targets[0].mesh.userData.sword }));
-      check(first.alive && !first.armed && !first.sword, 'premier coup : son épée s’envole, il est encore debout', JSON.stringify(first));
+      const first = await g.page.evaluate(() => { const z = window.__targets[0]; return { alive: z.alive, armed: z.armed, sword: !!z.mesh.userData.sword, helmet: !!z.mesh.userData.parts.head.children.find((c) => c.isMesh && c.material?.color?.getHex() === 0x8a929c) }; });
+      check(first.alive && !first.armed && !first.sword && !first.helmet, 'premier coup : son casque et son épée s’envolent, il est encore debout', JSON.stringify(first));
       await g.page.evaluate(() => { const s = window.__se.scene, z = window.__targets[0]; z.mesh.position.set(8, s.groundAt(8, 25.2), 25.2); z.stun = 0; s.player.userData.action = null; s.player.rotation.y = 0; });
       await g.click('#attack-btn');
       await stepDeaths();
@@ -607,6 +607,35 @@ export const SCENARIOS = [
         return st > 0;
       });
       check(guard === true, 'le chiot repousse un zombie trop proche', String(guard));
+      // The first bark is explained, written and out loud.
+      await g.page.evaluate(() => { window.__spoken.length = 0; window.__se.progress().petBarkExplained = false; window.__se.scene.pet.onBark(); });
+      const bark = await g.page.evaluate(() => ({ toast: document.querySelector('#toast')?.textContent ?? '', said: window.__spoken.join(' | '), flag: window.__se.progress().petBarkExplained }));
+      check(/aboie : un zombie approche/.test(bark.toast) && /aboie : un zombie approche/.test(bark.said) && bark.flag, 'le premier aboiement est expliqué à l’écrit et à l’oral', JSON.stringify(bark));
+      // On the lava course the puppy jumps from pillar to pillar and never touches the lava.
+      const course = await g.page.evaluate(async () => {
+        const { LAVA } = await import('/regions.js');
+        const s = window.__se.scene, pet = s.pet, out = [];
+        let worst = 9;
+        for (const [x, z, , h] of LAVA.pillars.slice(0, 4)) {
+          s.teleport(x, z); s.player.position.y = h; s.onGround = true;
+          for (let k = 0; k < 60; k++) {
+            pet.update(1 / 30, k / 30);
+            const q = pet.mesh.position, inCourse = q.x > LAVA.x0 && q.x < LAVA.x1 && q.z > LAVA.z0 && q.z < LAVA.z1;
+            if (inCourse && !pet.hop) worst = Math.min(worst, q.y);
+          }
+          const w = s._walkwayAt(pet.mesh.position.x, pet.mesh.position.z);
+          out.push(w?.index ?? 'x');
+        }
+        return { on: out.join(','), worst };
+      });
+      check(course.on === '0,1,2,3' && course.worst > 0.5, 'sur le parcours de lave, le chiot saute de pilier en pilier sans toucher la lave', JSON.stringify(course));
+      await g.page.evaluate(() => window.__se.scene.teleport(8, 24));
+      // Never more than 2 minutes without a word: a flash challenge comes.
+      await g.page.evaluate(() => { window.__se.flashAfter = 2; });
+      const flash = await g.page.waitForFunction(() => window.__se.spell()?.type === 'flash' && !document.querySelector('#spell-modal').hidden, null, { timeout: 12000 }).then(() => true, () => false);
+      check(flash, 'sans mot depuis un moment, un défi éclair arrive');
+      await g.page.evaluate(() => { window.__se.flashAfter = 9999; });
+      if (flash) await g.spell();
       // The forest boss: three words to beat it.
       check(await g.page.evaluate(() => window.__se.scene.interactables.filter((i) => i.kind === 'boss').length === 4), '4 boss dorment dans le monde');
       check(await g.page.evaluate(() => window.__se.scene.interactables.find((i) => i.bossId === 'stoneGolem').active === false), 'le boss de la montagne dort encore (histoire pas assez avancée)');
@@ -666,9 +695,9 @@ export const SCENARIOS = [
         const s = window.__se.scene, f = s.fauna;
         const a = f.list.find((x) => x.kind === 'sheep');
         s.teleport(a.home.x + 12, a.home.z);
-        const start = a.mesh.position.clone();
+        const herd = f.list.filter((x) => x.home.x === a.home.x && x.home.z === a.home.z), starts = herd.map((x) => x.mesh.position.clone());
         for (let k = 0; k < 300; k++) f.update(1 / 30, k / 30);
-        const wandered = start.distanceTo(a.mesh.position);
+        const wandered = Math.max(...herd.map((x, i) => starts[i].distanceTo(x.mesh.position)));
         s.teleport(a.mesh.position.x + 1.0, a.mesh.position.z);
         const before = Math.hypot(s.player.position.x - a.mesh.position.x, s.player.position.z - a.mesh.position.z);
         for (let k = 0; k < 30; k++) f.update(1 / 30, 10 + k / 30);

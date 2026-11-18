@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.15.0 — Retours des joueurs
+
+- 🪖 **Zombie armé : au premier coup, son casque ET son épée s'envolent** ; le deuxième coup le bat.
+- 🐶 **Le chien aboie pour de vrai** (un « wouf wouf ») quand un zombie approche. La première fois, un message explique, **à l'écrit et à l'oral** : « Caramel aboie : un zombie approche ! Prépare ton épée. »
+- 🌋 **Le chien suit sur le parcours de lave** : il saute de pilier en pilier derrière le héros et ne touche jamais la lave.
+- ⚡ **Jamais plus de 2 minutes de jeu sans un mot** : si l'enfant n'a rien épelé depuis 2 minutes, un « défi éclair » arrive (+2 ★ en plus). Le compteur ne tourne que pendant le jeu (pas pendant les dialogues, la fabrication ou les menus).
+- ✏️ **À 6 ans, le modèle grisé de la lettre vient de temps en temps** pour aider à mémoriser : souvent pour un mot nouveau (3 fois sur 4), moins pour un mot en cours (2 sur 5), rarement pour un mot connu (1 sur 7). À 5 ans il est toujours là ; dès 7 ans il ne vient qu'après 3 essais ratés. Le bouton ✏️ du tableau permet toujours de l'activer ou non.
+
 ## v1.14.0 — Un monde rempli : 13 lieux à découvrir et 50 animaux
 
 - 🗺️ **13 lieux à découvrir**, chacun avec un secret :
