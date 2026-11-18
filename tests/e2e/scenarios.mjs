@@ -150,7 +150,7 @@ export const SCENARIOS = [
       const places = await g.page.$eval('#travel-buttons', (e) => e.innerText);
       check(places.includes('Village') && places.includes('Forêt'), 'le panneau propose les endroits réparés', places.replace(/\n/g, ', '));
       await g.page.evaluate(() => [...document.querySelectorAll('#travel-buttons button')].find((b) => b.textContent.includes('Village')).click());
-      await g.page.waitForTimeout(1800);
+      await g.page.waitForFunction(() => Math.abs(window.__se.scene.player.position.x) < 10, null, { timeout: 8000 }).catch(() => {});
       const pos = await g.page.evaluate(() => window.__se.scene.player.position.x);
       check(Math.abs(pos) < 10, 'le voyage ramène au village', String(pos));
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
@@ -417,9 +417,13 @@ export const SCENARIOS = [
       check(n >= 1, `la nuit, des zombies apparaissent (${n})`);
       // Step the zombies with their own code (the test browser runs the game slowly).
       const step = (sec) => g.page.evaluate((n) => { const s = window.__se.scene; for (let k = 0; k < n; k++) s.zombies.update(1 / 30, s.clock.elapsedTime + k / 30); }, Math.round(sec * 30));
-      const d0 = await g.page.evaluate(() => window.__se.scene.zombies.nearest());
+      // Follow one zombie (another may appear meanwhile); the best of the zombies counts.
+      const dists = () => g.page.evaluate(() => { const s = window.__se.scene, p = s.player.position; window.__chase ??= s.zombies.active.slice(); return window.__chase.map((z) => Math.hypot(z.mesh.position.x - p.x, z.mesh.position.z - p.z)); });
+      const a0 = await dists();
       await step(2);
-      const d1 = await g.page.evaluate(() => window.__se.scene.zombies.nearest());
+      const a1 = await dists();
+      const gains = a0.map((d, i) => d - a1[i]), best = gains.indexOf(Math.max(...gains));
+      const d0 = a0[best], d1 = a1[best];
       check(d1 < d0 - 3, `ils poursuivent le héros dehors (${d0.toFixed(1)} → ${d1.toFixed(1)} en 2 s)`);
       // First touch: one heart lost, nothing else. Second touch: back home, nothing lost.
       await g.page.evaluate(() => { const s = window.__se.scene; window.__touch = 0; const prev = s.onZombieCatch; s.onZombieCatch = (z) => { window.__touch++; const r = prev?.(z); if (window.__touch === 1) window.__afterFirst = { ko: window.__ko, hearts: document.querySelector('#hearts').textContent, shown: !document.querySelector('#hearts').hidden }; return r; }; });
@@ -591,6 +595,40 @@ export const SCENARIOS = [
       await g.use("i.kind === 'pet'");
       const fed = await g.page.evaluate(() => ({ day: window.__se.game().pet.fedDay, meat: window.__se.game().materials.meat ?? 0, stars: window.__se.progress().stars - window.__starsBefore }));
       check(!!fed.day && fed.meat === 0 && fed.stars === 2, 'on nourrit le chiot avec de la viande (+2 ★)', JSON.stringify(fed));
+      // Meals make it grow: a dog after 3 meals (it is bigger).
+      await g.page.evaluate(() => { window.__se.game().materials.meat = 2; });
+      await g.use("i.kind === 'pet'"); await g.use("i.kind === 'pet'");
+      const grown = await g.page.evaluate(() => ({ meals: window.__se.game().pet.meals, scale: window.__se.scene.pet.mesh.scale.x, stage: window.__se.scene.pet.stage }));
+      check(grown.meals === 3 && grown.stage === 1 && grown.scale > 1.2, 'après 3 repas, le chiot grandit et devient un chien', JSON.stringify(grown));
+      // A grown dog bites zombies now and then: a normal one is beaten, an armed one loses its helmet.
+      const bite = await g.page.evaluate(() => {
+        const s = window.__se.scene, pet = s.pet;
+        s.teleport(8, 24); pet.catchUp();
+        s.dayTime = 0.8 * 420; s.night = 1;
+        const res = {};
+        for (const armed of [false, true]) {
+          s.zombies.clear(false); s.zombies.armedChance = armed ? 1 : 0; s.zombies._spawn(); s.zombies.armedChance = 0;
+          const z = s.zombies.active[0]; if (!z) return 'no zombie';
+          z.mesh.scale.setScalar(1); z.stun = 9;
+          z.mesh.position.set(pet.mesh.position.x + 2.5, pet.mesh.position.y, pet.mesh.position.z);
+          pet.biteCooldown = 0; pet.guardCooldown = 9;
+          for (let k = 0; k < 30; k++) pet.update(1 / 30, k / 30);
+          res[armed ? 'armed' : 'plain'] = armed ? { alive: z.alive, armed: z.armed } : { alive: z.alive };
+        }
+        s.zombies.clear(false); s.dayTime = 0.3 * 420;
+        return res;
+      });
+      check(bite.plain && !bite.plain.alive, 'le chien mord un zombie et le bat', JSON.stringify(bite));
+      check(bite.armed && bite.armed.alive && !bite.armed.armed, 'sur un zombie armé, la morsure fait tomber son casque et son épée', JSON.stringify(bite));
+      // Dog armour: made at the forge, worn by the dog.
+      await g.page.evaluate(() => { const m = window.__se.game().materials; m.iron = (m.iron ?? 0) + 2; m.wood = (m.wood ?? 0) + 1; });
+      await g.click('#craft-open-btn');
+      await g.page.waitForTimeout(300);
+      await g.page.evaluate(() => [...document.querySelectorAll('#craft-list .craft-card.is-clickable')].find((e) => e.textContent.includes('Armure du chien'))?.click());
+      await g.page.waitForTimeout(400);
+      check(await g.page.evaluate(() => window.__se.game().crafted.includes('dog_armor') && !!window.__se.scene.pet.armor), 'l’armure du chien se fabrique et il la porte');
+      await g.page.keyboard.press('Escape');
+      await g.page.evaluate(() => { document.querySelector('#craft-close-btn')?.click(); });
       // It digs things up, and pushes zombies away.
       const dug = await g.page.evaluate(() => { const m = window.__se.game().materials, n = Object.values(m).reduce((a, b) => a + b, 0); window.__se.scene.pet.onDig(); return Object.values(m).reduce((a, b) => a + b, 0) - n; });
       check(dug === 1, 'le chiot creuse et trouve un matériau');

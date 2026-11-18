@@ -68,9 +68,38 @@ export class PetManager {
     this.guardCooldown = 0;
     this.digT = 0;
     this.digging = 0;
+    this.stage = 0;
+    this.biteCooldown = 10;
+    this.lunge = null;
     this.still = 0;
   }
   tame() { this.tamed = true; this.joy(); }
+  // Growing up: puppy (0), dog (1), big dog (2). Bigger dogs dig and bite more often.
+  setStage(stage) {
+    if (this.stage === stage) return;
+    this.stage = stage;
+    this.mesh.scale.setScalar([1, 1.3, 1.6][stage] ?? 1);
+    this.obj.iconY = 1.2 * this.mesh.scale.x;
+  }
+  setArmor(on) {
+    if (!!this.armor === !!on) return;
+    const parts = this.mesh.userData.parts;
+    if (on) {
+      const g = new THREE.Group();
+      const iron = new THREE.MeshStandardMaterial({ color: 0xc8ccd2, metalness: 0.6, roughness: 0.35 });
+      const gold = new THREE.MeshStandardMaterial({ color: 0xf2c84b, metalness: 0.6, roughness: 0.3 });
+      box(g, 0.48, 0.12, 0.6, iron, 0, 0.62, 0);
+      box(g, 0.06, 0.22, 0.58, iron, -0.24, 0.5, 0); box(g, 0.06, 0.22, 0.58, iron, 0.24, 0.5, 0);
+      box(g, 0.5, 0.05, 0.08, gold, 0, 0.69, 0.1);
+      box(parts.head, 0.42, 0.1, 0.38, iron, 0, 0.22, 0); // little helmet
+      this.helmet = parts.head.children[parts.head.children.length - 1];
+      parts.body.add(g);
+      this.armor = g;
+    } else {
+      this.armor.parent.remove(this.armor); this.armor = null;
+      this.helmet?.parent?.remove(this.helmet); this.helmet = null;
+    }
+  }
   joy() { this.joyT = 1.2; this.s.particleBurst(this.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), '#ff6b9d', 10); }
   trick() { this.trickT = 1.0; }
   // Put the puppy next to the hero (after a teleport, or when it is left too far behind).
@@ -135,7 +164,26 @@ export class PetManager {
     this.trotting = false;
     const onCourse = this.tamed && this._course(dt);
     if (onCourse) moving = !!this.hop || this.trotting;
-    if (this.tamed && this.digging <= 0 && !onCourse) {
+    if (this.lunge) {
+      const L = this.lunge, z = L.z;
+      L.t += dt;
+      const k = Math.min(1, L.t / 0.35);
+      const tx = z.mesh.position.x, tz = z.mesh.position.z;
+      m.position.x = L.from.x + (tx - L.from.x) * k * 0.85; m.position.z = L.from.z + (tz - L.from.z) * k * 0.85;
+      m.position.y = s.groundAt(m.position.x, m.position.z) + Math.sin(k * Math.PI) * 0.7;
+      m.rotation.y = Math.atan2(tx - L.from.x, tz - L.from.z);
+      if (k >= 1) {
+        this.lunge = null;
+        if (z.alive) {
+          const d = Math.hypot(tx - L.from.x, tz - L.from.z) || 1, ux = (tx - L.from.x) / d, uz = (tz - L.from.z) / d;
+          if (z.armed) { s.zombies._disarm(z, ux, uz); this.onBite?.(true); }
+          else { s.zombies.defeat(z, ux, uz); this.onBite?.(false); }
+          this.joyT = 0.6;
+        }
+      }
+      moving = true;
+    }
+    if (this.tamed && this.digging <= 0 && !onCourse && !this.lunge) {
       const dx = p.x - m.position.x, dz = p.z - m.position.z, d = Math.hypot(dx, dz);
       if (d > 14 || Math.abs(p.y - m.position.y) > 2.5) this.catchUp();
       else if (d > 1.7) {
@@ -152,6 +200,12 @@ export class PetManager {
       this.barkCooldown -= dt;
       this.guardCooldown -= dt;
       const zs = s.zombies?.active ?? [];
+      // A grown dog sometimes jumps on a zombie and bites it.
+      this.biteCooldown -= dt;
+      if (this.stage >= 1 && this.biteCooldown <= 0 && !this.lunge) {
+        const z = zs.find((zz) => zz.alive && Math.hypot(zz.mesh.position.x - m.position.x, zz.mesh.position.z - m.position.z) < 3.5 && Math.hypot(zz.mesh.position.x - p.x, zz.mesh.position.z - p.z) < 10);
+        if (z) { this.lunge = { z, t: 0, from: m.position.clone() }; this.biteCooldown = (this.stage >= 2 ? 15 : 25) * (this.armor ? 0.6 : 1); }
+      }
       for (const z of zs) {
         const zd = Math.hypot(z.mesh.position.x - m.position.x, z.mesh.position.z - m.position.z);
         if (zd < PET.barkRange && this.barkCooldown <= 0) { this.barkCooldown = 8; this.onBark?.(); this.joyT = Math.max(this.joyT, 0.4); }
@@ -172,7 +226,7 @@ export class PetManager {
       }
       // Now and then, outside, it digs something up.
       this.digT += dt;
-      if (this.digT > PET.digEvery && !moving && !s._insideAnyHouse?.(m.position.x, m.position.z, 0)) { this.digT = 0; this.digging = 1.6; }
+      if (this.digT > PET.digEvery * [1, 0.75, 0.55][this.stage] && !moving && !s._insideAnyHouse?.(m.position.x, m.position.z, 0)) { this.digT = 0; this.digging = 1.6; }
     }
     if (this.digging > 0) {
       this.digging -= dt;

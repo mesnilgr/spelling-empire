@@ -25,6 +25,8 @@ export async function openGame(browser, base, progress, { quality = 1, width = 1
   await page.evaluate(([key, p]) => { localStorage.clear(); localStorage.setItem(key, JSON.stringify(p)); }, [STORE, progress]);
   await page.reload();
   await page.waitForSelector('#loading.is-done', { timeout: 180000 });
+  // No surprise flash challenge in the middle of a scenario (the ones that test it lower this).
+  await page.evaluate(() => { if (window.__se) window.__se.flashAfter = 1e9; });
   await page.waitForFunction(() => window.__se?.scene, null, { timeout: 60000 });
   return { page, errors, ...api(page) };
 }

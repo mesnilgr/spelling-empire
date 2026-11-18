@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.16.0 — Le chien grandit, mord les zombies et porte une armure
+
+- 🍖 **On peut nourrir le chien à chaque viande** (ou poisson, ou brochette), pas seulement une fois par jour. Le premier repas de la journée, quand il a faim, rapporte toujours +2 ★.
+- 🐕 **Il grandit avec les repas** : chiot au début, **chien après 3 repas** (plus grand, 🐕), **grand chien après 8 repas** (encore plus grand, 🐕‍🦺). Fête et confettis à chaque étape ; le message dit combien de repas il reste.
+- 🦴 **Un chien heureux creuse plus souvent** (toutes les 2 min 30 pour le chiot, ~1 min 50 pour le chien, ~1 min 20 pour le grand chien).
+- 🧟 **Le chien mord les zombies de temps en temps** (dès qu'il est grand) : il bondit, un zombie normal est vaincu (+1 ★), un zombie armé perd son casque et son épée. Toutes les 25 s pour le chien, 15 s pour le grand chien. La première morsure est annoncée à l'écrit et à l'oral.
+- 🛡️ **Nouvelle recette : l'armure du chien** (fer + fer + bois), visible dès que le chien est apprivoisé. Il la porte (plaques de fer, petit casque) et mord plus souvent.
+- Après avoir ramassé de la viande, le message rappelle qu'on peut la donner au chien.
+
 ## v1.15.0 — Retours des joueurs
 
 - 🪖 **Zombie armé : au premier coup, son casque ET son épée s'envolent** ; le deuxième coup le bat.

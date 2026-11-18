@@ -46,12 +46,14 @@ const CRAFTABLES = [
   // Repeatable recipes (`repeat`): the result goes into the bag, as many times as you like.
   { id: 'brochette', emoji: '🍢', name: { en: 'Skewer', fr: 'Brochette' }, parts: ['meat', 'wood', 'fire'], repeat: true },
   { id: 'bucket', emoji: '🪣', name: { en: 'Lava bucket', fr: 'Seau de lave' }, parts: ['iron', 'fire', 'stone'] },
+  // For the puppy (shown once it is tamed); it does not count towards finishing the game.
+  { id: 'dog_armor', emoji: '🛡️', name: { en: 'Dog armour', fr: 'Armure du chien' }, parts: ['iron', 'iron', 'wood'], needsPet: true, extra: true },
   { id: 'axe_obsidian', emoji: '🟪', name: { en: 'Obsidian axe', fr: 'Hache en obsidienne' }, parts: ['obsidian', 'obsidian', 'diamond'], requires: ['axe', 'hammer'] },
 ];
 const itemName = (item) => item.name[lang] ?? item.name.en;
 const craftable = (id) => CRAFTABLES.find((c) => c.id === id);
 // Recipes that count towards finishing the game (repeatable ones do not).
-const FINITE_CRAFTS = CRAFTABLES.filter((c) => !c.repeat);
+const FINITE_CRAFTS = CRAFTABLES.filter((c) => !c.repeat && !c.extra);
 
 // Crafted objects the hero can carry and use with the action button.
 const HOLDABLE_IDS = ['pickaxe', 'axe', 'scythe', 'hammer', 'sword', 'torch', 'lantern', 'rod', 'wand', 'potion', 'bread', 'bucket'];
@@ -528,7 +530,7 @@ function init3DScene() {
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = { scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, levelAt: (tier) => levelAt(tier), pickWord: (lvl) => pickWord(lvl) };
+    window.__se = Object.assign(window.__se ?? {}, { scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, levelAt: (tier) => levelAt(tier), pickWord: (lvl) => pickWord(lvl) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -1005,8 +1007,9 @@ function applyExtras() {
   }
   const pet = scene3D.pet, po = pet?.obj;
   if (pet && game.pet?.tamed && !pet.tamed) { pet.tamed = true; pet.catchUp(); }
+  applyPetLook();
   if (po && !po.labelSet) { po.labelSet = true; scene3D.setSpotMaterial(po, 'talk', game.pet?.tamed ? `🐶 ${game.pet.name}` : '🐶 ?'); }
-  if (po && game.pet?.tamed && po.labelText !== game.pet.name) { po.labelText = game.pet.name; scene3D.setSpotMaterial(po, 'talk', `🐶 ${game.pet.name}${petHungry() ? ' 🍖' : ''}`); }
+  if (po && game.pet?.tamed && po.labelText !== game.pet.name) { po.labelText = game.pet.name; scene3D.setSpotMaterial(po, 'talk', `${['🐶', '🐕', '🐕‍🦺'][petStage()]} ${game.pet.name}${petHungry() ? ' 🍖' : ''}`); }
   // The puppy shows only its name (no spinning icon hiding it).
   if (po) po.iconHolder.children.filter((c) => !c.isCSS2DObject && c.isObject3D && !c.userData.label).forEach((c) => { c.visible = false; });
   for (const id of progress.decor ?? []) scene3D.placeDecor(id);
@@ -1061,6 +1064,16 @@ function winBoss() {
 // The puppy.
 const today = () => new Date().toISOString().slice(0, 10);
 const petHungry = () => !!game?.pet?.tamed && game.pet.fedDay !== today();
+// Meals make the puppy grow: a dog after 3, a big dog after 8. The first meal of the day
+// (when it is hungry) also gives 2 stars.
+const PET_STAGES = [0, 3, 8];
+const petStage = (meals = game?.pet?.meals ?? 0) => (meals >= PET_STAGES[2] ? 2 : meals >= PET_STAGES[1] ? 1 : 0);
+function applyPetLook() {
+  const pet = scene3D?.pet;
+  if (!pet || !game?.pet?.tamed) return;
+  pet.setStage(petStage());
+  pet.setArmor(!!game.crafted?.includes('dog_armor'));
+}
 function petInteract() {
   if (!game.pet?.tamed) {
     spellContext = { type: 'pet', word: pickWord(levelAt(0)), tries: 0 };
@@ -1068,15 +1081,27 @@ function petInteract() {
     return;
   }
   const pet = scene3D.pet;
-  const food = ['brochette', 'meat', 'fish'].find((f) => (game.materials[f] ?? 0) > 0);
-  if (petHungry() && food) {
+  const food = ['meat', 'fish', 'brochette'].find((f) => (game.materials[f] ?? 0) > 0);
+  if (food) {
+    const hungry = petHungry();
+    const before = petStage();
     game.materials[food] -= 1;
     if (!game.materials[food]) delete game.materials[food];
+    game.pet.meals = (game.pet.meals ?? 0) + 1;
     game.pet.fedDay = today();
     pet.joy();
-    progress.stars += 2; game.starsEarned += 2;
     sfxCraft(); smile();
-    toast(t.petFed(game.pet.name), 3200);
+    if (hungry) { progress.stars += 2; game.starsEarned += 2; }
+    const stage = petStage();
+    if (stage > before) {
+      applyPetLook();
+      launchConfetti(); sfxVictory();
+      toast(t.petGrew(game.pet.name, stage), 4500);
+      speak(t.petGrew(game.pet.name, stage).replace(/^\S+ /, ''), 0.95);
+    } else {
+      const next = PET_STAGES[stage + 1];
+      toast(hungry ? t.petFed(game.pet.name) : t.petFedMore(game.pet.name, next ? next - game.pet.meals : 0), 3600);
+    }
     scene3D.pet.obj.labelText = null;
     updateGameUI(); renderCraftMenu(); applyExtras(); saveGame();
     return;
@@ -1085,7 +1110,6 @@ function petInteract() {
   sfxBark();
   toast(petHungry() ? t.petHungry(game.pet.name) : t.petTrick(game.pet.name), 3000);
 }
-// A short dog bark made of filtered noise and a falling tone, twice ("wouf wouf").
 function sfxBark() {
   for (const at of [0, 0.22]) {
     playNoise({ freq: 900, q: 1.2, volume: 0.2, duration: 0.12, delay: at });
@@ -1129,6 +1153,12 @@ function setupPet() {
   };
   let guardSaid = false;
   pet.onGuard = () => { sfxBark(); if (!guardSaid) { guardSaid = true; toast(t.petGuard(game.pet.name), 3200); } };
+  pet.onBite = (armed) => {
+    if (!game?.pet?.tamed) return;
+    sfxBark(); sfxHit();
+    if (!armed) { progress.stars += 1; game.starsEarned += 1; updateGameUI(); saveGame(); }
+    if (!progress.petBiteExplained) { progress.petBiteExplained = true; saveProgress(); toast(t.petBite(game.pet.name), 4000); speak(t.petBite(game.pet.name).replace(/^\S+ /, ''), 0.95); }
+  };
   pet.onDig = () => {
     if (!game?.pet?.tamed) return;
     const found = ['wood', 'stone', 'iron', 'flower', 'wheat', 'water'][Math.floor(Math.random() * 6)];
@@ -1409,7 +1439,7 @@ function renderCraftMenu() {
   const badge = $('#craft-badge');
   if (badge) { badge.hidden = ready === 0; badge.textContent = ready; }
   $('#craft-open-btn')?.classList.toggle('has-ready', ready > 0);
-  container.replaceChildren(...CRAFTABLES.map((item) => {
+  container.replaceChildren(...CRAFTABLES.filter((item) => !item.needsPet || game?.pet?.tamed).map((item) => {
     const already = !item.repeat && game?.crafted.includes(item.id);
     const reqOk = (item.requires ?? []).every((r) => game?.crafted.includes(r));
     const canCraft = !already && reqOk && hasParts(item);
@@ -1452,6 +1482,7 @@ function finishCrafting() {
   else {
     game.crafted.push(item.id);
     if (HOLDABLE_IDS.includes(base)) { game.equipped = null; equipItem(bestVersion(base)); }
+    else if (item.id === 'dog_armor') { scene3D?.pet?.setArmor(true); setTimeout(() => toast(t.petArmor(game.pet?.name ?? ''), 4000), 1200); }
     else scene3D?.spawnTrophy(item.id);
   }
   saveGame();
@@ -2548,7 +2579,7 @@ function renderHearts() {
 function onMeatPickup() {
   game.materials.meat = (game.materials.meat ?? 0) + 1;
   sfxCraft(); smile();
-  toast(t.meatPicked(game.materials.meat));
+  toast(game.pet?.tamed ? t.meatPickedPet(game.materials.meat, game.pet.name) : t.meatPicked(game.materials.meat));
   updateGameUI(); renderCraftMenu(); saveGame();
 }
 function onZombieBurnt() {
