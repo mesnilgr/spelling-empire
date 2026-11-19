@@ -570,6 +570,8 @@ export const SCENARIOS = [
       const g = await openGame(browser, base, { lang: 'fr', age: 7, stars: 100, save: save(story(3, 0), { materials: { meat: 1 } }) }, { quality: 0 });
       await g.click('#continue-btn');
       await g.page.waitForTimeout(1000);
+      const announced = await g.page.waitForFunction(() => window.__spoken.some((x) => /Golem de mousse s’est réveillé/.test(x)), null, { timeout: 8000 }).then(() => true, () => false);
+      check(announced, 'le réveil du Golem de mousse est dit à voix haute');
       // The puppy by the cottage: tamed with a word, then it gets a name.
       check(await g.page.evaluate(() => !!window.__se.scene.pet && !window.__se.scene.pet.tamed), 'un chiot attend près de la chaumière');
       check(await g.use("i.kind === 'pet'") === 'ok', 'on peut parler au chiot');
@@ -713,7 +715,18 @@ export const SCENARIOS = [
       if (flash) await g.spell();
       // The forest boss: three words to beat it.
       check(await g.page.evaluate(() => window.__se.scene.interactables.filter((i) => i.kind === 'boss').length === 4), '4 boss dorment dans le monde');
-      check(await g.page.evaluate(() => window.__se.scene.interactables.find((i) => i.bossId === 'stoneGolem').active === false), 'le boss de la montagne dort encore (histoire pas assez avancée)');
+      check(await g.page.evaluate(() => /💤/.test(window.__se.scene.interactables.find((i) => i.bossId === 'stoneGolem').labelEl?.textContent ?? '')), 'le boss de la montagne dort encore 💤 (histoire pas assez avancée)');
+      // A boss that woke up is announced (written and spoken) and shown in the objective box.
+      const awake = await g.page.evaluate(() => window.__se.game().bossesAnnounced?.includes('mossGolem'));
+      const awakeInfo = await g.page.evaluate(() => ({ said: window.__spoken.slice(-6), box: document.querySelector('#map-instruction').textContent, ann: window.__se.game().bossesAnnounced }));
+      check(awake && /Un boss t’attend/.test(awakeInfo.box), 'le réveil du Golem de mousse est annoncé, et rappelé dans l’objectif', JSON.stringify(awakeInfo));
+      // Touching a sleeping boss says how to wake it up and what to do now.
+      await g.page.evaluate(() => { window.__spoken.length = 0; });
+      await g.use("i.kind === 'boss' && i.bossId === 'stoneGolem'");
+      const sleep = await g.page.evaluate(() => ({ toast: document.querySelector('#toast')?.textContent ?? '', said: window.__spoken.join(' | ') }));
+      check(/chapitre 4/.test(sleep.toast) && /Lance le sort Pierre/.test(sleep.toast) && /Pour l’instant/.test(sleep.toast) && /dort profondément/.test(sleep.said), 'toucher un boss endormi explique comment le réveiller et quoi faire maintenant', sleep.toast);
+      // The minimap shows an arrow towards the next step.
+      check(await g.page.evaluate(() => window.__se.scene.mapPins.some((p) => p.quest)), 'la minicarte montre une flèche vers la prochaine étape');
       await g.page.evaluate(() => { window.__starsBefore = window.__se.progress().stars; });
       check(await g.use("i.kind === 'boss' && i.bossId === 'mossGolem'") === 'ok', 'on réveille le Golem de mousse');
       for (let k = 0; k < 3; k++) {
@@ -754,8 +767,8 @@ export const SCENARIOS = [
       // Walking near a place discovers it (+2 stars, a pin on the map).
       await g.page.evaluate(() => { window.__starsBefore = window.__se.progress().stars; window.__se.scene.teleport(-38, -26); });
       await g.page.waitForFunction(() => window.__se.game().places?.includes('tower'), null, { timeout: 5000 }).catch(() => {});
-      const found = await g.page.evaluate(() => ({ places: window.__se.game().places, stars: window.__se.progress().stars - window.__starsBefore, toast: document.querySelector('#toast')?.textContent ?? '' }));
-      check(found.places?.includes('tower') && found.stars === 2 && /Nouveau lieu/.test(found.toast), 'en s’approchant de la tour en ruine, on la découvre (+2 ★)', JSON.stringify(found));
+      const found = await g.page.evaluate(() => ({ places: window.__se.game().places, stars: window.__se.progress().stars - window.__starsBefore, said: window.__spoken.join(' | ') }));
+      check(found.places?.includes('tower') && found.stars === 2 && /découvert/.test(found.said), 'en s’approchant de la tour en ruine, on la découvre (+2 ★)', JSON.stringify(found));
       // Each place hides something: a chest in the tower.
       check(await g.page.evaluate(() => window.__se.scene.interactables.some((i) => i.nodeType === 'chest' && Math.hypot(i.worldPos.x + 38, i.worldPos.z + 31) < 3)), 'un trésor est caché dans la tour');
       check(await g.page.evaluate(() => ['iron', 'diamond'].every((m) => window.__se.scene.interactables.some((i) => i.material === m && Math.hypot(i.worldPos.x + 30, i.worldPos.z + 42) < 6))), 'la mine abandonnée a du fer et du diamant à miner');

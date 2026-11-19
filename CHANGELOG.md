@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.17.1 — On sait toujours où aller (complément de la release C)
+
+- ⭐ **Une grande flèche dorée sur la minicarte** part du héros et montre la direction de la prochaine étape de la quête ; quand l'étape est proche, un cercle doré clignote autour de l'étoile.
+- 💤 **Toucher un boss endormi explique la suite** (à l'écrit et à l'oral) : « Le Golem de pierre dort profondément. Il se réveillera au chapitre 4, après l'étape « Lance le sort Pierre au pied de la falaise ». Pour l'instant : « Va parler à Alaric le mage » (suis la flèche ⭐ sur la carte). » Les boss endormis portent l'étiquette 💤, les boss réveillés ⚔️.
+- 🌿 **Le réveil d'un boss est annoncé** (écrit, dit et un grondement) et rappelé sous l'objectif en haut : « ⚔️ Un boss t'attend : le Golem de mousse 🌿 ».
+- 😴 **Les boss endormis remuent et grognent** quand on s'approche, pour qu'on les remarque.
+
 ## v1.17.0 — Jusqu'à 5 cœurs, 5 niveaux de chien et le golem chien
 
 - ❤️ **Jusqu'à 5 cœurs.** On commence avec 2 ; chaque exploit en donne un de plus (pour toujours, dans la partie) :

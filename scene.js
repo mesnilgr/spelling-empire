@@ -2233,8 +2233,9 @@ export class GameScene {
       const c = Math.cos(CAM_YAW), s = Math.sin(CAM_YAW);
       let sx = (dx * c - dz * s) * k, sy = (dx * s + dz * c) * k;
       const lim = W / 2 - 14, d = Math.hypot(sx, sy);
-      if (d > lim) { sx *= lim / d; sy *= lim / d; }
-      return { ...pin, sx: W / 2 + sx, sy: W / 2 + sy };
+      const out = d > lim;
+      if (out) { sx *= lim / d; sy *= lim / d; }
+      return { ...pin, sx: W / 2 + sx, sy: W / 2 + sy, out, ang: Math.atan2(sy, sx) };
     });
     // Hero arrow.
     ctx.translate(p.x, p.z);
@@ -2243,6 +2244,30 @@ export class GameScene {
     ctx.beginPath(); ctx.moveTo(0, 2.2); ctx.lineTo(1.4, -1.4); ctx.lineTo(0, -0.6); ctx.lineTo(-1.4, -1.4); ctx.closePath();
     ctx.fill(); ctx.stroke();
     ctx.restore();
+    // The next step of the quest: a big golden arrow from the hero towards it (pulsing).
+    const quest = pins.find((pin) => pin.quest);
+    if (quest) {
+      const pulse = 1 + Math.sin(performance.now() / 220) * 0.12;
+      const L = Math.min(W * 0.36, Math.hypot(quest.sx - W / 2, quest.sy - W / 2) - W * 0.06);
+      if (L > W * 0.08) {
+        ctx.save();
+        ctx.translate(W / 2, W / 2);
+        ctx.rotate(quest.ang);
+        ctx.fillStyle = '#ffd34a'; ctx.strokeStyle = '#7a4a00'; ctx.lineWidth = 2;
+        const hw = W * 0.065 * pulse;
+        ctx.beginPath();
+        ctx.moveTo(W * 0.07, -hw * 0.4); ctx.lineTo(L - hw * 1.6, -hw * 0.4); ctx.lineTo(L - hw * 1.6, -hw); ctx.lineTo(L, 0);
+        ctx.lineTo(L - hw * 1.6, hw); ctx.lineTo(L - hw * 1.6, hw * 0.4); ctx.lineTo(W * 0.07, hw * 0.4); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+      if (!quest.out) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 211, 74, 0.9)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(quest.sx, quest.sy, W * 0.09 * pulse, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
+    }
     for (const pin of pins) {
       const fs = Math.round(W * 0.075);
       ctx.save();

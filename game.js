@@ -523,6 +523,7 @@ function init3DScene() {
   scene3D.onLava = () => knockOut('lava');
   scene3D.onZombieCatch = zombieTouch;
   setupPet();
+  if (scene3D.bosses) scene3D.bosses.onGrumble = () => { playNoise({ freq: 120, q: 0.7, volume: 0.12, duration: 0.5 }); playTone(70, 0.45, 'sawtooth', 0.05); };
   setupFauna();
   scene3D.onMeatPickup = onMeatPickup;
   scene3D.onZombieBurnt = onZombieBurnt;
@@ -594,6 +595,7 @@ function saveGame() {
     fountainRaised: !!game.fountainRaised,
     pet: game.pet ?? null,
     bosses: game.bosses ?? [],
+    bossesAnnounced: game.bossesAnnounced ?? [],
     places: game.places ?? [],
     portalLit: !!game.portalLit,
     maxHearts: game.maxHearts ?? 2,
@@ -621,6 +623,7 @@ function continueGame() {
     fountainRaised: !!s.fountainRaised,
     pet: s.pet ?? null,
     bosses: [...(s.bosses ?? [])],
+    bossesAnnounced: [...(s.bossesAnnounced ?? [])],
     places: [...(s.places ?? [])],
     portalLit: !!s.portalLit,
     maxHearts: s.maxHearts ?? 2,
@@ -920,6 +923,8 @@ function updateObjectiveUI() {
     return;
   }
   box.replaceChildren(el('span', 'obj-chapter', ch.title[lang] ?? ch.title.fr), document.createTextNode(o ? `${o.text[lang] ?? o.text.fr}${n}` : ''));
+  const boss = BOSSES.find((b) => bossOpen(b));
+  if (boss) box.append(el('span', 'obj-boss', t.bossWaiting(boss.emoji, boss.name[lang])));
 }
 function updateMapPins() {
   if (!scene3D || !game?.story) return;
@@ -930,7 +935,7 @@ function updateMapPins() {
   for (const b of BOSSES) if (bossOpen(b)) pins.push({ x: b.x, z: b.z, text: b.emoji });
   for (const pl of PLACES) if (game?.places?.includes(pl.id)) pins.push({ x: pl.x, z: pl.z, text: pl.emoji });
   const p = game.parkour?.done && !game.fountainRaised ? { x: 0, z: 0 } : objectivePos();
-  if (p) pins.push({ x: p.x, z: p.z, text: '⭐' });
+  if (p) pins.push({ x: p.x, z: p.z, text: '⭐', quest: true });
   scene3D.mapPins = pins;
 }
 setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); }, 300);
@@ -1007,8 +1012,16 @@ function applyExtras() {
   for (const b of BOSSES) {
     const o = scene3D.interactables.find((i) => i.kind === 'boss' && i.bossId === b.id);
     if (bossDone(b)) { scene3D.bosses.setDefeated(b.id); continue; }
-    scene3D.setStoryActive(o, bossOpen(b));
-    if (bossOpen(b) && o && !o.labelSet) { o.labelSet = true; scene3D.setSpotMaterial(o, 'talk', `${b.emoji} ${b.name[lang].replace(/^(le|la|the) /i, '')}`); }
+    // Always touchable: asleep, it explains how to wake it up.
+    scene3D.setStoryActive(o, true);
+    game.bossesAnnounced ??= [];
+    if (bossOpen(b) && !game.bossesAnnounced.includes(b.id)) {
+      game.bossesAnnounced.push(b.id);
+      setTimeout(() => { const msg = t.bossAwake(b.emoji, b.name[lang]); toast(msg, 6000); speak(msg.replace(/[^\p{L}\p{N}\s.,:!?'’«»()-]/gu, ''), 0.95); sfxRoar(); }, 2500);
+      saveGame();
+    }
+    const want = bossOpen(b) ? 'open' : 'asleep';
+    if (o && o.labelSet !== want) { o.labelSet = want; scene3D.setSpotMaterial(o, 'talk', `${want === 'open' ? '⚔️' : '💤'} ${b.name[lang].replace(/^(le|la|the) /i, '')}`); }
   }
   const pet = scene3D.pet, po = pet?.obj;
   if (pet && game.pet?.tamed && !pet.tamed) { pet.tamed = true; pet.catchUp(); }
@@ -1026,7 +1039,16 @@ function applyExtras() {
 function beginBoss(obj) {
   const b = BOSSES.find((x) => x.id === obj.bossId);
   if (!b || bossDone(b)) return;
-  if (!bossOpen(b)) { toast(t.bossLocked); return; }
+  if (!bossOpen(b)) {
+    // Asleep: say what wakes it up, and what to do now.
+    const need = CHAPTERS.flatMap((c) => c.objectives.map((o) => ({ o, ch: c.id }))).find((x) => x.o.id === b.after);
+    const now = currentObjective();
+    const msg = t.bossSleeps(b.emoji, b.name[lang], need ? need.o.text[lang] ?? need.o.text.fr : '', need?.ch ?? 6, now ? now.text[lang] ?? now.text.fr : '');
+    scene3D.bosses.stir(b.id);
+    toast(msg, 7000);
+    speak(msg.replace(/[^\p{L}\p{N}\s.,:!?'’«»()-]/gu, ''), 0.95);
+    return;
+  }
   bossFight = { id: b.id, hp: b.hp, max: b.hp };
   scene3D.bosses.wake(b.id);
   sfxRoar();

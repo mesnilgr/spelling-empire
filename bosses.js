@@ -140,6 +140,8 @@ export class BossManager {
   setDefeated(id) { const b = this.get(id); if (b) { b.mesh.visible = false; b.gone = true; b.obj.active = false; b.obj.iconHolder.visible = false; this.s.collidables = this.s.collidables.filter((c) => !(c.x === b.def.x && c.z === b.def.z && c.r === 1.6)); } }
   wake(id) { const b = this.get(id); if (b) { b.awake = true; b.roarT = 0.8; this.s.screenShake?.(0.25); } }
   sleep(id) { const b = this.get(id); if (b) b.awake = false; }
+  // Asleep but disturbed: it shifts and grumbles.
+  stir(id) { const b = this.get(id); if (b) { b.roarT = 0.5; b.hitT = 0.3; this.onGrumble?.(b); } }
   hit(id) {
     const b = this.get(id);
     if (!b) return;
@@ -172,6 +174,10 @@ export class BossManager {
         }
         continue;
       }
+      // The hero comes close to a sleeping boss: it stirs and grumbles now and then.
+      const dHero = Math.hypot(this.s.player.position.x - b.def.x, this.s.player.position.z - b.def.z);
+      b.grumbleT = (b.grumbleT ?? 0) - dt;
+      if (!b.awake && dHero < 9 && b.grumbleT <= 0) { b.grumbleT = 6; this.stir(b.def.id); }
       // Asleep: slow breathing, slumped. Awake: bigger breathing, arms swinging.
       const k = b.awake ? 1 : 0.35;
       rig.scale.y = 1 + Math.sin(t * (b.awake ? 3 : 1.2)) * 0.03 * (b.awake ? 1.5 : 1);

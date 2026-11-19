@@ -1699,3 +1699,5 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .boss-hp { font-size: 1.4rem; letter-spacing: 3px; }
 .pet-names { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 10px 0; }
 .decor-title { margin: 28px 0 4px; font-size: 1.4rem; }
+
+.obj-boss { display: block; margin-top: 4px; font-size: 0.85em; font-weight: 800; color: #c8372d; }
