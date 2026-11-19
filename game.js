@@ -648,14 +648,25 @@ function continueGame() {
 
 /* ===== GAME STATE ===== */
 
-function newGame(levelId = 'mixed', { keepSave = false } = {}) {
-  // A fresh story needs a fresh world (no bridges or cleared mist from the last game): reload.
-  if (!keepSave && game?.story && (game.story.chapter > 1 || Object.keys(game.spells ?? {}).length)) {
+function newGame(levelId = 'mixed', { keepSave = false, afterReload = false } = {}) {
+  // A new game starts again from zero: stars, outfits, cottage decorations, the puppy, the bosses,
+  // the places… (the word learning — what the child knows — is kept for the parents' corner; it is
+  // erased there with "Erase the statistics"). And a fresh world, so the page reloads.
+  if (!keepSave && !afterReload) {
     delete progress.save;
+    progress.stars = 0;
+    progress.victories = 0;
+    progress.bestStreak = 0;
+    delete progress.costumes;
+    delete progress.decor;
+    delete progress.petBarkExplained;
+    delete progress.petBiteExplained;
     saveProgress();
-    try { sessionStorage.setItem('se-new-game', '1'); } catch { /* ignore */ }
-    location.reload();
-    return;
+    if (scene3D) {
+      try { sessionStorage.setItem('se-new-game', '1'); } catch { /* ignore */ }
+      location.reload();
+      return;
+    }
   }
   if (!keepSave) delete progress.save;
   game = {
@@ -2282,7 +2293,7 @@ function init() {
     setTimeout(() => $('#loading').classList.add('is-done'), 250);
     let fresh = false;
     try { fresh = sessionStorage.getItem('se-new-game') === '1'; sessionStorage.removeItem('se-new-game'); } catch { /* ignore */ }
-    if (fresh) setTimeout(() => newGame(), 300);
+    if (fresh) setTimeout(() => newGame('mixed', { afterReload: true }), 300);
   }));
 }
 

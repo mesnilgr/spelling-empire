@@ -825,6 +825,29 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'Nouvelle partie : tout repart de zéro',
+    weight: 1,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, stars: 120, decor: ['rug', 'aquarium'], costumes: { owned: ['hero', 'knight'], current: 'knight' }, save: save(story(4, 0), { materials: { iron: 5 }, crafted: ['sword'], pet: { tamed: true, name: 'Caramel', meals: 9 }, bosses: ['mossGolem'], places: ['tower'], maxHearts: 4, portalLit: true }) }, { quality: 0 });
+      // Some learning that must stay (the parents' corner).
+      await g.page.evaluate(() => { window.__se.progress().wordStats['fr:lune'] = { lang: 'fr', word: 'lune', level: 'medium', seen: 3, correct: 3, wrong: 0, firstTry: 3, lastSeen: Date.now(), misspellings: [] }; });
+      await g.click('#new-game-btn');
+      await g.click('#new-game-btn'); // confirm
+      await g.page.waitForSelector('#loading.is-done', { timeout: 180000 });
+      await g.page.waitForFunction(() => window.__se?.game?.()?.story && !document.querySelector('#dialog').hidden, null, { timeout: 20000 }).catch(() => {});
+      const st = await g.page.evaluate(() => {
+        const gm = window.__se.game(), pr = window.__se.progress(), s = window.__se.scene;
+        return { chapter: gm.story.chapter, step: gm.story.step, stars: pr.stars, decor: pr.decor ?? [], costume: pr.costumes?.current ?? 'hero', mats: Object.keys(gm.materials).length, crafted: gm.crafted.length, pet: !!gm.pet?.tamed, scenePet: s.pet.tamed, bosses: (gm.bosses ?? []).length, bossHidden: !s.bosses.get('mossGolem').mesh.visible, places: (gm.places ?? []).length, hearts: gm.maxHearts ?? 2, portal: !!gm.portalLit, sceneDecor: Object.keys(s.decor ?? {}).length, learnt: !!pr.wordStats['fr:lune'] };
+      });
+      check(st.chapter === 1 && st.step === 0, 'l’histoire repart du chapitre 1', JSON.stringify(st));
+      check(st.stars === 0 && st.decor.length === 0 && st.sceneDecor === 0 && st.costume === 'hero', 'étoiles, décorations et costumes repartent de zéro', JSON.stringify(st));
+      check(st.mats === 0 && st.crafted === 0 && !st.pet && !st.scenePet, 'plus de matériaux, d’objets ni de chiot apprivoisé', JSON.stringify(st));
+      check(st.bosses === 0 && !st.bossHidden && st.places === 0 && st.hearts === 2 && !st.portal, 'boss, lieux, cœurs et portail repartent de zéro', JSON.stringify(st));
+      check(st.learnt, 'ce que l’enfant a appris (statistiques des parents) est gardé', JSON.stringify(st));
+      await g.page.close();
+    },
+  },
+  {
     name: 'Espace parents : listes de mots',
     async run(browser, base, check) {
       const { WORDS } = await import('../../language-engine.js');

@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.17.3 — « Nouvelle partie » repart vraiment de zéro
+
+- 🔄 **Corrigé : « Nouvelle partie » ne remettait pas tout à zéro.** Le monde n'était rechargé que si l'ancienne partie avait dépassé le chapitre 1 ou lancé un sort : le chiot restait apprivoisé, les boss battus restaient absents, le portail restait allumé, etc. Et les étoiles, costumes et décorations de la chaumière étaient gardés.
+- Désormais, une nouvelle partie remet à zéro : l'histoire, les étoiles, les costumes, les décorations, les matériaux et objets, le chiot, les boss, les lieux découverts, les cœurs, le portail et le parcours de lave — avec un monde tout neuf.
+- **Ce qui est gardé** : ce que l'enfant a appris (les statistiques et la révision des mots de l'espace parents), ainsi que l'âge, la langue et les réglages. Pour effacer aussi les statistiques : « Effacer les statistiques » dans l'espace parents.
+
 ## v1.17.2 — Correctif : quête bloquée après le sort du pont
 
 - 🌉 **Corrigé : la quête restait bloquée sur « Lance le sort Pont sur la rivière »** quand le pont avait été lancé *avant* de réparer le panneau de la forêt (le sort Pont est disponible dès le début). Désormais, une étape déjà faite en avance compte : quand l'histoire y arrive, la petite scène se joue et la quête continue toute seule. Valable pour tous les sorts de l'histoire (Pont, Vent, Feu, Pierre, Lumière, Pont du ponton) et les panneaux des régions.
