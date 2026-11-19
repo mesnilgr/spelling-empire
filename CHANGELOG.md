@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.17.2 — Correctif : quête bloquée après le sort du pont
+
+- 🌉 **Corrigé : la quête restait bloquée sur « Lance le sort Pont sur la rivière »** quand le pont avait été lancé *avant* de réparer le panneau de la forêt (le sort Pont est disponible dès le début). Désormais, une étape déjà faite en avance compte : quand l'histoire y arrive, la petite scène se joue et la quête continue toute seule. Valable pour tous les sorts de l'histoire (Pont, Vent, Feu, Pierre, Lumière, Pont du ponton) et les panneaux des régions.
+- Les parties déjà bloquées se débloquent toutes seules à l'ouverture du jeu.
+
 ## v1.17.1 — On sait toujours où aller (complément de la release C)
 
 - ⭐ **Une grande flèche dorée sur la minicarte** part du héros et montre la direction de la prochaine étape de la quête ; quand l'étape est proche, un cercle doré clignote autour de l'étoile.

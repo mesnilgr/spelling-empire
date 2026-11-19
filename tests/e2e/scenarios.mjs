@@ -802,6 +802,29 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'Étape faite en avance (pont lancé avant le panneau)',
+    weight: 1,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, stars: 40, inputMode: 'keys', save: save(story(2, 0)) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(800);
+      // The bridge is cast first, while the objective is still the forest sign.
+      check(await g.use("i.kind === 'circle' && i.cid === 'pont-foret'") === 'ok', 'on lance le sort Pont avant de réparer le panneau');
+      await g.spell();
+      await g.page.waitForTimeout(600);
+      check((await g.objective()).includes('panneau de la forêt'), 'l’objectif est encore le panneau', await g.objective());
+      // Then the sign: the bridge step, already done, plays and moves on by itself.
+      await g.use("i.kind === 'travel' && i.region === 'forest'");
+      await g.spell();
+      for (let k = 0; k < 12 && !(await g.objective()).includes('Sylvain'); k++) {
+        await g.page.evaluate(() => { const b = document.querySelector('#dialog-next'); if (!document.querySelector('#dialog').hidden) b?.click(); });
+        await g.page.waitForTimeout(500);
+      }
+      check((await g.objective()).includes('Sylvain'), 'le pont déjà lancé compte : la quête passe à Sylvain le forestier', await g.objective());
+      await g.page.close();
+    },
+  },
+  {
     name: 'Espace parents : listes de mots',
     async run(browser, base, check) {
       const { WORDS } = await import('../../language-engine.js');

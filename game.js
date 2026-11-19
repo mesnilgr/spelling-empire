@@ -1210,10 +1210,29 @@ function setupPet() {
 }
 
 // Show / hide the story things to match where the child is in the story.
+// A step already done ahead of time (the bridge cast before the forest sign was fixed, a sign
+// repaired early…): when the story reaches it, it plays and moves on by itself instead of waiting.
+const SPELL_HOOKS = { forestBridge: 'pont-foret', marshFog: 'vent-marais', marshFire: 'feu-marais', mountainStairs: 'pierre-montagne', lighthouse: 'lumiere-phare', islandBridge: 'pont-ile' };
+let catchingUp = false;
+function catchUpStory() {
+  const o = currentObjective();
+  if (!o || catchingUp) return;
+  const cid = SPELL_HOOKS[o.id];
+  const region = o.id.endsWith('Sign') ? o.id.slice(0, -4) : null;
+  const done = (cid && game.spells?.[cid]) || (region && TRAVEL[region] && game.story.travel?.[region]);
+  if (!done) return;
+  catchingUp = true;
+  setTimeout(() => {
+    catchingUp = false;
+    if (currentObjective()?.id !== o.id || !$('#spell-modal').hidden || !$('#dialog').hidden) { setTimeout(catchUpStory, 1500); return; }
+    playScene(o.id, () => { advanceStory(o.id); saveGame(); });
+  }, 900);
+}
 function applyStoryState() {
   if (!scene3D || !game?.story) return;
   const st = game.story;
   applyExtras();
+  catchUpStory();
   $('#grimoire-btn').hidden = !storyPast('talkMage');
   for (const sg of SIGNS) {
     const o = scene3D.setSignWord(sg.house, st.signs[sg.house] ? sg.word[6] : null);
@@ -1838,7 +1857,7 @@ function handleSpellSuccess() {
     game.spells ??= {};
     const key = spellContext.circle?.cid ?? sp.id;
     game.spells[key] = power;
-    const hook = { 'pont-foret': 'forestBridge', 'vent-marais': 'marshFog', 'feu-marais': 'marshFire', 'pierre-montagne': 'mountainStairs', 'lumiere-phare': 'lighthouse', 'pont-ile': 'islandBridge' }[key];
+    const hook = Object.keys(SPELL_HOOKS).find((h) => SPELL_HOOKS[h] === key);
     if (hook) spellContext.after = () => { if (storyAt(hook)) playScene(hook, () => advanceStory(hook)); };
     let extra = '';
     if (sp.id === 'pluie') { game.materials.wheat = (game.materials.wheat ?? 0) + 1; extra = `${MATERIAL_EMOJI.wheat} ${t.gotMaterial}: ${materialName('wheat')}`; }
