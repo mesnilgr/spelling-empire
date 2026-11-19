@@ -1701,3 +1701,6 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .decor-title { margin: 28px 0 4px; font-size: 1.4rem; }
 
 .obj-boss { display: block; margin-top: 4px; font-size: 0.85em; font-weight: 800; color: #c8372d; }
+
+.dismount-btn { background: linear-gradient(180deg, #c89a5a, #8a5a32); }
+.dismount-btn span { font-size: 1.3rem; }

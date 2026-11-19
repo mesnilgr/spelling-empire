@@ -344,6 +344,18 @@ export function buildExtras(scene3D, pools) {
     box(g, 0.02, 0.5, 0.02, C(0x6a4428), x, y + 1.8 * s, z); box(g, 0.3, 0.2, 0.02, C(0xd8382e), x + 0.15, y + 1.95 * s, z);
     scene3D.collidables.push({ x, z, r: 1.0 * s });
   }
+  // A bamboo grove for the pandas (south-west, by the bee meadow).
+  let bs = 9;
+  const brnd = () => ((bs = (bs * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 26; i++) {
+    const a = brnd() * Math.PI * 2, r = 2.6 + brnd() * 2.6, x = -26 + Math.cos(a) * r, z = 47 + Math.sin(a) * r;
+    if (scene3D._checkCollision(x, z)) continue;
+    const y = scene3D.groundAt(x, z), h = 2.2 + brnd() * 2.2;
+    box(g, 0.14, h, 0.14, C(0x7ab83a), x, y + h / 2, z, { cast: false });
+    for (let k = 1; k < h; k += 0.7) box(g, 0.17, 0.05, 0.17, C(0x5a8a2a), x, y + k, z, { cast: false });
+    box(g, 0.5, 0.06, 0.18, C(0x8ad04a), x + 0.2, y + h - 0.2, z, { cast: false, ry: a });
+    scene3D.collidables.push({ x, z, r: 0.15 });
+  }
   for (const [px, pz, pr] of pools) {
     for (let i = 0; i < 4; i++) {
       const a = i * 1.9 + px, r = pr * (0.35 + (i % 2) * 0.3);

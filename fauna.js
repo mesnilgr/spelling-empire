@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const MAT = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+const MAT_GLOW = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, emissive: 0x2ad8c8, emissiveIntensity: 0.9 });
 
 // Build one animal from a list of boxes [w, h, d, color, x, y, z].
 function model(boxes) {
@@ -29,6 +30,25 @@ const legs4 = (w, h, x, z, c) => [[w, h, w, c, -x, h / 2, z], [w, h, w, c, x, h 
 const KINDS = {
   sheep: { speed: 1.0, flee: 2.2, sound: { fr: 'Bêê !', en: 'Baa!' }, tone: [420, 'sawtooth'],
     boxes: () => [[0.75, 0.55, 1.0, 0xf4f1ea, 0, 0.7, 0], ...legs4(0.14, 0.45, 0.24, 0.34, 0x3a3532), [0.38, 0.38, 0.38, 0x3a3532, 0, 0.92, 0.6], [0.44, 0.16, 0.3, 0xf4f1ea, 0, 1.12, 0.55], ...eyes(0.98, 0.8, 0.1, 0xffffff, 0.06)] },
+  sheepBlack: { speed: 1.0, flee: 2.2, sound: { fr: 'Bêê !', en: 'Baa!' }, boxes: () => [[0.75, 0.55, 1.0, 0x2a2626, 0, 0.7, 0], ...legs4(0.14, 0.45, 0.24, 0.34, 0x3a3532), [0.38, 0.38, 0.38, 0x3a3532, 0, 0.92, 0.6], [0.44, 0.16, 0.3, 0x2a2626, 0, 1.12, 0.55], ...eyes(0.98, 0.8, 0.1, 0xffffff, 0.06)] },
+  sheepBrown: { speed: 1.0, flee: 2.2, sound: { fr: 'Bêê !', en: 'Baa!' }, boxes: () => [[0.75, 0.55, 1.0, 0x8a5a32, 0, 0.7, 0], ...legs4(0.14, 0.45, 0.24, 0.34, 0x3a3532), [0.38, 0.38, 0.38, 0x3a3532, 0, 0.92, 0.6], [0.44, 0.16, 0.3, 0x8a5a32, 0, 1.12, 0.55], ...eyes(0.98, 0.8, 0.1, 0xffffff, 0.06)] },
+  sheepPink: { speed: 1.0, flee: 2.2, sound: { fr: 'Bêê !', en: 'Baa!' }, boxes: () => [[0.75, 0.55, 1.0, 0xffa8cc, 0, 0.7, 0], ...legs4(0.14, 0.45, 0.24, 0.34, 0x3a3532), [0.38, 0.38, 0.38, 0x3a3532, 0, 0.92, 0.6], [0.44, 0.16, 0.3, 0xffa8cc, 0, 1.12, 0.55], ...eyes(0.98, 0.8, 0.1, 0xffffff, 0.06)] },
+  lamb: { speed: 1.3, flee: 2.4, sound: { fr: 'Bêêê !', en: 'Baa!' }, hop: true,
+    boxes: () => [[0.46, 0.36, 0.62, 0xfaf8f2, 0, 0.46, 0], ...legs4(0.1, 0.3, 0.15, 0.2, 0x5a5250), [0.28, 0.28, 0.28, 0x5a5250, 0, 0.64, 0.38], [0.3, 0.1, 0.2, 0xfaf8f2, 0, 0.8, 0.34], ...eyes(0.68, 0.525, 0.07, 0xffffff, 0.05)] },
+  wolf: { speed: 1.6, flee: 2.6, sound: { fr: 'Aouuuh !', en: 'Awooo!' },
+    boxes: () => [[0.42, 0.42, 0.95, 0xb8b8b8, 0, 0.55, 0], [0.44, 0.24, 0.5, 0xd8d8d8, 0, 0.42, 0.1], ...legs4(0.12, 0.36, 0.14, 0.32, 0xa8a8a8), [0.4, 0.36, 0.38, 0xb8b8b8, 0, 0.75, 0.6], [0.2, 0.16, 0.2, 0xd8d8d8, 0, 0.66, 0.84], [0.08, 0.06, 0.04, 0x222222, 0, 0.7, 0.95], [0.1, 0.16, 0.06, 0xb8b8b8, -0.13, 1.0, 0.56], [0.1, 0.16, 0.06, 0xb8b8b8, 0.13, 1.0, 0.56], [0.14, 0.14, 0.5, 0xb8b8b8, 0, 0.66, -0.68], ...eyes(0.8, 0.795, 0.1)] },
+  cat: { speed: 1.3, flee: 1.6, sound: { fr: 'Miaou !', en: 'Meow!' }, hop: true,
+    boxes: () => [[0.26, 0.24, 0.56, 0xf0a040, 0, 0.32, 0], [0.27, 0.05, 0.1, 0xc87020, 0, 0.45, 0.05], [0.27, 0.05, 0.1, 0xc87020, 0, 0.45, -0.15], ...legs4(0.07, 0.2, 0.08, 0.2, 0xf0a040), [0.26, 0.24, 0.24, 0xf0a040, 0, 0.48, 0.34], [0.07, 0.08, 0.04, 0xf0a040, -0.08, 0.64, 0.3], [0.07, 0.08, 0.04, 0xf0a040, 0.08, 0.64, 0.3], [0.06, 0.06, 0.4, 0xf0a040, 0, 0.5, -0.42], ...eyes(0.5, 0.465, 0.07, 0x3a8a3a, 0.05)] },
+  panda: { speed: 0.6, flee: 1.6, sound: { fr: 'Grrmf !', en: 'Hmmf!' },
+    boxes: () => [[0.85, 0.75, 1.2, 0xf4f1ea, 0, 0.75, 0], [0.87, 0.4, 0.5, 0x1a1a1a, 0, 0.8, 0.25], ...legs4(0.28, 0.4, 0.28, 0.4, 0x1a1a1a), [0.6, 0.55, 0.5, 0xf4f1ea, 0, 1.05, 0.75], [0.16, 0.16, 0.06, 0x1a1a1a, -0.3, 1.4, 0.7], [0.16, 0.16, 0.06, 0x1a1a1a, 0.3, 1.4, 0.7], [0.14, 0.12, 0.02, 0x1a1a1a, -0.14, 1.08, 1.0], [0.14, 0.12, 0.02, 0x1a1a1a, 0.14, 1.08, 1.0], [0.1, 0.06, 0.04, 0x1a1a1a, 0, 0.95, 1.01]] },
+  parrot: { speed: 1.2, flee: 1.6, sound: { fr: 'Coco !', en: 'Polly!' }, hop: true,
+    boxes: () => [[0.22, 0.34, 0.24, 0xd8302a, 0, 0.36, 0], [0.24, 0.14, 0.22, 0x2a7ad8, 0, 0.3, -0.02], [0.2, 0.2, 0.2, 0xd8302a, 0, 0.6, 0.06], [0.08, 0.1, 0.1, 0xf2c84b, 0, 0.56, 0.2], [0.14, 0.3, 0.06, 0x2a7ad8, 0, 0.26, -0.15], [0.05, 0.14, 0.05, 0x3a3a3a, -0.05, 0.1, 0], [0.05, 0.14, 0.05, 0x3a3a3a, 0.05, 0.1, 0], ...eyes(0.64, 0.165, 0.06, 0x111111, 0.04)] },
+  llama: { speed: 1.0, flee: 2.2, sound: { fr: 'Mmmeh !', en: 'Mmmeh!' },
+    boxes: () => [[0.62, 0.62, 1.1, 0xf0e6cc, 0, 1.0, 0], [0.64, 0.2, 0.7, 0xd8382e, 0, 1.25, 0.05], [0.66, 0.08, 0.72, 0x2a8ad8, 0, 1.18, 0.05], ...legs4(0.18, 0.7, 0.2, 0.36, 0xe0d6bc), [0.3, 0.9, 0.3, 0xf0e6cc, 0, 1.65, 0.5], [0.34, 0.3, 0.46, 0xf0e6cc, 0, 2.1, 0.62], [0.08, 0.2, 0.06, 0xf0e6cc, -0.1, 2.34, 0.5], [0.08, 0.2, 0.06, 0xf0e6cc, 0.1, 2.34, 0.5], ...eyes(2.15, 0.855, 0.12)] },
+  polarBear: { speed: 0.8, flee: 2.6, sound: { fr: 'Grrr !', en: 'Grrr!' },
+    boxes: () => [[0.95, 0.8, 1.5, 0xf6f8fa, 0, 0.95, 0], ...legs4(0.3, 0.55, 0.3, 0.5, 0xeef2f6), [0.6, 0.55, 0.6, 0xf6f8fa, 0, 1.15, 0.95], [0.3, 0.24, 0.24, 0xeef2f6, 0, 1.05, 1.32], [0.12, 0.08, 0.04, 0x1a1a1a, 0, 1.12, 1.45], [0.14, 0.12, 0.06, 0xf6f8fa, -0.22, 1.47, 0.85], [0.14, 0.12, 0.06, 0xf6f8fa, 0.22, 1.47, 0.85], ...eyes(1.25, 1.255, 0.14)] },
+  squid: { speed: 0, flee: 0, sound: { fr: '', en: '' }, swim: 'float', glow: true,
+    boxes: () => [[0.7, 0.9, 0.7, 0x2ab8b0, 0, 0.3, 0], ...[[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25], [0, 0.32], [0, -0.32]].map(([x, z]) => [0.12, 0.7, 0.12, 0x1a9890, x, -0.45, z]), [0.12, 0.12, 0.04, 0xffffff, -0.18, 0.4, 0.36], [0.12, 0.12, 0.04, 0xffffff, 0.18, 0.4, 0.36]] },
   pig: { speed: 1.1, flee: 2.0, sound: { fr: 'Groin groin !', en: 'Oink!' }, tone: [260, 'square'],
     boxes: () => [[0.62, 0.5, 0.95, 0xf2a3a8, 0, 0.55, 0], ...legs4(0.16, 0.32, 0.2, 0.3, 0xe08a92), [0.5, 0.45, 0.4, 0xf2a3a8, 0, 0.65, 0.6], [0.24, 0.16, 0.06, 0xd8707a, 0, 0.58, 0.82], ...eyes(0.75, 0.81, 0.13)] },
   cow: { speed: 0.9, flee: 2.4, sound: { fr: 'Meuh !', en: 'Moo!' }, tone: [150, 'sawtooth'],
@@ -59,18 +79,19 @@ const geoFor = (kind) => (geoCache[kind] ??= model(KINDS[kind].boxes()));
 // Where each little group lives: [kind, x, z, how many, radius].
 export const HERDS = [
   // The farm and the village.
-  ['pig', 38, 31, 3, 2.0], ['cow', 26, 32, 3, 4.5], ['chicken', 23, 44, 4, 2.6], ['sheep', 34, 46, 3, 3.5],
-  ['chicken', -3, 20, 2, 2.5], ['sheep', -38, -38, 3, 4.5], ['cow', 6, 40, 2, 4],
+  ['pig', 38, 31, 3, 2.0], ['cow', 26, 32, 3, 4.5], ['chicken', 23, 44, 4, 2.6], ['sheep', 34, 46, 2, 3.5], ['sheepPink', 34, 46, 1, 3.5], ['lamb', 34, 46, 2, 3],
+  ['cat', 4, 6, 1, 6], ['cat', -9, -7, 1, 5], ['sheepBrown', 12, 38, 1, 3], ['lamb', 12, 38, 1, 3],
+  ['chicken', -3, 20, 2, 2.5], ['sheep', -38, -38, 2, 4.5], ['sheepBlack', -38, -38, 1, 4.5], ['lamb', -38, -38, 1, 4], ['cow', 6, 40, 2, 4],
   // Meadow and forest.
-  ['rabbit', -34, 38, 3, 5], ['rabbit', -66, 18, 2, 5], ['fox', -74, -26, 1, 6], ['fox', -54, 30, 1, 5], ['rabbit', -50, -24, 2, 4],
+  ['rabbit', -34, 38, 3, 5], ['rabbit', -66, 18, 2, 5], ['fox', -74, -26, 1, 6], ['fox', -54, 30, 1, 5], ['rabbit', -50, -24, 2, 4], ['wolf', -70, 14, 2, 6], ['panda', -26, 47, 2, 3],
   // Marsh.
   ['frog', 54, 6, 2, 3], ['frog', 66, 4, 2, 3], ['frog', 57, -8, 1, 2.5], ['duck', 61, 0, 2, 2.2], ['duck', 69, -6, 2, 2.2],
   // Mountain foothills.
-  ['goat', 14, -40, 2, 3], ['goat', -24, -52, 2, 3.5],
+  ['goat', 14, -40, 2, 3], ['goat', -24, -52, 2, 3.5], ['llama', -10, -47, 2, 3], ['polarBear', 8, -70, 1, 4],
   // Coast.
-  ['crab', -12, 60, 2, 4], ['crab', 18, 62, 2, 4], ['turtle', 4, 64, 2, 3], ['crab', 32, 62, 1, 3],
+  ['crab', -12, 60, 2, 4], ['crab', 18, 62, 2, 4], ['turtle', 4, 64, 2, 3], ['crab', 32, 62, 1, 3], ['parrot', 28, 52, 1, 2],
   // Sea.
-  ['dolphin', 10, 80, 1, 6], ['dolphin', -28, 82, 1, 6],
+  ['dolphin', 10, 80, 1, 6], ['dolphin', -28, 82, 1, 6], ['squid', -6, 84, 2, 5],
 ];
 
 export class FaunaManager {
@@ -81,8 +102,8 @@ export class FaunaManager {
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     for (const [kind, x, z, n, r] of HERDS) {
       for (let i = 0; i < n; i++) {
-        const mesh = new THREE.Mesh(geoFor(kind), MAT);
-        mesh.castShadow = ['cow', 'sheep', 'pig', 'goat'].includes(kind);
+        const mesh = new THREE.Mesh(geoFor(kind), KINDS[kind].glow ? MAT_GLOW : MAT);
+        mesh.castShadow = ['cow', 'sheep', 'sheepBlack', 'sheepBrown', 'sheepPink', 'pig', 'goat', 'llama', 'panda', 'polarBear', 'wolf'].includes(kind);
         mesh.userData.dynamic = true;
         // A free spot near home (not in a tree, a wall or the water).
         const swim = kind === 'duck' || kind === 'frog';
@@ -90,9 +111,9 @@ export class FaunaManager {
         for (let k = 0; k < 30; k++) {
           const a = rnd() * Math.PI * 2, d = rnd() * r * 0.8;
           const tx = x + Math.cos(a) * d, tz = z + Math.sin(a) * d;
-          if (kind === 'dolphin' || (!scene3D._checkCollision(tx, tz, { swim }) && !scene3D._insideAnyHouse?.(tx, tz, 0.3))) { px = tx; pz = tz; break; }
+          if (KINDS[kind].swim || (!scene3D._checkCollision(tx, tz, { swim }) && !scene3D._insideAnyHouse?.(tx, tz, 0.3))) { px = tx; pz = tz; break; }
         }
-        mesh.position.set(px, kind === 'dolphin' ? -1 : scene3D.groundAt(px, pz), pz);
+        mesh.position.set(px, KINDS[kind].swim ? -1 : scene3D.groundAt(px, pz), pz);
         mesh.rotation.y = rnd() * Math.PI * 2;
         scene3D.scene.add(mesh);
         this.list.push({ kind, def: KINDS[kind], mesh, home: { x, z, r }, target: null, wait: rnd() * 4, t: rnd() * 10, flee: 0, soundT: 0, jumpT: rnd() * 8 });
@@ -114,6 +135,15 @@ export class FaunaManager {
       m.visible = dHero < (a.def.swim ? 60 : 38);
       if (!m.visible) continue;
       a.t += dt;
+      if (a.def.swim === 'float') {
+        // Glowing squid: drifting slowly just under the surface, pulsing.
+        m.position.x = a.home.x + Math.sin(a.t * 0.2 + a.home.r) * a.home.r * 0.6;
+        m.position.z = a.home.z + Math.cos(a.t * 0.17) * a.home.r * 0.6;
+        m.position.y = -0.35 + Math.sin(a.t * 1.4) * 0.12;
+        m.scale.y = 1 + Math.sin(a.t * 2.8) * 0.1;
+        m.rotation.y += dt * 0.3;
+        continue;
+      }
       if (a.def.swim) {
         // Dolphins: leap out of the water in an arc, then swim under for a while.
         a.jumpT -= dt;
@@ -168,7 +198,7 @@ export class FaunaManager {
       if (moving && a.def.hop) m.position.y = g + Math.abs(Math.sin(a.t * 10)) * 0.18;
       else m.position.y = g + (moving ? Math.abs(Math.sin(a.t * 8)) * 0.04 : 0);
       m.rotation.z = moving && !a.def.hop ? Math.sin(a.t * 8) * 0.06 : 0;
-      m.rotation.x = !moving && (a.kind === 'sheep' || a.kind === 'cow' || a.kind === 'goat') && Math.sin(a.t * 0.7) > 0.6 ? 0.18 : 0;
+      m.rotation.x = !moving && (a.kind.startsWith('sheep') || a.kind === 'cow' || a.kind === 'goat' || a.kind === 'llama' || a.kind === 'lamb') && Math.sin(a.t * 0.7) > 0.6 ? 0.18 : 0;
     }
   }
 }

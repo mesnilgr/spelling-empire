@@ -8,6 +8,7 @@ import { PetManager } from './pet.js';
 import { DECOR } from './decor.js';
 import { PLACES, buildPlace, buildExtras, buildTrails, buildGroves, buildRegionFillers } from './landmarks.js';
 import { FaunaManager } from './fauna.js';
+import { HorseManager, RIDE } from './horse.js';
 import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
 import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -218,6 +219,7 @@ export class GameScene {
     this.bosses = new BossManager(this);
     this.pet = new PetManager(this);
     this.fauna = new FaunaManager(this);
+    this.horses = new HorseManager(this);
   }
 
   _insideAnyHouse(x, z, margin = 0.6) {
@@ -430,8 +432,14 @@ export class GameScene {
     if (obj.kind !== 'node' || obj.noDeplete) return;
     seconds = obj.respawn ?? seconds;
     obj.active = false;
-    obj.respawnAt = this.clock.elapsedTime + seconds;
+    obj.respawnAt = obj.noRespawn ? Infinity : this.clock.elapsedTime + seconds;
     obj.iconHolder.visible = false;
+    if (obj.noRespawn) {
+      // A block made by the player (obsidian in the water): gone for good once mined.
+      const { x, z } = obj.worldPos;
+      this.collidables = this.collidables.filter((c) => !(c.r === 0.5 && Math.abs(c.x - x) < 1e-6 && Math.abs(c.z - z) < 1e-6));
+      this.walkways = this.walkways.filter((w) => !(w.obsidian && Math.abs((w.x0 + w.x1) / 2 - x) < 1e-6 && Math.abs((w.z0 + w.z1) / 2 - z) < 1e-6));
+    }
     if (obj.block) {
       this.particleBurst(obj.block.getWorldPosition(new THREE.Vector3()), obj.burst ?? '#9a9792', 26);
       obj.block.visible = false;
@@ -721,6 +729,14 @@ export class GameScene {
   eruptLava(seconds = 3) {
     const p = this.player.position, a = this.player.rotation.y;
     const x = p.x + Math.sin(a) * 2.4, z = p.z + Math.cos(a) * 2.4;
+    if (this.waterAt(x, z)) {
+      // Into the water: steam, and obsidian.
+      for (const c of ['#ffffff', '#cfd8e0', '#ff7a1e']) this.particleBurst({ x, y: 0.6, z }, c, 22);
+      this.screenShake(0.12);
+      const made = this._obsidianFromWater(x, z);
+      this.onObsidian?.(made.length);
+      return { x, z, obsidian: made.length };
+    }
     const y = this.groundAt(x, z);
     const tex = this.lavaCourse?.lavaTex;
     const disc = new THREE.Mesh(new THREE.CircleGeometry(2.2, 28), new THREE.MeshStandardMaterial({ color: 0xff7a1e, emissive: 0xff4a00, emissiveIntensity: 1.1, map: tex ?? null, transparent: true, opacity: 0.95, depthWrite: false }));
@@ -744,6 +760,25 @@ export class GameScene {
       if (e.t >= e.life) { this.scene.remove(e.disc); e.done = true; }
     }
     this.eruptions = this.eruptions.filter((e) => !e.done);
+  }
+  // Is there water here (river, marsh pools, sea)?
+  waterAt(x, z) {
+    return this.collidables.some((c) => c.water && (c.rect ? x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1 : Math.hypot(x - c.x, z - c.z) < c.r + 0.2));
+  }
+  // Lava poured into water turns into obsidian blocks, to mine with the pickaxe.
+  _obsidianFromWater(x, z) {
+    const made = [];
+    for (const [dx, dz] of [[0, 0], [0.95, 0], [-0.95, 0], [0, 0.95], [0, -0.95]]) {
+      const bx = x + dx, bz = z + dz;
+      if (!this.waterAt(bx, bz) || this.interactables.some((i) => i.material === 'obsidian' && i.active && Math.hypot(i.worldPos.x - bx, i.worldPos.z - bz) < 0.8)) continue;
+      const block = texBox(this.scene, 0.95, 0.95, 0.95, blockMat('obsidian'), bx, 0.2, bz, { tile: 0.95 });
+      block.userData.dynamic = true;
+      this.collidables.push({ x: bx, z: bz, r: 0.5 });
+      this.walkways.push({ box: true, x0: bx - 0.48, x1: bx + 0.48, z0: bz - 0.48, z1: bz + 0.48, y: () => 0.68, obsidian: true });
+      made.push(this._addInteractable({ kind: 'node', nodeType: 'ore', material: 'obsidian', requires: 'pickaxe', block, burst: '#5a3a8a', worldPos: new THREE.Vector3(bx, 0.2, bz), iconY: 1.4, reach: 1.8, noRespawn: true }));
+      this.particleBurst({ x: bx, y: 0.8, z: bz }, '#cfd8e0', 14);
+    }
+    return made;
   }
   // Is this spot burning? (an eruption from the bucket)
   lavaHurts(x, z) {
@@ -848,6 +883,7 @@ export class GameScene {
     }
   }
   teleport(x, z, ry = 0) {
+    if (this.horses?.riding) { this.horses.dismount(); this.onDismount?.(); }
     this.autoWalk = null;
     this.playerVY = 0;
     this.player.position.set(x, this.groundAt(x, z), z);
@@ -1846,10 +1882,12 @@ export class GameScene {
 
   _updatePlayer(dt) {
     let mx = 0, mz = 0;
-    if (this.joystick.active) {
+    // While a word is being spelled (or someone is talking) nobody moves, not even on horseback.
+    if (this.inputLocked) { this.autoWalk = null; }
+    else if (this.joystick.active) {
       mx = this.joystick.x;
       mz = -this.joystick.y;
-    } else {
+    } else if (!this.inputLocked) {
       if (this.keys['w'] || this.keys['arrowup']) mz -= 1;
       if (this.keys['s'] || this.keys['arrowdown']) mz += 1;
       if (this.keys['a'] || this.keys['arrowleft']) mx -= 1;
@@ -1866,7 +1904,7 @@ export class GameScene {
       const wx = mx * cy + mz * sy;
       const wz = -mx * sy + mz * cy;
       mx = wx; mz = wz;
-    } else if (this.autoWalk) {
+    } else if (this.autoWalk && !this.inputLocked) {
       // Walk on our own towards a tapped object, then interact with it.
       const aw = this.autoWalk;
       const dx = aw.target.worldPos.x - this.player.position.x;
@@ -1884,7 +1922,7 @@ export class GameScene {
       }
     }
     if (len > 0) {
-      const speed = PLAYER_SPEED * (this.speedBoostUntil > this.clock.elapsedTime ? 1.6 : 1);
+      const speed = PLAYER_SPEED * (this.speedBoostUntil > this.clock.elapsedTime ? 1.6 : 1) * (this.horses?.riding ? RIDE.speed : 1);
       const p = this.player.position;
       const nx = p.x + mx * speed * dt;
       const nz = p.z + mz * speed * dt;
@@ -1973,6 +2011,7 @@ export class GameScene {
     if (Math.hypot(x, z) > WORLD_RADIUS) return true; // edge of the world
     if (this.marshMist && x > MIST_X - 1.2 && x < MIST_X + 6) return true; // the mist (Wind spell)
     if (this._checkCollision(x, z)) return true;
+    if (this.horses?.riding && this._insideAnyHouse(x, z, 0.4)) return true; // no horses indoors
     return this.groundAt(x, z) - y > STEP_UP;
   }
 
@@ -2002,7 +2041,7 @@ export class GameScene {
   jump() {
     // A little forgiveness: a jump still works just after walking off an edge.
     if (!this.onGround && this.clock.elapsedTime - (this.lastGroundAt ?? -9) > 0.18) return false;
-    this.playerVY = 8.2;
+    this.playerVY = this.horses?.riding ? RIDE.jump : 8.2;
     this.onGround = false;
     this.onJump?.();
     return true;
@@ -2057,11 +2096,12 @@ export class GameScene {
     this.camTarget.z += (tz - this.camTarget.z) * k;
     this.camTarget.y += (this.player.position.y + 0.6 - this.camTarget.y) * k;
     const horiz = Math.cos(elev) * dist;
-    const goal = new THREE.Vector3(
-      this.camTarget.x + Math.sin(CAM_YAW) * horiz,
-      Math.sin(elev) * dist,
-      this.camTarget.z + Math.cos(CAM_YAW) * horiz,
-    );
+    const gx = this.camTarget.x + Math.sin(CAM_YAW) * horiz, gz = this.camTarget.z + Math.cos(CAM_YAW) * horiz;
+    // Height above the hero, and always well above the ground under the camera and on the way to
+    // the hero (near the edge of the world the hills used to swallow the camera).
+    let gy = Math.max(0, this.camTarget.y - 0.6) + Math.sin(elev) * dist;
+    if (!h) for (const k2 of [1, 0.7, 0.45]) gy = Math.max(gy, this.groundAt(lerp(this.camTarget.x, gx, k2), lerp(this.camTarget.z, gz, k2)) + 3 + 6 * k2);
+    const goal = new THREE.Vector3(gx, gy, gz);
     this.camera.position.lerp(goal, k);
 
     if (this.shakeIntensity > 0.001) {
@@ -2396,7 +2436,7 @@ export class GameScene {
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
     this._tickRegions();
-    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') this.fauna?.update(dt, elapsed); this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
+    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); } this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

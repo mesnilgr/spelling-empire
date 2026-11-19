@@ -659,6 +659,10 @@ export const SCENARIOS = [
       });
       check(gl.stage === 4 && gl.scale > 1.8 && gl.glowing, 'au niveau 5, le chien se transforme en golem chien', JSON.stringify(gl));
       check(gl.armedBeaten, 'le golem chien bat un zombie armé d’une seule morsure', JSON.stringify(gl));
+      // No food: a cuddle.
+      await g.page.evaluate(() => { const m = window.__se.game().materials; delete m.meat; delete m.fish; delete m.brochette; });
+      await g.use("i.kind === 'pet'");
+      check(/adore les caresses/.test(await g.page.evaluate(() => document.querySelector('#toast')?.textContent ?? '')), 'sans nourriture, on caresse le chien');
       // Hearts: the heart pie gives one more (up to 5).
       await g.page.evaluate(() => { const m = window.__se.game().materials; m.wheat = (m.wheat ?? 0) + 1; m.flower = (m.flower ?? 0) + 1; m.fire = (m.fire ?? 0) + 1; window.__heartsBefore = window.__se.game().maxHearts ?? 2; });
       await g.click('#craft-open-btn');
@@ -797,7 +801,7 @@ export const SCENARIOS = [
       });
       check(life.wandered > 0.3, 'les moutons se promènent', JSON.stringify(life));
       check(life.after > life.before + 0.5, 'un animal s’éloigne quand le héros s’approche trop', JSON.stringify(life));
-      check(await g.page.evaluate(() => window.__se.scene.fauna.list.every((a) => a.kind === 'dolphin' || !window.__se.scene._checkCollision(a.mesh.position.x, a.mesh.position.z, { swim: a.kind === 'duck' || a.kind === 'frog' }))), 'aucun animal coincé dans un mur ou un arbre');
+      check(await g.page.evaluate(() => window.__se.scene.fauna.list.every((a) => a.def.swim || !window.__se.scene._checkCollision(a.mesh.position.x, a.mesh.position.z, { swim: a.kind === 'duck' || a.kind === 'frog' }))), 'aucun animal coincé dans un mur ou un arbre');
       await g.page.close();
     },
   },
@@ -844,6 +848,72 @@ export const SCENARIOS = [
       check(st.mats === 0 && st.crafted === 0 && !st.pet && !st.scenePet, 'plus de matériaux, d’objets ni de chiot apprivoisé', JSON.stringify(st));
       check(st.bosses === 0 && !st.bossHidden && st.places === 0 && st.hearts === 2 && !st.portal, 'boss, lieux, cœurs et portail repartent de zéro', JSON.stringify(st));
       check(st.learnt, 'ce que l’enfant a appris (statistiques des parents) est gardé', JSON.stringify(st));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Chevaux, nouveaux animaux et obsidienne',
+    weight: 2,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, save: save(story(3, 0), { materials: { iron: 3 }, crafted: ['pickaxe', 'bucket'] }) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(800);
+      const kinds = await g.page.evaluate(() => [...new Set(window.__se.scene.fauna.list.map((a) => a.kind))]);
+      check(['wolf', 'cat', 'panda', 'parrot', 'llama', 'polarBear', 'squid', 'sheepPink', 'lamb'].every((k) => kinds.includes(k)), 'de nouveaux animaux : loups, chats, pandas, perroquet, lamas, ours polaire, pieuvres lumineuses, moutons roses et agneaux', kinds.join(','));
+      // A horse: trusted with a word, then ridden.
+      check(await g.page.evaluate(() => window.__se.scene.horses.list.length === 3), '3 chevaux dans le pré près de la ferme');
+      check(await g.use("i.kind === 'horse' && i.horseId === 'h1'") === 'ok', 'on touche un cheval');
+      await g.spell();
+      check(await g.page.evaluate(() => window.__se.game().horses?.h1?.tamed), 'un mot et le cheval fait confiance');
+      await g.use("i.kind === 'horse' && i.horseId === 'h1'");
+      const ride = await g.page.evaluate(() => { const s = window.__se.scene; s.onGround = true; s.lastGroundAt = s.clock.elapsedTime; s.jump(); return { riding: !!s.horses.riding, btn: !document.querySelector('#dismount-btn').hidden, vy: s.playerVY, house: s._blocked(0, 14, 0) }; });
+      check(ride.riding && ride.btn, 'on monte à cheval (bouton pour descendre)', JSON.stringify(ride));
+      check(ride.vy > 10, 'à cheval, on saute plus haut', JSON.stringify(ride));
+      check(ride.house, 'pas de cheval dans les maisons', JSON.stringify(ride));
+      // A flash challenge on horseback: the horse stops until the word is spelled.
+      await g.page.waitForTimeout(800);
+      await g.page.evaluate(() => { window.__se.flashAfter = 0.5; });
+      await g.page.waitForFunction(() => window.__se.spell()?.type === 'flash' && !document.querySelector('#spell-modal').hidden, null, { timeout: 8000 }).catch(() => {});
+      await g.page.waitForTimeout(500);
+      const still = await g.page.evaluate(async () => {
+        const s = window.__se.scene, a = s.player.position.clone();
+        s.keys.w = true; for (let k = 0; k < 20; k++) s._updatePlayer(1 / 30); s.keys.w = false;
+        return { locked: s.inputLocked, moved: Math.hypot(a.x - s.player.position.x, a.z - s.player.position.z) };
+      });
+      check(still.locked && still.moved < 0.05, 'pendant un défi éclair, le cheval s’arrête', JSON.stringify(still));
+      await g.page.evaluate(() => { window.__se.flashAfter = 1e9; });
+      await g.spell();
+      // Iron horse armour: zombies bounce off it.
+      await g.click('#craft-open-btn');
+      await g.page.waitForTimeout(300);
+      await g.page.evaluate(() => [...document.querySelectorAll('#craft-list .craft-card.is-clickable')].find((e) => e.textContent.includes('Armure de cheval en fer'))?.click());
+      await g.page.waitForTimeout(400);
+      await g.page.evaluate(() => { document.querySelector('#craft-close-btn')?.click(); });
+      const armor = await g.page.evaluate(() => {
+        const s = window.__se.scene, h = s.horses.riding;
+        const r = { kind: h?.armorKind };
+        let touched = 0; const prev = s.onZombieCatch; s.onZombieCatch = () => { touched++; };
+        s.dayTime = 0.8 * 420; s.night = 1; s.zombies.grace = 0;
+        s.zombies.clear(false); s.zombies.armedChance = 0; s.zombies._spawn();
+        const z = s.zombies.active[0];
+        z.mesh.scale.setScalar(1); z.stun = 0; z.chasing = true;
+        z.mesh.position.set(s.player.position.x + 0.3, s.player.position.y, s.player.position.z);
+        for (let k = 0; k < 10; k++) s.zombies.update(1 / 30, s.clock.elapsedTime + k / 30);
+        r.touched = touched; r.stunned = z.stun > 0;
+        s.onZombieCatch = prev; s.zombies.clear(false); s.dayTime = 0.3 * 420;
+        return r;
+      });
+      check(armor.kind === 'iron' && armor.touched === 0 && armor.stunned, 'avec l’armure de fer, le zombie rebondit sur le cheval', JSON.stringify(armor));
+      await g.click('#dismount-btn');
+      check(await g.page.evaluate(() => !window.__se.scene.horses.riding && document.querySelector('#dismount-btn').hidden), 'on descend du cheval');
+      // Lava bucket into the sea: obsidian.
+      const obs = await g.page.evaluate(() => {
+        const s = window.__se.scene;
+        s.teleport(0, 68.6); s.player.rotation.y = 0;
+        const r = s.eruptLava();
+        return { r, blocks: s.interactables.filter((i) => i.material === 'obsidian' && i.noRespawn).length };
+      });
+      check(obs.r.obsidian > 0 && obs.blocks > 0, 'le seau de lave versé dans l’eau fait de l’obsidienne', JSON.stringify(obs));
       await g.page.close();
     },
   },

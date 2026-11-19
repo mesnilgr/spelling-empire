@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.18.0 — Chevaux, nouveaux animaux, vrais cris et obsidienne
+
+- 🐴 **Des chevaux à monter** dans le pré à côté de la ferme (Châtaigne, Neige et Réglisse). Un mot et le cheval fait confiance ; on le touche pour monter : il court presque deux fois plus vite et saute plus haut. Le bouton 🐴⬇️ sert à descendre (on descend aussi tout seul pour voyager, dormir ou passer un portail). Pas de cheval dans les maisons.
+- ✋ **Pas de moyen d'éviter les mots** : pendant un mot à épeler (défi éclair compris) ou un dialogue, personne ne bouge, même à cheval.
+- 🛡️ **Armures de cheval** à fabriquer : en fer (fer ×3), puis en diamant (diamant ×2 + fer). On les voit sur le cheval, et quand on est en selle les zombies rebondissent dessus au lieu de toucher le héros.
+- 🐼 **De nouveaux animaux à la Minecraft** : loups dans la forêt, chats dans le village, pandas dans un bosquet de bambous, perroquet sur l'épave, lamas avec leur couverture et ours polaire dans la montagne, pieuvres lumineuses dans la mer, et des moutons noirs, marron, **roses** et des agneaux.
+- 🔊 **Un vrai cri pour chaque animal** (fabriqué par le jeu, sans fichier son) : « bêê » qui chevrote, « meuh » grave, grognements du cochon, caquètement des poules, coin-coin, croâ, miaou, hurlement du loup, hennissement du cheval…
+- 🐕 **Un aboiement plus réaliste**, plus grave quand le chien grandit (le golem a un grondement de pierre).
+- ❤️ **On peut caresser le chien** : sans nourriture, le toucher le fait se rouler de bonheur avec des cœurs.
+- 🟪 **Le seau de lave versé dans l'eau fait de l'obsidienne** (rivière, mares, mer) : de la vapeur, puis des blocs d'obsidienne sur lesquels on peut marcher, à miner avec la pioche.
+- 📷 **Caméra corrigée près des bords du monde** : elle reste au-dessus des collines au lieu de s'y enfoncer.
+
 ## v1.17.3 — « Nouvelle partie » repart vraiment de zéro
 
 - 🔄 **Corrigé : « Nouvelle partie » ne remettait pas tout à zéro.** Le monde n'était rechargé que si l'ancienne partie avait dépassé le chapitre 1 ou lancé un sort : le chiot restait apprivoisé, les boss battus restaient absents, le portail restait allumé, etc. Et les étoiles, costumes et décorations de la chaumière étaient gardés.

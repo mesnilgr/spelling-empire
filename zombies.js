@@ -321,7 +321,9 @@ export class ZombieManager {
           break;
         }
         z.stun = 1.5;
-        s.onZombieCatch?.(z);
+        // Riding a horse in armour: the zombie bounces off the armour.
+        if (s.horses?.riding?.armorKind) { s.particleBurst(m.position.clone().add(new THREE.Vector3(0, 1, 0)), '#dfe6ee', 12); s.onHorseBlock?.(); }
+        else s.onZombieCatch?.(z);
       }
     }
   }

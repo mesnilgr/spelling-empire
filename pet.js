@@ -131,6 +131,11 @@ export class PetManager {
   }
   joy() { this.joyT = 1.2; this.s.particleBurst(this.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), '#ff6b9d', 10); }
   trick() { this.trickT = 1.0; }
+  // A cuddle: hearts float up and it rolls over happily.
+  pat() {
+    this.trickT = 1.0; this.joyT = 1.0;
+    for (let k = 0; k < 3; k++) setTimeout(() => this.s.particleBurst(this.mesh.position.clone().add(new THREE.Vector3(0, 1 + k * 0.2, 0)), '#ff6b9d', 8), k * 200);
+  }
   // Put the puppy next to the hero (after a teleport, or when it is left too far behind).
   catchUp() {
     const p = this.s.player.position, a = this.s.player.rotation.y;

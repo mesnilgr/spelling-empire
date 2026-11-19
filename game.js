@@ -13,6 +13,7 @@ import { PET_NAMES } from './pet.js';
 import { DECOR } from './decor.js';
 import { PLACES, DISCOVER_RADIUS } from './landmarks.js';
 import { ANIMAL_KINDS } from './fauna.js';
+import { HORSES } from './horse.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -47,6 +48,9 @@ const CRAFTABLES = [
   { id: 'brochette', emoji: '🍢', name: { en: 'Skewer', fr: 'Brochette' }, parts: ['meat', 'wood', 'fire'], repeat: true },
   { id: 'bucket', emoji: '🪣', name: { en: 'Lava bucket', fr: 'Seau de lave' }, parts: ['iron', 'fire', 'stone'] },
   // For the puppy (shown once it is tamed); it does not count towards finishing the game.
+  // Horse armour (made once a horse is tamed): iron, then diamond. Zombies bounce off it.
+  { id: 'horse_armor_iron', emoji: '🐴', name: { en: 'Iron horse armour', fr: 'Armure de cheval en fer' }, parts: ['iron', 'iron', 'iron'], needsHorse: true, extra: true },
+  { id: 'horse_armor_diamond', emoji: '🐎', name: { en: 'Diamond horse armour', fr: 'Armure de cheval en diamant' }, parts: ['diamond', 'diamond', 'iron'], requires: ['horse_armor_iron'], needsHorse: true, extra: true },
   { id: 'heart_pie', emoji: '🥧', name: { en: 'Heart pie', fr: 'Tarte du cœur' }, parts: ['wheat', 'flower', 'fire'], extra: true },
   { id: 'dog_armor', emoji: '🛡️', name: { en: 'Dog armour', fr: 'Armure du chien' }, parts: ['iron', 'iron', 'wood'], needsPet: true, extra: true },
   { id: 'axe_obsidian', emoji: '🟪', name: { en: 'Obsidian axe', fr: 'Hache en obsidienne' }, parts: ['obsidian', 'obsidian', 'diamond'], requires: ['axe', 'hammer'] },
@@ -376,6 +380,52 @@ function playNoise({ duration = 0.08, volume = 0.1, freq = 800, q = 1, type = 'b
   src.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
   src.start(t0, Math.random() * 0.3, duration + 0.02);
 }
+// A small voice synth for the animals: an oscillator gliding from f0 to f1 (with vibrato) through a
+// filter, with a quick attack and a soft release. Several calls make one cry.
+function animalVoice({ type = 'sawtooth', f0 = 300, f1 = f0, mid = 0, dur = 0.4, vib = 0, vibRate = 7, filter = 'bandpass', freq = 1200, q = 1.2, vol = 0.1, delay = 0 } = {}) {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime + delay;
+  const osc = audioCtx.createOscillator();
+  osc.type = type;
+  osc.frequency.setValueAtTime(f0, t0);
+  if (mid) { osc.frequency.linearRampToValueAtTime(mid, t0 + dur * 0.4); osc.frequency.linearRampToValueAtTime(f1, t0 + dur); }
+  else osc.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
+  if (vib) {
+    const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
+    lfo.frequency.value = vibRate; lg.gain.value = vib;
+    lfo.connect(lg); lg.connect(osc.frequency);
+    lfo.start(t0); lfo.stop(t0 + dur + 0.05);
+  }
+  const f = audioCtx.createBiquadFilter();
+  f.type = filter; f.frequency.value = freq; f.Q.value = q;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + Math.min(0.03, dur * 0.2));
+  g.gain.setValueAtTime(vol, t0 + dur * 0.6);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(f); f.connect(g); g.connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.05);
+}
+const ANIMAL_CRIES = {
+  sheep: () => animalVoice({ f0: 310, f1: 290, dur: 0.65, vib: 22, vibRate: 9, freq: 1300, q: 2, vol: 0.09 }),
+  lamb: () => animalVoice({ f0: 470, f1: 440, dur: 0.5, vib: 30, vibRate: 10, freq: 1600, q: 2, vol: 0.08 }),
+  goat: () => animalVoice({ f0: 380, f1: 340, dur: 0.6, vib: 35, vibRate: 11, freq: 1400, q: 2, vol: 0.09 }),
+  llama: () => animalVoice({ type: 'triangle', f0: 420, f1: 300, dur: 0.5, vib: 12, freq: 1100, vol: 0.09 }),
+  cow: () => animalVoice({ f0: 150, mid: 165, f1: 115, dur: 1.0, filter: 'lowpass', freq: 650, q: 1, vol: 0.13 }),
+  pig: () => { for (let i = 0; i < 3; i++) { animalVoice({ type: 'square', f0: 190, f1: 140, dur: 0.09, filter: 'lowpass', freq: 600, vol: 0.08, delay: i * 0.13 }); playNoise({ freq: 450, q: 2, volume: 0.05, duration: 0.08, delay: i * 0.13 }); } },
+  chicken: () => { for (let i = 0; i < 3; i++) animalVoice({ type: 'triangle', f0: 760, f1: 560, dur: 0.06, freq: 1500, vol: 0.08, delay: i * 0.1 }); animalVoice({ type: 'triangle', f0: 600, mid: 950, f1: 700, dur: 0.28, freq: 1600, vol: 0.08, delay: 0.32 }); },
+  duck: () => { for (let i = 0; i < 2; i++) animalVoice({ f0: 470, f1: 380, dur: 0.14, freq: 900, q: 4, vol: 0.09, delay: i * 0.2 }); },
+  frog: () => { for (let i = 0; i < 2; i++) animalVoice({ type: 'square', f0: 170, f1: 140, dur: 0.16, vib: 60, vibRate: 35, filter: 'lowpass', freq: 500, vol: 0.08, delay: i * 0.22 }); },
+  cat: () => animalVoice({ type: 'triangle', f0: 560, mid: 900, f1: 480, dur: 0.6, freq: 1500, q: 2, vol: 0.08 }),
+  wolf: () => animalVoice({ type: 'sine', f0: 380, mid: 720, f1: 520, dur: 1.3, vib: 8, vibRate: 5, filter: 'lowpass', freq: 1500, vol: 0.09 }),
+  fox: () => { for (let i = 0; i < 2; i++) animalVoice({ f0: 950, f1: 620, dur: 0.1, freq: 1300, vol: 0.07, delay: i * 0.16 }); },
+  horse: () => animalVoice({ f0: 820, mid: 950, f1: 380, dur: 0.9, vib: 70, vibRate: 18, freq: 1400, q: 1.5, vol: 0.09 }),
+  panda: () => { playNoise({ type: 'lowpass', freq: 260, q: 1, volume: 0.12, duration: 0.5 }); animalVoice({ f0: 110, f1: 90, dur: 0.45, filter: 'lowpass', freq: 300, vol: 0.08 }); },
+  polarBear: () => { playNoise({ type: 'lowpass', freq: 200, q: 1, volume: 0.14, duration: 0.6 }); animalVoice({ f0: 90, f1: 70, dur: 0.55, filter: 'lowpass', freq: 260, vol: 0.1 }); },
+  parrot: () => { animalVoice({ type: 'triangle', f0: 1400, f1: 1200, dur: 0.12, freq: 2200, vol: 0.07 }); animalVoice({ type: 'triangle', f0: 1100, f1: 1300, dur: 0.14, freq: 2200, vol: 0.07, delay: 0.16 }); },
+  crab: () => { for (let i = 0; i < 3; i++) playNoise({ freq: 3000, q: 4, volume: 0.07, duration: 0.025, delay: i * 0.08 }); },
+};
+ANIMAL_CRIES.sheepBlack = ANIMAL_CRIES.sheepBrown = ANIMAL_CRIES.sheepPink = ANIMAL_CRIES.sheep;
 const STEP_SOUNDS = {
   grass: { freq: 1400, q: 0.7, volume: 0.05, duration: 0.07 },
   dirt: { freq: 700, q: 0.9, volume: 0.07, duration: 0.07 },
@@ -525,6 +575,9 @@ function init3DScene() {
   setupPet();
   if (scene3D.bosses) scene3D.bosses.onGrumble = () => { playNoise({ freq: 120, q: 0.7, volume: 0.12, duration: 0.5 }); playTone(70, 0.45, 'sawtooth', 0.05); };
   setupFauna();
+  scene3D.onDismount = () => { const h = scene3D.horses.list.find((x) => x.tamed && !x.leftAt); $('#dismount-btn').hidden = true; };
+  scene3D.onHorseBlock = () => { sfxHit(); if (!horseBlockSaid) { horseBlockSaid = true; toast(t.horseBlock, 3500); } };
+  scene3D.onObsidian = (n) => { if (n) { sfxCraft(); toast(t.obsidianMade, 4000); speak(t.obsidianMade.replace(/^\S+ /, ''), 0.95); } };
   scene3D.onMeatPickup = onMeatPickup;
   scene3D.onZombieBurnt = onZombieBurnt;
   scene3D.canBeAttacked = () => !!game && document.body.dataset.screen === 'game' && $('#spell-modal').hidden && $('#dialog').hidden && $('#travel-modal').hidden && $('#quest-modal')?.hidden !== false && !knocking;
@@ -556,7 +609,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal'].includes(obj.kind)) continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -599,6 +652,7 @@ function saveGame() {
     places: game.places ?? [],
     portalLit: !!game.portalLit,
     maxHearts: game.maxHearts ?? 2,
+    horses: game.horses ?? {},
     heartsFrom: game.heartsFrom ?? [],
     savedAt: Date.now(),
   };
@@ -627,6 +681,7 @@ function continueGame() {
     places: [...(s.places ?? [])],
     portalLit: !!s.portalLit,
     maxHearts: s.maxHearts ?? 2,
+    horses: JSON.parse(JSON.stringify(s.horses ?? {})),
     heartsFrom: [...(s.heartsFrom ?? [])],
   });
   // Lasting spells come back: the bridge, the lit braziers.
@@ -750,6 +805,7 @@ function interactWith(obj) {
   if (obj.kind === 'boss') { beginBoss(obj); return; }
   if (obj.kind === 'pet') { petInteract(); return; }
   if (obj.kind === 'portal') { usePortal(); return; }
+  if (obj.kind === 'horse') { horseInteract(obj); return; }
   if (obj.kind === 'page') { scene3D.setStoryActive(obj, false); playScene(obj.scene, () => advanceStory(obj.pageId)); return; }
   if (obj.kind === 'travel') { useTravelSign(obj); return; }
   if (obj.nodeType === 'fish' && ownsTool('rod')) {
@@ -949,7 +1005,7 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐', quest: true });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden; }, 300);
 
 /* ===== FLASH CHALLENGE: never more than 2 minutes of play without a word ===== */
 const FLASH_AFTER = 120; // seconds of play
@@ -1009,11 +1065,47 @@ function setupFauna() {
   f.onSound = (a) => {
     const txt = a.def.sound?.[lang] ?? a.def.sound?.fr;
     if (!txt || txt === '…') return;
-    const [freq, wave] = a.def.tone ?? [500, 'square'];
-    playTone(freq, 0.12, wave, 0.05); playTone(freq * 0.8, 0.14, wave, 0.04, 0.1);
+    const cry = ANIMAL_CRIES[a.kind];
+    if (cry) cry(); else { const [freq, wave] = a.def.tone ?? [500, 'square']; playTone(freq, 0.12, wave, 0.05); }
     const pos = scene3D.worldToScreen(a.mesh.position.clone().setY(a.mesh.position.y + 1.1));
     if (pos) showFloatingText(pos.x, pos.y, txt, '#ffffff');
   };
+}
+
+/* ===== HORSES ===== */
+const horseArmorKind = () => (game?.crafted?.includes('horse_armor_diamond') ? 'diamond' : game?.crafted?.includes('horse_armor_iron') ? 'iron' : null);
+function applyHorses() {
+  const hm = scene3D?.horses;
+  if (!hm) return;
+  for (const h of hm.list) {
+    const st = game?.horses?.[h.def.id];
+    h.tamed = !!st?.tamed;
+    hm.setArmor(h.def.id, h.tamed ? horseArmorKind() : null);
+    const want = h.tamed ? `🐴 ${h.def.name[lang]}` : '🐴 ?';
+    if (h.obj.labelText !== want) { h.obj.labelText = want; scene3D.setSpotMaterial(h.obj, 'talk', want); }
+  }
+  $('#dismount-btn').hidden = !hm.riding;
+}
+function horseInteract(obj) {
+  const def = HORSES.find((d) => d.id === obj.horseId);
+  game.horses ??= {};
+  if (!game.horses[def.id]?.tamed) {
+    spellContext = { type: 'horse', horseId: def.id, word: pickWord(levelAt(0)), tries: 0 };
+    openSpellModal(`🐴 ${t.horseTitle}`, t.horseInstruction, '🐴');
+    return;
+  }
+  if (scene3D.horses.mount(def.id)) {
+    ANIMAL_CRIES.horse();
+    $('#dismount-btn').hidden = false;
+    if (!progress.rideExplained) { progress.rideExplained = true; saveProgress(); const msg = t.horseRide(def.name[lang]); toast(msg, 5000); speak(msg.replace(/^\S+ /, ''), 0.95); }
+  }
+}
+function dismountHorse() {
+  const h = scene3D?.horses?.riding;
+  if (!h) return;
+  scene3D.horses.dismount();
+  h.leftAt = { x: h.mesh.position.x, z: h.mesh.position.z };
+  $('#dismount-btn').hidden = true;
 }
 
 /* ===== BOSSES, THE PUPPY, THE COTTAGE DECORATIONS ===== */
@@ -1042,6 +1134,7 @@ function applyExtras() {
   // The puppy shows only its name (no spinning icon hiding it).
   if (po) po.iconHolder.children.filter((c) => !c.isCSS2DObject && c.isObject3D && !c.userData.label).forEach((c) => { c.visible = false; });
   for (const id of progress.decor ?? []) scene3D.placeDecor(id);
+  applyHorses();
   scene3D.lightPortal(!!game.portalLit);
   const pobj = scene3D.portalObj;
   if (pobj && pobj.portalLabel !== !!game.portalLit) { pobj.portalLabel = !!game.portalLit; scene3D.setSpotMaterial(pobj, 'talk', game.portalLit ? `🌀 ${t.portalLabelOn}` : `🌀 ${t.portalLabelOff}`); }
@@ -1157,14 +1250,22 @@ function petInteract() {
     updateGameUI(); renderCraftMenu(); applyExtras(); saveGame();
     return;
   }
-  pet.trick();
-  sfxBark();
-  toast(petHungry() ? t.petHungry(game.pet.name) : t.petTrick(game.pet.name), 3000);
+  // No food: a cuddle (hearts, a happy little whine, the dog rolls over).
+  pet.pat();
+  animalVoice({ type: 'sine', f0: 700, mid: 1100, f1: 800, dur: 0.35, filter: 'lowpass', freq: 2000, vol: 0.06 });
+  smile();
+  toast(petHungry() ? t.petHungry(game.pet.name) : t.petPat(game.pet.name), 3000);
 }
+// A dog bark: a breathy noise burst and a voice that drops quickly ("wouf"), twice. The bigger
+// the dog, the deeper the bark; the golem's bark has a stony rumble.
 function sfxBark() {
-  for (const at of [0, 0.22]) {
-    playNoise({ freq: 900, q: 1.2, volume: 0.2, duration: 0.12, delay: at });
-    playTone(620, 0.1, 'sawtooth', 0.09, at, 330);
+  const st = game?.pet?.tamed ? petStage() : 0;
+  const base = [620, 520, 440, 360, 300][st] * (0.95 + Math.random() * 0.1);
+  for (const at of [0, 0.26]) {
+    playNoise({ freq: 1100, q: 0.8, volume: 0.09, duration: 0.05, delay: at });
+    animalVoice({ type: 'sawtooth', f0: base, f1: base * 0.55, dur: 0.16, filter: 'bandpass', freq: 900, q: 0.9, vol: 0.16, delay: at });
+    animalVoice({ type: 'square', f0: base / 2, f1: base * 0.28, dur: 0.14, filter: 'lowpass', freq: 700, vol: 0.06, delay: at });
+    if (st === 4) playNoise({ type: 'lowpass', freq: 180, q: 1, volume: 0.1, duration: 0.25, delay: at });
   }
 }
 function petNamePicker(after) {
@@ -1509,7 +1610,7 @@ function renderCraftMenu() {
   const badge = $('#craft-badge');
   if (badge) { badge.hidden = ready === 0; badge.textContent = ready; }
   $('#craft-open-btn')?.classList.toggle('has-ready', ready > 0);
-  container.replaceChildren(...CRAFTABLES.filter((item) => !item.needsPet || game?.pet?.tamed).map((item) => {
+  container.replaceChildren(...CRAFTABLES.filter((item) => (!item.needsPet || game?.pet?.tamed) && (!item.needsHorse || Object.values(game?.horses ?? {}).some((h) => h.tamed))).map((item) => {
     const already = !item.repeat && game?.crafted.includes(item.id);
     const reqOk = (item.requires ?? []).every((r) => game?.crafted.includes(r));
     const canCraft = !already && reqOk && hasParts(item);
@@ -1552,6 +1653,7 @@ function finishCrafting() {
   else {
     game.crafted.push(item.id);
     if (HOLDABLE_IDS.includes(base)) { game.equipped = null; equipItem(bestVersion(base)); }
+    else if (item.id.startsWith('horse_armor')) { applyHorses(); setTimeout(() => toast(t.horseArmor(item.id.endsWith('diamond')), 4000), 1200); }
     else if (item.id === 'heart_pie') { if (!gainHeart('pie')) setTimeout(() => toast(t.pieYum, 3000), 1200); }
     else if (item.id === 'dog_armor') { scene3D?.pet?.setArmor(true); setTimeout(() => toast(t.petArmor(game.pet?.name ?? ''), 4000), 1200); }
     else scene3D?.spawnTrophy(item.id);
@@ -1772,6 +1874,15 @@ function handleSpellSuccess() {
     spellResultEl.hidden = false;
     speak(won ? t.bossWonSay : t.bossHitSay, 0.95);
     spellContext.after = won ? winBoss : () => { scene3D?.bosses.attack(b.id); sfxRoar(); setTimeout(nextBossWord, 1100); };
+  } else if (type === 'horse') {
+    const def = HORSES.find((d) => d.id === spellContext.horseId);
+    game.horses ??= {};
+    game.horses[def.id] = { tamed: true };
+    ANIMAL_CRIES.horse(); sfxVictory();
+    spellResultEl.replaceChildren(el('p', 'spell-success', `🐴 ${t.horseTamed(def.name[lang])}`), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${t.stars}`));
+    spellResultEl.hidden = false;
+    speak(t.horseTamed(def.name[lang]), 0.95);
+    applyHorses(); renderCraftMenu(); saveGame();
   } else if (type === 'portal') {
     game.portalLit = true;
     scene3D?.lightPortal(true);
@@ -2191,6 +2302,7 @@ function bindEvents() {
     if (!progress.age) askAge(() => newGame()); else newGame();
   });
   $('#reset-pos-btn')?.addEventListener('click', () => scene3D?.resetPosition());
+  $('#dismount-btn')?.addEventListener('click', () => dismountHorse());
   $('#dialog-next')?.addEventListener('click', () => showDialogLine());
   $('#travel-close')?.addEventListener('click', () => { $('#travel-modal').hidden = true; });
   $('#end-close')?.addEventListener('click', () => { $('#end-modal').hidden = true; });
@@ -2255,7 +2367,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');
@@ -2606,6 +2718,7 @@ function swordPower() {
   return sw ? { power: 'sword', id: sw } : { power: 'hand', id: null };
 }
 let swordHintShown = false;
+let horseBlockSaid = false;
 // A happy face pops up above the hero.
 function smile() {
   const pos = scene3D?.getPlayerScreenPosition();
