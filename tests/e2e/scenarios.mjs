@@ -918,6 +918,55 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'Quoi de neuf (Alaric) et Fer le golem de fer',
+    quick: true,
+    weight: 2,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: [], save: save(story(2, 0)) }, { quality: 0 });
+      await g.click('#continue-btn');
+      // Alaric presents the release, written and spoken; the newest note comes first.
+      const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
+      const card = await g.page.evaluate(() => ({ title: document.querySelector('#news-title').textContent, said: window.__spoken.join(' | '), show: document.querySelector('#news-show').textContent }));
+      check(shown && /golem de fer/.test(card.title + card.said), 'à l’ouverture, Alaric présente la nouveauté (la plus récente d’abord)', JSON.stringify(card));
+      check(/Fer, le golem de fer/.test(card.said) && card.show === 'Montre-moi !', 'la présentation est lue à voix haute, avec « Montre-moi ! »', JSON.stringify(card));
+      // "Show me!": the golden arrow points at Iron.
+      await g.click('#news-show');
+      await g.page.waitForTimeout(500);
+      const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), gp = s.golem.mesh.position; return { q, d: q ? Math.hypot(q.x - gp.x, q.z - gp.z) : 99 }; });
+      check(arrow.d < 1, '« Montre-moi ! » pointe la flèche dorée vers le golem', JSON.stringify(arrow));
+      // The other note (Alaric himself) waits: the journal keeps all of them.
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const journal = await g.page.evaluate(() => [...document.querySelectorAll('#journal-list .journal-item h3')].map((e) => e.textContent));
+      check(journal.length >= 2 && /golem/i.test(journal[0]), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
+      await g.click('#journal-close');
+      // Iron walks round the square, says hello and offers a flower once a day.
+      const walk = await g.page.evaluate(() => { const gl = window.__se.scene.golem, a = gl.mesh.position.clone(); gl.pause = 0; for (let k = 0; k < 150; k++) gl.update(1 / 30, k / 30); return { points: gl.points.length, moved: a.distanceTo(gl.mesh.position) }; });
+      check(walk.points >= 4 && walk.moved > 1, 'Fer fait le tour de la place', JSON.stringify(walk));
+      await g.page.evaluate(() => { window.__flowers = window.__se.game().materials.flower ?? 0; });
+      check(await g.use("i.kind === 'golem'") === 'ok', 'on peut toucher Fer');
+      const hello = await g.page.evaluate(() => ({ flowers: (window.__se.game().materials.flower ?? 0) - window.__flowers, said: window.__spoken.slice(-1)[0] ?? '' }));
+      check(hello.flowers === 1 && /une fleur pour toi/.test(hello.said), 'Fer dit bonjour (à l’oral) et offre une fleur', JSON.stringify(hello));
+      await g.use("i.kind === 'golem'");
+      check(await g.page.evaluate(() => (window.__se.game().materials.flower ?? 0) - window.__flowers === 1), 'une seule fleur par jour');
+      // At night he crushes a zombie near the village.
+      const smash = await g.page.evaluate(() => {
+        const s = window.__se.scene, gl = s.golem;
+        s.dayTime = 0.8 * 420; s.night = 1;
+        s.zombies.clear(false); s.zombies.armedChance = 0; s.zombies._spawn();
+        const z = s.zombies.active[0]; if (!z) return 'no zombie';
+        z.mesh.scale.setScalar(1); z.stun = 99;
+        const nx = gl.points.at((gl.wp + 1) % gl.points.length); z.mesh.position.set(nx.x, s.groundAt(nx.x, nx.z), nx.z);
+        gl.cooldown = 0; gl.target = null;
+        for (let k = 0; k < 90 && z.alive; k++) gl.update(1 / 30, k / 30);
+        const r = !z.alive ? true : JSON.stringify({ gp: gl.mesh.position.toArray().map((v) => v.toFixed(1)), zp: z.mesh.position.toArray().map((v) => v.toFixed(1)) }); s.zombies.clear(false); s.dayTime = 0.3 * 420;
+        return r;
+      });
+      check(smash === true, 'la nuit, Fer écrase un zombie qui s’approche du village', String(smash));
+      await g.page.close();
+    },
+  },
+  {
     name: 'Espace parents : listes de mots',
     async run(browser, base, check) {
       const { WORDS } = await import('../../language-engine.js');

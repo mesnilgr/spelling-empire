@@ -14,6 +14,7 @@ import { DECOR } from './decor.js';
 import { PLACES, DISCOVER_RADIUS } from './landmarks.js';
 import { ANIMAL_KINDS } from './fauna.js';
 import { HORSES } from './horse.js';
+import { NEWS } from './news.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -575,6 +576,14 @@ function init3DScene() {
   setupPet();
   if (scene3D.bosses) scene3D.bosses.onGrumble = () => { playNoise({ freq: 120, q: 0.7, volume: 0.12, duration: 0.5 }); playTone(70, 0.45, 'sawtooth', 0.05); };
   setupFauna();
+  if (scene3D.golem) {
+    scene3D.setSpotMaterial(scene3D.golem.obj, 'talk', `🤖 ${t.golemName}`);
+    scene3D.golem.onSmash = () => {
+      playNoise({ type: 'lowpass', freq: 220, q: 1, volume: 0.18, duration: 0.35 });
+      animalVoice({ type: 'square', f0: 90, f1: 60, dur: 0.3, filter: 'lowpass', freq: 300, vol: 0.1 });
+      if (!progress.golemSmashExplained) { progress.golemSmashExplained = true; saveProgress(); const msg = t.golemSmash; toast(msg, 4000); speak(msg.replace(/^\S+ /, ''), 0.95); }
+    };
+  }
   scene3D.onDismount = () => { const h = scene3D.horses.list.find((x) => x.tamed && !x.leftAt); $('#dismount-btn').hidden = true; };
   scene3D.onHorseBlock = () => { sfxHit(); if (!horseBlockSaid) { horseBlockSaid = true; toast(t.horseBlock, 3500); } };
   scene3D.onObsidian = (n) => { if (n) { sfxCraft(); toast(t.obsidianMade, 4000); speak(t.obsidianMade.replace(/^\S+ /, ''), 0.95); } };
@@ -609,7 +618,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse'].includes(obj.kind)) continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -653,6 +662,7 @@ function saveGame() {
     portalLit: !!game.portalLit,
     maxHearts: game.maxHearts ?? 2,
     horses: game.horses ?? {},
+    golemFlowerDay: game.golemFlowerDay ?? null,
     heartsFrom: game.heartsFrom ?? [],
     savedAt: Date.now(),
   };
@@ -682,6 +692,7 @@ function continueGame() {
     portalLit: !!s.portalLit,
     maxHearts: s.maxHearts ?? 2,
     horses: JSON.parse(JSON.stringify(s.horses ?? {})),
+    golemFlowerDay: s.golemFlowerDay ?? null,
     heartsFrom: [...(s.heartsFrom ?? [])],
   });
   // Lasting spells come back: the bridge, the lit braziers.
@@ -806,6 +817,7 @@ function interactWith(obj) {
   if (obj.kind === 'pet') { petInteract(); return; }
   if (obj.kind === 'portal') { usePortal(); return; }
   if (obj.kind === 'horse') { horseInteract(obj); return; }
+  if (obj.kind === 'golem') { golemInteract(); return; }
   if (obj.kind === 'page') { scene3D.setStoryActive(obj, false); playScene(obj.scene, () => advanceStory(obj.pageId)); return; }
   if (obj.kind === 'travel') { useTravelSign(obj); return; }
   if (obj.nodeType === 'fish' && ownsTool('rod')) {
@@ -956,6 +968,8 @@ function showDialogLine() {
 }
 
 function objectivePos() {
+  const nt = newsTargetPos();
+  if (nt) return nt;
   const o = currentObjective();
   const it = scene3D?.interactables ?? [];
   if (!o) return null;
@@ -1005,7 +1019,7 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐', quest: true });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden; }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden; tickNews(); }, 300);
 
 /* ===== FLASH CHALLENGE: never more than 2 minutes of play without a word ===== */
 const FLASH_AFTER = 120; // seconds of play
@@ -1014,7 +1028,7 @@ function tickFlash() {
   const now = performance.now(), dt = Math.min(1, (now - flashLast) / 1000);
   flashLast = now;
   if (!game || !scene3D || scene3D.mode !== 'play' || document.hidden) return;
-  if (document.body.dataset.screen !== 'game' || !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight || !$('#sleep-fade').hidden) return;
+  if (document.body.dataset.screen !== 'game' || !$('#news-modal').hidden || !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight || !$('#sleep-fade').hidden) return;
   playSinceWord += dt;
   if (playSinceWord < (window.__se?.flashAfter ?? FLASH_AFTER)) return;
   playSinceWord = 0;
@@ -1070,6 +1084,93 @@ function setupFauna() {
     const pos = scene3D.worldToScreen(a.mesh.position.clone().setY(a.mesh.position.y + 1.1));
     if (pos) showFloatingText(pos.x, pos.y, txt, '#ffffff');
   };
+}
+
+/* ===== WHAT'S NEW (Alaric) AND THE JOURNAL ===== */
+// Each release is presented by Alaric the first time the game is opened after it: written, read
+// aloud, with "Show me!" (the golden arrow points at it) or "Later" (it waits in the journal 📜).
+const newsSeen = () => progress.newsSeen ?? [];
+let newsQueue = null, newsTarget = null, newsShown = null;
+function tickNews() {
+  if (!game || !scene3D || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
+  if (newsQueue === null) {
+    // A brand-new player has nothing "new": everything counts as seen, Alaric starts with the next release.
+    if (!progress.newsSeen && !Object.keys(progress.wordStats ?? {}).length && !progress.save?.story) { progress.newsSeen = NEWS.map((n) => n.id); saveProgress(); }
+    const seen = newsSeen();
+    newsQueue = seen.includes('*') ? [] : NEWS.filter((n) => !seen.includes(n.id)).reverse().slice(0, 3);
+  }
+  if (!newsQueue.length || !$('#news-modal').hidden || !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#travel-modal').hidden || knocking || bossFight) return;
+  if (newsShown && performance.now() - newsShown < 1500) return;
+  showNews(newsQueue.shift(), true);
+}
+function newsTitle(n) { return n.title[lang] ?? n.title.fr; }
+function newsText(n) { return n.text[lang] ?? n.text.fr; }
+function showNews(n, fresh) {
+  $('#news-kicker').textContent = `${n.emoji} ${t.newsKicker}`;
+  $('#news-title').textContent = newsTitle(n);
+  $('#news-text').textContent = newsText(n);
+  $('#news-show').textContent = t.newsShow;
+  $('#news-later').textContent = t.newsLater;
+  $('#news-modal').hidden = false;
+  $('#news-modal').dataset.id = n.id;
+  speak(`${newsTitle(n)}. ${newsText(n)}`, 0.95);
+  if (fresh) { progress.newsSeen = [...new Set([...newsSeen(), n.id])]; saveProgress(); }
+}
+function closeNews() { $('#news-modal').hidden = true; stopSpeaking(); newsShown = performance.now(); }
+function newsTargetPos() {
+  if (!newsTarget || performance.now() > newsTarget.until) { newsTarget = null; return null; }
+  const it = scene3D?.interactables ?? [];
+  const s = newsTarget.show;
+  const pos = s === 'mage' ? it.find((i) => i.kind === 'npc' && i.npcId === 'mage')?.worldPos : typeof s === 'string' ? it.find((i) => i.kind === s)?.worldPos : s;
+  const p = scene3D?.player.position;
+  if (!pos || (p && Math.hypot(p.x - pos.x, p.z - pos.z) < 3.5)) { newsTarget = null; return null; }
+  return pos;
+}
+function showMeNews(id) {
+  const n = NEWS.find((x) => x.id === id);
+  if (!n) return;
+  newsTarget = { show: n.show, until: performance.now() + 4 * 60 * 1000 };
+  newsQueue = [];
+  toast(t.newsFollow, 3500);
+  updateMapPins();
+}
+function renderJournal() {
+  $('#journal-title').textContent = `📜 ${t.journalTitle}`;
+  $('#journal-close').textContent = t.journalClose;
+  $('#journal-list').replaceChildren(...[...NEWS].reverse().map((n) => {
+    const item = el('div', 'journal-item');
+    item.append(el('span', 'journal-date', `${t.newsDay(n.day)} · ${n.date.split('-').reverse().join('/')}`), el('h3', '', `${n.emoji} ${newsTitle(n)}`), el('p', '', newsText(n)));
+    const actions = el('div', 'journal-actions');
+    const listen = el('button', 'btn btn-ghost btn-small', '🔊');
+    listen.type = 'button';
+    listen.addEventListener('click', () => speak(`${newsTitle(n)}. ${newsText(n)}`, 0.95));
+    const show = el('button', 'btn btn-accent btn-small', t.newsShow);
+    show.type = 'button';
+    show.addEventListener('click', () => { $('#journal-modal').hidden = true; stopSpeaking(); showMeNews(n.id); });
+    actions.append(listen, show);
+    item.append(actions);
+    return item;
+  }));
+}
+
+/* ===== FER, THE IRON GOLEM ===== */
+function golemInteract() {
+  const g = scene3D?.golem;
+  if (!g) return;
+  g.wave();
+  animalVoice({ type: 'square', f0: 140, f1: 110, dur: 0.35, filter: 'lowpass', freq: 500, vol: 0.1 });
+  const today = new Date().toISOString().slice(0, 10);
+  if (game.golemFlowerDay !== today) {
+    game.golemFlowerDay = today;
+    game.materials.flower = (game.materials.flower ?? 0) + 1;
+    sfxCraft(); smile();
+    const msg = t.golemFlower;
+    toast(msg, 4500); speak(msg.replace(/^\S+ /, ''), 0.95);
+    updateGameUI(); renderCraftMenu(); saveGame();
+  } else {
+    const msg = t.golemHello;
+    toast(msg, 3500); speak(msg.replace(/^\S+ /, ''), 0.95);
+  }
 }
 
 /* ===== HORSES ===== */
@@ -2367,7 +2468,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');
@@ -3116,6 +3217,11 @@ let returnScreen = 'menu';
 function openPage(name) { returnScreen = document.body.dataset.screen === 'game' ? 'game' : 'menu'; showScreen(name); }
 $('#album-btn')?.addEventListener('click', () => openPage('album'));
 $('#wardrobe-btn')?.addEventListener('click', () => openPage('wardrobe'));
+$('#news-btn')?.addEventListener('click', () => { renderJournal(); $('#journal-modal').hidden = false; });
+$('#journal-close')?.addEventListener('click', () => { $('#journal-modal').hidden = true; stopSpeaking(); });
+$('#news-later')?.addEventListener('click', () => closeNews());
+$('#news-show')?.addEventListener('click', () => { const id = $('#news-modal').dataset.id; closeNews(); showMeNews(id); });
+$('#news-repeat')?.addEventListener('click', () => { const n = NEWS.find((x) => x.id === $('#news-modal').dataset.id); if (n) speak(`${newsTitle(n)}. ${newsText(n)}`, 0.95); });
 $('#menu-album-btn')?.addEventListener('click', () => openPage('album'));
 $('#menu-wardrobe-btn')?.addEventListener('click', () => openPage('wardrobe'));
 $('#album-back-btn')?.addEventListener('click', () => showScreen(returnScreen));

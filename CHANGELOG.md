@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.19.0 — J1 : Alaric présente les nouveautés, et Fer le golem de fer
+
+Première des 30 releases du plan de décembre (voir `docs/PLAN.md`).
+
+- 🧙 **« Quoi de neuf ? »** : la première fois qu'on ouvre le jeu après une nouvelle release, Alaric présente la nouveauté sur une carte, **écrite et lue à voix haute**. « Montre-moi ! » fait pointer la flèche dorée de la minicarte vers la nouveauté ; « Plus tard » la range. 🔊 la relit. S'il y a plusieurs nouveautés, il les présente l'une après l'autre (la plus récente d'abord, 3 au maximum).
+- 📜 **Le journal des nouveautés** (nouveau bouton en haut) garde toutes les présentations, à relire, réécouter ou montrer.
+- 🤖 **Fer, le golem de fer**, gardien du village : il fait le tour de la place à pas lourds, et la nuit il fonce sur les zombies qui s'approchent des maisons et les écrase (la viande tombe). Quand on le touche, il fait coucou et, une fois par jour, offre une fleur 🌺 (dit à voix haute).
+- Un tout nouveau joueur ne voit pas les anciennes nouveautés : Alaric commence avec la release suivante.
+
 ## v1.18.0 — Chevaux, nouveaux animaux, vrais cris et obsidienne
 
 - 🐴 **Des chevaux à monter** dans le pré à côté de la ferme (Châtaigne, Neige et Réglisse). Un mot et le cheval fait confiance ; on le touche pour monter : il court presque deux fois plus vite et saute plus haut. Le bouton 🐴⬇️ sert à descendre (on descend aussi tout seul pour voyager, dormir ou passer un portail). Pas de cheval dans les maisons.

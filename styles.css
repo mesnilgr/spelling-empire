@@ -1704,3 +1704,19 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 
 .dismount-btn { background: linear-gradient(180deg, #c89a5a, #8a5a32); }
 .dismount-btn span { font-size: 1.3rem; }
+
+/* What's new (Alaric) and the journal. */
+.news-card { width: min(560px, 100%); text-align: left; }
+.news-head { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; }
+.news-portrait { font-size: 3rem; line-height: 1; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.2)); }
+.news-kicker { font-size: 0.8rem; font-weight: 800; color: #b07a1a; text-transform: uppercase; letter-spacing: 0.04em; }
+.news-card h2 { margin: 2px 0 0; font-size: 1.35rem; }
+.news-text { font-size: 1.15rem; line-height: 1.5; margin: 6px 0 16px; }
+.news-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.journal-card { width: min(620px, 100%); }
+.journal-list { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; margin: 10px 0 14px; text-align: left; }
+.journal-item { padding: 10px 12px; border-radius: 12px; background: rgba(255, 245, 220, 0.7); border: 2px solid #e8d4a8; }
+.journal-item h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.journal-item p { margin: 0 0 8px; }
+.journal-item .journal-date { font-size: 0.8rem; color: #8a6a3a; font-weight: 700; }
+.journal-item .journal-actions { display: flex; gap: 8px; }
