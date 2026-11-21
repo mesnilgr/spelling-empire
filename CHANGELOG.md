@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.20.1 — Le prénom de l'enfant, et le mot « cinéma »
+
+- 👋 **Le jeu demande le prénom de l'enfant** au premier « Jouer » (et une seule fois, à la prochaine partie, pour un joueur qui a déjà commencé), écrit et dit à voix haute : « Comment tu t'appelles ? ». Alaric répond « Enchanté, Léo ! » avant de demander l'âge. « Plus tard » permet de passer ; le prénom reste sur cet appareil.
+- 🧙 **Le prénom est utilisé** sur la carte d'Alaric (« Quoi de neuf, Léo ? », écrit et lu) et dans un bravo sur trois (« Orthographe parfaite, Léo ! »).
+- 👨‍👩‍👧 **Espace parents** : nouveau champ « Prénom de l'enfant » pour le changer ou l'effacer (enregistré tout de suite).
+- 🎬 **Nouveau mot : « cinéma »** (liste « Moyen », 6–7 ans : une seule difficulté, le c qui se prononce « s »), avec sa phrase (« Ce soir, nous allons voir un film au cinéma. ») et son image 🎬 dans l'album.
+- 🧪 Deux tests qui échouaient parfois quand l'ordinateur de test était très chargé attendent maintenant le bon moment au lieu d'un délai fixe.
+
 ## v1.20.0 — J2 : Défis du jour, coffre sauteur, Cocotte et devinettes
 
 - 🎯 **Trois défis le matin, trois défis le soir**, choisis chaque jour parmi ce que l'enfant peut faire (« Fais un câlin à un mouton », « Saute 10 fois comme un kangourou », « Nourris ton chien », « Trouve 2 coffres », « Dis bonjour à Fer », « Épelle un mot sur ton cheval »…). Chaque série contient un défi de mots (5 mots du premier coup le matin, 7 mots le soir). Ils sont annoncés à voix haute, et le bouton 🎯 en haut montre où on en est (1/3, 2/3…).

@@ -22,8 +22,9 @@ export async function openGame(browser, base, progress, { quality = 1, width = 1
     if (window.speechSynthesis) window.speechSynthesis.speak = (u) => window.__spoken.push(u.text);
   });
   await page.goto(`${base}/?test&quality=${quality}${render ? '' : '&norender'}`);
-  // Alaric's "what's new" cards stay quiet unless a scenario asks for them (newsSeen given).
-  const prog = { newsSeen: ['*'], ...progress };
+  // Alaric's "what's new" cards stay quiet unless a scenario asks for them (newsSeen given),
+  // and the first-name question is already answered unless a scenario leaves childName undefined.
+  const prog = { newsSeen: ['*'], childName: '', ...progress };
   await page.evaluate(([key, p]) => { localStorage.clear(); localStorage.setItem(key, JSON.stringify(p)); }, [STORE, prog]);
   await page.reload();
   await page.waitForSelector('#loading.is-done', { timeout: 180000 });

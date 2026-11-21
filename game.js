@@ -257,10 +257,61 @@ function ageButtons(container, onPick) {
     return b;
   }));
 }
-function askAge(then) {
+function askAge(then, hello = '') {
   ageButtons($('#age-buttons'), (a) => { setAge(a); $('#age-modal').hidden = true; then?.(); });
   $('#age-modal').hidden = false;
-  speak(t.ageQuestion, 0.9);
+  speak(hello ? `${hello} ${t.ageQuestion}` : t.ageQuestion, 0.9);
+}
+
+// The child's first name: asked once (first game, or the next game of an existing player),
+// changed in the parents' corner. undefined = never asked, '' = skipped. Stays on this device.
+function cleanName(raw) {
+  const n = String(raw ?? '').replace(/[^\p{L}\p{M}' -]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 16).trim();
+  return n ? n[0].toLocaleUpperCase() + n.slice(1) : '';
+}
+function childName() { return progress.childName || ''; }
+function setChildName(raw) { progress.childName = cleanName(raw); saveProgress(); }
+function askName(then) {
+  const modal = $('#name-modal'), input = $('#name-input'), hint = $('#name-hint');
+  input.value = childName();
+  input.placeholder = t.namePlaceholder;
+  hint.hidden = true;
+  modal.hidden = false;
+  speak(t.nameQuestion, 0.9);
+  setTimeout(() => input.focus(), 60);
+  const done = (n) => {
+    $('#name-form').onsubmit = null; $('#name-skip').onclick = null;
+    setChildName(n);
+    input.blur();
+    modal.hidden = true;
+    then?.(childName());
+  };
+  $('#name-form').onsubmit = (e) => {
+    e.preventDefault();
+    const n = cleanName(input.value);
+    if (!n) { hint.textContent = t.nameEmpty; hint.hidden = false; speak(t.nameEmpty, 0.9); input.focus(); return; }
+    done(n);
+  };
+  $('#name-skip').onclick = () => done('');
+}
+// Before playing: the first name (once), then the age (once).
+function beforePlay(go) {
+  const afterName = (n) => {
+    const hello = n ? t.nameHello(n) : '';
+    if (!progress.age) { askAge(go, hello); return; }
+    go();
+    if (hello) { toast(`👋 ${hello}`, 3000); speak(hello, 0.95); }
+  };
+  if (progress.childName === undefined) askName(afterName);
+  else if (!progress.age) askAge(go);
+  else go();
+}
+// "Bravo" messages say the child's name now and then (one success in three).
+let praiseCount = 0;
+function praise(firstTry) {
+  const base = firstTry ? t.perfectSpelling : t.youGotIt;
+  const n = childName();
+  return n && praiseCount++ % 3 === 0 ? t.nameIn(base, n) : base;
 }
 
 function wordsForLevel(levelId) {
@@ -1115,7 +1166,7 @@ function newsTitle(n) { return n.title[lang] ?? n.title.fr; }
 function newsText(n) { return n.text[lang] ?? n.text.fr; }
 // Alaric's riddle at the end of the card: the question is read with the card, "The answer?" reads the answer.
 function newsRiddle(n) { return n.riddle ? { q: n.riddle.q[lang] ?? n.riddle.q.fr, a: n.riddle.a[lang] ?? n.riddle.a.fr } : null; }
-function newsSpeech(n) { const r = newsRiddle(n); return `${newsTitle(n)}. ${newsText(n)}${r ? ` ${dtx().riddle} : ${r.q}` : ''}`; }
+function newsSpeech(n) { const r = newsRiddle(n); return `${childName() ? `${t.newsKickerName(childName())} ` : ''}${newsTitle(n)}. ${newsText(n)}${r ? ` ${dtx().riddle} : ${r.q}` : ''}`; }
 function riddleBox(n) {
   const r = newsRiddle(n);
   if (!r) return null;
@@ -1129,7 +1180,7 @@ function riddleBox(n) {
   return box;
 }
 function showNews(n, fresh) {
-  $('#news-kicker').textContent = `${n.emoji} ${t.newsKicker}`;
+  $('#news-kicker').textContent = `${n.emoji} ${childName() ? t.newsKickerName(childName()) : t.newsKicker}`;
   $('#news-title').textContent = newsTitle(n);
   $('#news-text').textContent = newsText(n);
   { const rb = riddleBox(n); $('#news-riddle').replaceChildren(...(rb ? [rb] : [])); $('#news-riddle').hidden = !rb; }
@@ -2229,7 +2280,7 @@ function handleSpellSuccess() {
     saveGame();
     const sentence = spellContext.word.sentence ?? buildSentence(wordStr, lang);
     spellResultEl.replaceChildren(
-      el('p', 'spell-success', copied ? t.copiedWell : firstTry ? t.perfectSpelling : t.youGotIt),
+      el('p', 'spell-success', copied ? t.copiedWell : praise(firstTry)),
       el('p', 'spell-sentence', sentence),
       el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`),
       el('p', 'spell-material', lootText ? `🎁 ${t.treasureFound} ${lootText}` : `${MATERIAL_EMOJI[material] ?? ''} ${t.gotMaterial}: ${materialName(material)}${amount > 1 ? ` ×${amount}` : ''}`),
@@ -2397,7 +2448,7 @@ function handleSpellSuccess() {
   } else if (type === 'craft') {
     spellContext.partResults.push({ part: spellContext.currentPart, success: true });
     spellResultEl.replaceChildren(
-      el('p', 'spell-success', firstTry ? t.perfectSpelling : t.youGotIt),
+      el('p', 'spell-success', praise(firstTry)),
       el('p', 'spell-stars', `+${earned} ${earned === 1 ? t.star : t.stars}`),
     );
     spellResultEl.hidden = false;
@@ -2699,7 +2750,7 @@ function bindEvents() {
       return;
     }
     newGameArmed = false;
-    if (!progress.age) askAge(() => newGame()); else newGame();
+    beforePlay(() => newGame());
   });
   $('#reset-pos-btn')?.addEventListener('click', () => scene3D?.resetPosition());
   $('#dismount-btn')?.addEventListener('click', () => dismountHorse());
@@ -2908,6 +2959,17 @@ function renderWordLists() {
 
 function renderDashboard() {
   ageButtons($('#dash-age'), (a) => { setAge(a); renderDashboard(); });
+  const nm = $('#dash-name');
+  if (nm) {
+    nm.value = childName();
+    nm.placeholder = t.namePlaceholder;
+    $('#dash-name-saved').hidden = true;
+    nm.onchange = () => {
+      setChildName(nm.value);
+      nm.value = childName();
+      const ok = $('#dash-name-saved'); ok.textContent = t.nameSaved; ok.hidden = false;
+    };
+  }
   const zb = $('#dash-zombies');
   if (zb) {
     zb.checked = progress.zombies !== false;
@@ -3269,7 +3331,7 @@ document.addEventListener('keydown', (event) => {
 $('#use-btn')?.addEventListener('click', useEquipped);
 $('#attack-btn')?.addEventListener('click', (e) => { e.preventDefault(); attackButton(); });
 $('#jump-btn')?.addEventListener('pointerdown', (e) => { e.preventDefault(); scene3D?.jump(); });
-$('#continue-btn')?.addEventListener('click', () => { initAudio(); continueGame(); });
+$('#continue-btn')?.addEventListener('click', () => { initAudio(); beforePlay(() => continueGame()); });
 
 
 /* ===== MESSAGES ===== */

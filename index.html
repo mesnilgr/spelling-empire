@@ -256,6 +256,11 @@
             <h2 data-i18n="ageTitle">Age</h2>
             <div class="age-buttons age-buttons-small" id="dash-age"></div>
             <p class="note" id="dash-age-note"></p>
+            <label class="dash-newperday dash-name"><span data-i18n="nameLabel">Child’s first name</span>
+              <input type="text" id="dash-name" maxlength="16" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" />
+              <span class="dash-name-saved" id="dash-name-saved" hidden></span>
+            </label>
+            <p class="note" data-i18n="nameParentNote"></p>
             <label class="dash-newperday"><span data-i18n="newPerDayLabel">New words per day</span>
               <select id="dash-newperday"><option>5</option><option>10</option><option>15</option><option>20</option><option>30</option></select>
             </label>
@@ -434,6 +439,22 @@
       <h2 id="end-title">Fin !</h2>
       <p class="end-stats" id="end-stats"></p>
       <button class="btn btn-primary" id="end-close" type="button" data-i18n="keepPlaying">Keep playing</button>
+    </div>
+  </div>
+  <!-- First name (asked once: first game, or next game for an existing player; changed in the parents' corner) -->
+  <div class="modal-overlay age-overlay" id="name-modal" hidden>
+    <div class="modal card age-card name-card">
+      <h2 data-i18n="nameQuestion">What is your name?</h2>
+      <p class="lede" data-i18n="nameLede"></p>
+      <form id="name-form" autocomplete="off">
+        <input id="name-input" class="name-input" type="text" maxlength="16" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" />
+        <p class="note name-hint" id="name-hint" hidden></p>
+        <div class="name-actions">
+          <button class="btn btn-primary btn-large" id="name-ok" type="submit" data-i18n="nameOk">That’s me!</button>
+          <button class="btn btn-ghost btn-small" id="name-skip" type="button" data-i18n="nameSkip">Later</button>
+        </div>
+      </form>
+      <p class="note" data-i18n="nameNote"></p>
     </div>
   </div>
   <!-- Age picker (first game, and in the parents' corner) -->

@@ -114,7 +114,7 @@ export const WORD_EMOJI = {
     bateau: '⛵', auto: '🚗', chapeau: '🎩', cadeau: '🎁', château: '🏰', gâteau: '🎂', voiture: '🚙', roi: '🤴', étoile: '⭐', poire: '🍐',
     armoire: '🗄️', montagne: '⛰️', champignon: '🍄', campagne: '🌾', ligne: '📏',
     escargot: '🐌', éléphant: '🐘', papillon: '🦋', grenouille: '🐸', poisson: '🐟', oiseau: '🐦', maison: '🏠', chocolat: '🍫', citron: '🍋', girafe: '🦒',
-    hibou: '🦉', feuille: '🍂', abeille: '🐝', perroquet: '🦜', écureuil: '🐿️', hérisson: '🦔', fraise: '🍓', cerise: '🍒', framboise: '🫐', parapluie: '☂️',
+    hibou: '🦉', feuille: '🍂', abeille: '🐝', perroquet: '🦜', écureuil: '🐿️', hérisson: '🦔', fraise: '🍓', cerise: '🍒', framboise: '🫐', parapluie: '☂️', cinéma: '🎬',
   },
   en: {
     cat: '🐱', dog: '🐶', sun: '☀️', big: '🐘', run: '🏃', hat: '🎩', red: '🔴', bed: '🛏️', map: '🗺️', win: '🏆',

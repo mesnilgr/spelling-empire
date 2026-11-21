@@ -351,7 +351,8 @@ export const SCENARIOS = [
       // Falling in the lava: "Ouch!" and back to the start.
       await g.page.evaluate(() => { window.__se.reviveAlways = true; });
       await g.page.evaluate(() => window.__se.scene.teleport(31.5, -39.6));
-      await g.page.waitForTimeout(2200);
+      // Waits for the respawn rather than a fixed time (frames run late when the machine is busy).
+      await g.page.waitForFunction(() => { const p = window.__se.scene.player.position; return Math.hypot(p.x - 29, p.z + 37.4) < 1.5; }, null, { timeout: 12000 }).catch(() => {});
       const after = await g.page.evaluate(() => { const p = window.__se.scene.player.position; return { x: p.x, z: p.z }; });
       check(Math.hypot(after.x - 29, after.z + 37.4) < 1.5, 'tomber dans la lave ramène au départ', JSON.stringify(after));
       const asked = await g.page.waitForFunction(() => window.__se.spell()?.type === 'revive' && !document.querySelector('#spell-modal').hidden, null, { timeout: 8000 }).then(() => true, () => false);
@@ -1090,7 +1091,10 @@ export const SCENARIOS = [
       check(/Partie 1 ✓ · Partie 2 ✓/.test(j2) && /trouvé Cocotte/.test(j2) && /Plumes dorées : 1/.test(j2), 'journal : les deux parties faites, Cocotte trouvée, 1 plume', j2);
       await g.click('#journal-close');
       // Part 2 also opens after 15 minutes of play on part 1, without leaving the game.
-      const fifteen = await g.page.evaluate(async () => { const st = window.__se.partState('J99'); const before = window.__se.releasePart(99); st.play = 15 * 60 - 0.4; await new Promise((r) => setTimeout(r, 1500)); return { before, after: window.__se.releasePart(99) }; });
+      // (waits for the condition rather than a fixed time: the 300 ms timer runs late when the machine is busy)
+      const before = await g.page.evaluate(() => { const st = window.__se.partState('J99'); const b = window.__se.releasePart(99); st.play = 15 * 60 - 0.4; return b; });
+      const after = await g.page.waitForFunction(() => window.__se.releasePart(99) === 2, null, { timeout: 12000 }).then(() => 2, () => g.page.evaluate(() => window.__se.releasePart(99)));
+      const fifteen = { before, after };
       check(fifteen.before === 1 && fifteen.after === 2, 'la partie 2 s’ouvre aussi après 15 min de jeu sur la partie 1', JSON.stringify(fifteen));
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
@@ -1187,6 +1191,59 @@ export const SCENARIOS = [
       const dup = await g.page.evaluate(() => { const ids = window.__se.scene.interactables.filter((i) => i.kind === 'npc').map((i) => i.npcId); return ids.filter((id, k) => ids.indexOf(id) !== k); });
       check(dup.length === 0, 'chaque personnage n’est enregistré qu’une fois', dup.join(', '));
       check(res.after.bad.length === 0, `avec les sorts, tous les lieux sont atteignables à pied (${res.after.total} objets, ${res.after.cells} cases explorées)`, res.after.bad.join(' ; '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Prénom de l’enfant (demandé une fois, changé par les parents)',
+    quick: true,
+    weight: 2,
+    async run(browser, base, check) {
+      // childName left undefined: a brand-new player is asked for a name, then for an age.
+      const g = await openGame(browser, base, { lang: 'fr', inputMode: 'keys', childName: undefined });
+      await g.click('#new-game-btn');
+      await g.page.waitForTimeout(400);
+      check(await g.page.$eval('#name-modal', (e) => !e.hidden), 'le premier « Jouer » demande le prénom');
+      check((await g.page.evaluate(() => window.__spoken.at(-1))).includes('Comment tu t’appelles'), 'la question est dite à voix haute');
+      await g.click('#name-ok');
+      await g.page.waitForTimeout(200);
+      check(await g.page.$eval('#name-modal', (e) => !e.hidden) && await g.page.$eval('#name-hint', (e) => !e.hidden), 'sans prénom, la fenêtre reste ouverte avec une aide');
+      await g.page.fill('#name-input', '  léo3! ');
+      await g.click('#name-ok');
+      await g.page.waitForTimeout(300);
+      check(await g.page.$eval('#name-modal', (e) => e.hidden) && await g.page.$eval('#age-modal', (e) => !e.hidden), 'puis l’âge est demandé');
+      const said = await g.page.evaluate(() => window.__spoken.at(-1));
+      check(said.includes('Enchanté, Léo !') && said.includes('Quel âge'), 'Alaric dit bonjour avec le prénom, puis demande l’âge', said);
+      let p = await g.page.evaluate((k) => JSON.parse(localStorage.getItem(k)), STORE);
+      check(p.childName === 'Léo', 'le prénom est nettoyé (majuscule, sans chiffres ni signes) et enregistré', p.childName);
+      await g.click('#age-buttons .age-btn:nth-child(2)');
+      await g.page.waitForSelector('#dialog:not([hidden])', { timeout: 20000 });
+      await g.skipDialog();
+      // A word spelled on a resource: the first "bravo" says the name.
+      await g.use("i.kind === 'node'");
+      const r = await g.spell();
+      check(r.result.includes(', Léo !'), 'le bravo dit le prénom', r.result);
+      // Parents' corner: change it.
+      await g.click('#quit-btn');
+      await g.page.waitForTimeout(300);
+      await g.click('#parents-btn');
+      await g.page.waitForTimeout(300);
+      check(await g.page.$eval('#dash-name', (e) => e.value) === 'Léo', 'l’espace parents montre le prénom');
+      await g.page.fill('#dash-name', 'emma');
+      await g.page.$eval('#dash-name', (e) => e.dispatchEvent(new Event('change')));
+      await g.page.waitForTimeout(200);
+      p = await g.page.evaluate((k) => JSON.parse(localStorage.getItem(k)), STORE);
+      check(p.childName === 'Emma' && await g.page.$eval('#dash-name-saved', (e) => !e.hidden), 'les parents peuvent le changer (enregistré)', p.childName);
+      // Asked only once: the next game goes straight in, and Alaric's card says the name.
+      await g.page.evaluate((k) => { const q = JSON.parse(localStorage.getItem(k)); q.newsSeen = []; localStorage.setItem(k, JSON.stringify(q)); }, STORE);
+      await g.page.reload();
+      await g.page.waitForSelector('#loading.is-done', { timeout: 180000 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1500);
+      check(await g.page.$eval('#name-modal', (e) => e.hidden), 'le prénom n’est demandé qu’une fois');
+      const kicker = await g.page.$eval('#news-kicker', (e) => e.textContent).catch(() => '');
+      check(kicker.includes('Quoi de neuf, Emma ?'), 'la carte d’Alaric dit « Quoi de neuf, Emma ? »', kicker);
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },
   },

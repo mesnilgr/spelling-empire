@@ -286,6 +286,8 @@ for (const w of frEasy) assert(frComplexity(w).length === 0, `fr/easy "${w}": no
 for (const w of frMedium) assert(frComplexity(w).length === 1, `fr/medium "${w}": exactly one complex spelling (${frComplexity(w)})`);
 for (const w of WORDS.fr.filter(x => x.level === 'challenge').map(x => x.word)) assert(frComplexity(w).length >= 2, `fr/challenge "${w}": at least two complex spellings (${frComplexity(w)})`);
 assert(frMedium.length >= 45, `fr/medium: enough words (${frMedium.length})`);
+// v1.20.1: « cinéma » asked by a parent (one complex spelling: the soft c), with its sentence and album picture.
+assert(frMedium.includes('cinéma') && buildSentence('cinéma', 'fr').startsWith('Ce soir'), 'fr/medium: cinéma, with its own sentence');
 for (const w of WORDS.en.filter(x => x.level === 'easy').map(x => x.word)) {
   assert(/^[^aeiou][aeiou][^aeiouwy]$/.test(w) || w === 'yes', `en/easy "${w}": consonant-vowel-consonant`);
 }
