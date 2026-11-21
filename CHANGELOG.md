@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.20.0 — J2 : Défis du jour, coffre sauteur, Cocotte et devinettes
+
+- 🎯 **Trois défis le matin, trois défis le soir**, choisis chaque jour parmi ce que l'enfant peut faire (« Fais un câlin à un mouton », « Saute 10 fois comme un kangourou », « Nourris ton chien », « Trouve 2 coffres », « Dis bonjour à Fer », « Épelle un mot sur ton cheval »…). Chaque série contient un défi de mots (5 mots du premier coup le matin, 7 mots le soir). Ils sont annoncés à voix haute, et le bouton 🎯 en haut montre où on en est (1/3, 2/3…).
+- 🎁 **Le coffre sauteur** : quand les trois défis sont faits, un coffre apparaît devant la chaumière. Quand on s'approche, il fait trois bonds pour s'échapper en rigolant (« Hihi ! Attrape-moi ! »), puis se laisse attraper ; un mot l'ouvre et il éclate en confettis (étoiles et matériaux). Le soir, un **gros coffre** donne un **nouveau costume** (ou des diamants si on les a tous). Un coffre de bienvenue attend déjà devant la chaumière pour découvrir la nouveauté.
+- 🌙 **Deux parties par jour** (nouveau système réutilisé par les prochaines releases) : les défis du soir arrivent quand on revient jouer au moins 30 minutes après la dernière partie, ou après 15 minutes de jeu. Le journal 📜 l'indique, écrit et lu : « Partie 1 ✓ · Partie 2 : à ton prochain retour ! ».
+- 🐔 **Cocotte la poule** se cache chaque jour à un nouvel endroit (aujourd'hui : sur le toit de la chaumière). La toucher : « Cot cot codêêt ! », elle s'envole en tournant et laisse une **plume dorée**. L'indice du jour est dans le journal 📜, écrit et lu.
+- ❓ **La devinette d'Alaric** à la fin de chaque carte « Quoi de neuf » (lue avec la carte), avec un bouton « La réponse ? » qui l'affiche et la lit. Aussi dans le journal.
+
 ## v1.19.0 — J1 : Alaric présente les nouveautés, et Fer le golem de fer
 
 Première des 30 releases du plan de décembre (voir `docs/PLAN.md`).

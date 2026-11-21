@@ -15,6 +15,8 @@ import { PLACES, DISCOVER_RADIUS } from './landmarks.js';
 import { ANIMAL_KINDS } from './fauna.js';
 import { HORSES } from './horse.js';
 import { NEWS } from './news.js';
+import { DTX, drawDefis, defiById } from './daily.js';
+import { cocotteToday } from './cocotte.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -584,6 +586,9 @@ function init3DScene() {
       if (!progress.golemSmashExplained) { progress.golemSmashExplained = true; saveProgress(); const msg = t.golemSmash; toast(msg, 4000); speak(msg.replace(/^\S+ /, ''), 0.95); }
     };
   }
+  setupJumpChest();
+  if (henFound()) scene3D.cocotte?.hide();
+  else if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', `🐔 Cocotte`);
   scene3D.onDismount = () => { const h = scene3D.horses.list.find((x) => x.tamed && !x.leftAt); $('#dismount-btn').hidden = true; };
   scene3D.onHorseBlock = () => { sfxHit(); if (!horseBlockSaid) { horseBlockSaid = true; toast(t.horseBlock, 3500); } };
   scene3D.onObsidian = (n) => { if (n) { sfxCraft(); toast(t.obsidianMade, 4000); speak(t.obsidianMade.replace(/^\S+ /, ''), 0.95); } };
@@ -594,13 +599,13 @@ function init3DScene() {
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, levelAt: (tier) => levelAt(tier), pickWord: (lvl) => pickWord(lvl) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, levelAt: (tier) => levelAt(tier), pickWord: (lvl) => pickWord(lvl) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
   scene3D.minimapCanvas = $('#minimap');
   scene3D.onStep = (surface) => sfxStep(surface);
-  scene3D.onJump = () => sfxJump();
+  scene3D.onJump = () => { sfxJump(); defiEvent('jump'); };
   scene3D.onDayPhase = (phase) => {
     $('#hud-time').textContent = phase === 'night' ? '🌙' : '☀️';
     refreshBed();
@@ -618,7 +623,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem'].includes(obj.kind)) continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -790,6 +795,9 @@ function tryInteract() {
 function interactWith(obj) {
   if (!game || !$('#spell-modal').hidden || !obj.active || !$('#dialog').hidden || !$('#travel-modal').hidden) return;
   if (!$('#quest-modal').hidden || fishing) return;
+  if (obj.kind === 'npc' && obj.npcId === 'mage') defiEvent('mage');
+  if (obj.kind === 'jumpchest') { jumpChestInteract(); return; }
+  if (obj.kind === 'cocotte') { cocotteInteract(); return; }
   if (obj.kind === 'npc' && obj.npcId === 'mage' && storyAt('talkMage')) { playScene('mage1', () => { advanceStory('talkMage'); toast('🔮 ' + t.grimoireTitle + ' !'); }); return; }
   if (obj.kind === 'npc' && (obj.npcId === 'forester' || obj.npcId === 'fisher')) {
     const id = obj.npcId;
@@ -1019,7 +1027,7 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐', quest: true });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden; tickNews(); }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden; tickNews(); }, 300);
 
 /* ===== FLASH CHALLENGE: never more than 2 minutes of play without a word ===== */
 const FLASH_AFTER = 120; // seconds of play
@@ -1105,15 +1113,31 @@ function tickNews() {
 }
 function newsTitle(n) { return n.title[lang] ?? n.title.fr; }
 function newsText(n) { return n.text[lang] ?? n.text.fr; }
+// Alaric's riddle at the end of the card: the question is read with the card, "The answer?" reads the answer.
+function newsRiddle(n) { return n.riddle ? { q: n.riddle.q[lang] ?? n.riddle.q.fr, a: n.riddle.a[lang] ?? n.riddle.a.fr } : null; }
+function newsSpeech(n) { const r = newsRiddle(n); return `${newsTitle(n)}. ${newsText(n)}${r ? ` ${dtx().riddle} : ${r.q}` : ''}`; }
+function riddleBox(n) {
+  const r = newsRiddle(n);
+  if (!r) return null;
+  const box = el('div', 'news-riddle');
+  const ans = el('p', 'news-riddle-a', `💡 ${r.a}`);
+  ans.hidden = true;
+  const btn = el('button', 'btn btn-accent btn-small news-answer', dtx().answer);
+  btn.type = 'button';
+  btn.addEventListener('click', () => { ans.hidden = false; speak(r.a, 0.95); });
+  box.append(el('p', 'news-riddle-q', `❓ ${dtx().riddle} : ${r.q}`), btn, ans);
+  return box;
+}
 function showNews(n, fresh) {
   $('#news-kicker').textContent = `${n.emoji} ${t.newsKicker}`;
   $('#news-title').textContent = newsTitle(n);
   $('#news-text').textContent = newsText(n);
+  { const rb = riddleBox(n); $('#news-riddle').replaceChildren(...(rb ? [rb] : [])); $('#news-riddle').hidden = !rb; }
   $('#news-show').textContent = t.newsShow;
   $('#news-later').textContent = t.newsLater;
   $('#news-modal').hidden = false;
   $('#news-modal').dataset.id = n.id;
-  speak(`${newsTitle(n)}. ${newsText(n)}`, 0.95);
+  speak(newsSpeech(n), 0.95);
   if (fresh) { progress.newsSeen = [...new Set([...newsSeen(), n.id])]; saveProgress(); }
 }
 function closeNews() { $('#news-modal').hidden = true; stopSpeaking(); newsShown = performance.now(); }
@@ -1140,10 +1164,12 @@ function renderJournal() {
   $('#journal-list').replaceChildren(...[...NEWS].reverse().map((n) => {
     const item = el('div', 'journal-item');
     item.append(el('span', 'journal-date', `${t.newsDay(n.day)} · ${n.date.split('-').reverse().join('/')}`), el('h3', '', `${n.emoji} ${newsTitle(n)}`), el('p', '', newsText(n)));
+    const rb = riddleBox(n);
+    if (rb) item.append(rb);
     const actions = el('div', 'journal-actions');
     const listen = el('button', 'btn btn-ghost btn-small', '🔊');
     listen.type = 'button';
-    listen.addEventListener('click', () => speak(`${newsTitle(n)}. ${newsText(n)}`, 0.95));
+    listen.addEventListener('click', () => speak(newsSpeech(n), 0.95));
     const show = el('button', 'btn btn-accent btn-small', t.newsShow);
     show.type = 'button';
     show.addEventListener('click', () => { $('#journal-modal').hidden = true; stopSpeaking(); showMeNews(n.id); });
@@ -1158,6 +1184,7 @@ function golemInteract() {
   const g = scene3D?.golem;
   if (!g) return;
   g.wave();
+  defiEvent('golem');
   animalVoice({ type: 'square', f0: 140, f1: 110, dur: 0.35, filter: 'lowpass', freq: 500, vol: 0.1 });
   const today = new Date().toISOString().slice(0, 10);
   if (game.golemFlowerDay !== today) {
@@ -1171,6 +1198,257 @@ function golemInteract() {
     const msg = t.golemHello;
     toast(msg, 3500); speak(msg.replace(/^\S+ /, ''), 0.95);
   }
+}
+
+/* ===== RELEASE PARTS (two 15-minute sessions per release) ===== */
+// Each release has a part 1 and a part 2. Part 2 opens the next time the game is played again at
+// least 30 minutes after the last play, or after 15 minutes of play on part 1 — never later.
+// releasePart(day) is reused by every release (key: one per release, or one per day for J2's
+// daily challenges).
+const PART_RETURN = 30 * 60 * 1000, PART_PLAY = 15 * 60;
+function partState(key) { progress.parts ??= {}; return (progress.parts[key] ??= { play: 0, last: Date.now(), two: false }); }
+function releasePart(day, key = `J${day}`) { return partState(key).two ? 2 : 1; }
+let partsOpened = false, partsSaveT = 0;
+function tickParts(dt) {
+  if (!game || !scene3D || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game' || document.hidden) return;
+  progress.parts ??= {};
+  const now = Date.now();
+  // Daily keys of other days are of no use any more.
+  for (const k of Object.keys(progress.parts)) if (k.startsWith('d:') && k !== `d:${today()}`) delete progress.parts[k];
+  const opened = [];
+  if (!partsOpened) {
+    partsOpened = true;
+    for (const [k, st] of Object.entries(progress.parts)) if (!st.two && now - st.last >= PART_RETURN) { st.two = true; opened.push(k); }
+  }
+  for (const [k, st] of Object.entries(progress.parts)) {
+    st.last = now;
+    if (!st.two) { st.play += dt; if (st.play >= (window.__se?.partPlay ?? PART_PLAY)) { st.two = true; opened.push(k); } }
+  }
+  partsSaveT += dt;
+  if (opened.length || partsSaveT > 10) { partsSaveT = 0; saveProgress(); }
+  for (const k of opened) onPartTwo(k);
+}
+function onPartTwo(key) {
+  if (key === `d:${today()}`) ensureDefis();
+}
+
+/* ===== DAILY CHALLENGES, THE JUMPING CHEST AND COCOTTE (J2) ===== */
+const dtx = () => DTX[lang] ?? DTX.fr;
+const defiText = (d) => d.text[lang] ?? d.text.fr;
+const latestDay = () => Math.max(...NEWS.map((n) => n.day));
+const henRow = () => cocotteToday(latestDay());
+const henFound = () => { const r = henRow(); return !r || (progress.feathers ?? []).includes(r.day); };
+let defiMsgs = [], defiMsgAt = 0, defisAnnounced = {};
+// Challenges start once the story has begun (after the introduction).
+function defisOn() { return !!game?.story?.intro && !!scene3D && !window.__se?.noDefis; }
+function defisCtx() {
+  return {
+    pet: !!game?.pet?.tamed,
+    food: ['meat', 'fish', 'brochette'].some((f) => (game?.materials[f] ?? 0) > 0),
+    horse: Object.values(game?.horses ?? {}).some((h) => h.tamed),
+    cocotte: !!scene3D?.cocotte && !henFound(),
+  };
+}
+function ensureDefis() {
+  if (!defisOn()) return null;
+  const d = today();
+  if (progress.defis?.date !== d) progress.defis = { date: d, m: null, e: null };
+  const st = progress.defis;
+  partState(`d:${d}`);
+  if (!st.m) { st.m = { ids: drawDefis('morning', d, defisCtx()), n: {}, done: false }; saveProgress(); }
+  if (!st.e && releasePart(2, `d:${d}`) === 2) { st.e = { ids: drawDefis('evening', d, defisCtx()), n: {}, done: false }; defisAnnounced.e = false; saveProgress(); }
+  return st;
+}
+function queueDefiMsg(text, say = text.replace(/^\S+ /, ''), sfx = null) { defiMsgs.push({ text, say, sfx }); }
+function announceDefis(part) {
+  const st = progress.defis, set = st?.[part];
+  if (!set) return;
+  const x = dtx(), title = part === 'm' ? x.morningTitle : x.eveningTitle;
+  const list = set.ids.map((id) => defiById(id)).map((d) => `${d.emoji} ${defiText(d)}`);
+  const head = part === 'e' && !defisAnnounced.eSaid ? `${x.partTwoOpen} ` : '';
+  defisAnnounced.eSaid ||= part === 'e';
+  queueDefiMsg(`🎯 ${head}${x.announce(title, list)}`, `${head.replace(/^\S+ /, '')}${x.announce(title, set.ids.map((id) => defiText(defiById(id))))}`, 'pop');
+}
+function defiEvent(ev, k = 1) {
+  const st = ensureDefis();
+  if (!st) return;
+  for (const part of ['m', 'e']) {
+    const set = st[part];
+    if (!set || set.done) continue;
+    for (const id of set.ids) {
+      const d = defiById(id);
+      if (d.ev !== ev) continue;
+      const before = set.n[id] ?? 0;
+      if (before >= d.goal) continue;
+      set.n[id] = Math.min(d.goal, before + k);
+      if (set.n[id] < d.goal) continue;
+      const doneN = set.ids.filter((i) => (set.n[i] ?? 0) >= defiById(i).goal).length;
+      queueDefiMsg(dtx().done(`${d.emoji} ${defiText(d)}`, doneN), dtx().doneSay(defiText(d)), 'craft');
+      if (doneN === 3) {
+        set.done = true;
+        progress.chestQueue = [...(progress.chestQueue ?? []), part];
+        queueDefiMsg(part === 'e' ? dtx().allDoneEvening : dtx().allDone, undefined, 'victory');
+      }
+    }
+  }
+  saveProgress();
+  updateDefisHud();
+}
+function tickDefis() {
+  if (!game || !scene3D || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
+  const st = ensureDefis();
+  if (!st) return;
+  const busy = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight || (newsQueue?.length ?? 1) > 0;
+  // The welcome chest (once), then the chests won with the challenges, one at a time.
+  if (!progress.welcomeChest) { progress.welcomeChest = true; progress.chestQueue = ['welcome', ...(progress.chestQueue ?? [])]; saveProgress(); }
+  const jc = scene3D.jumpChest;
+  if (jc && !jc.out && progress.chestQueue?.length) {
+    const which = progress.chestQueue[0];
+    jc.spawn(which, which === 'e');
+    if (!newsTarget) newsTarget = { show: 'jumpchest', until: performance.now() + 4 * 60 * 1000 };
+    if (which === 'welcome' && !busy) queueDefiMsg(dtx().welcome);
+  }
+  // On return, the morning list is only repeated if it is not finished and the evening has not come.
+  if (!defisAnnounced.m) { defisAnnounced.m = true; if (!st.m.done && !st.e) announceDefis('m'); }
+  if (st.e && !defisAnnounced.e) { defisAnnounced.e = true; announceDefis('e'); }
+  // Hug a sheep: walk right up to one (it stops and says "Baa!").
+  if (['m', 'e'].some((p) => st[p] && !st[p].done && st[p].ids.some((id) => defiById(id).ev === 'sheep' && (st[p].n[id] ?? 0) < 1))) {
+    const p = scene3D.player.position;
+    const sheep = scene3D.fauna?.list.find((a) => (a.kind.startsWith('sheep') || a.kind === 'lamb') && Math.hypot(a.mesh.position.x - p.x, a.mesh.position.z - p.z) < 2.6);
+    if (sheep) {
+      sheep.target = null; sheep.wait = 3; sheep.flee = 3;
+      ANIMAL_CRIES[sheep.kind]?.();
+      for (let i = 0; i < 3; i++) setTimeout(() => scene3D.particleBurst(sheep.mesh.position.clone().setY(sheep.mesh.position.y + 1.2), '#ff7ab0', 10), i * 200);
+      queueDefiMsg(dtx().hugSheep);
+      defiEvent('sheep');
+    }
+  }
+  // Messages, one at a time, never over a word or a dialogue.
+  if (defiMsgs.length && !busy && performance.now() - defiMsgAt > 3800) {
+    defiMsgAt = performance.now();
+    const m = defiMsgs.shift();
+    toast(m.text, 4200);
+    speak(m.say, 0.95);
+    if (m.sfx === 'victory') { sfxVictory(); launchConfetti(); } else if (m.sfx === 'craft') sfxCraft(); else if (m.sfx === 'pop') sfxPop();
+  }
+  updateDefisHud();
+}
+function updateDefisHud() {
+  const btn = $('#defis-btn');
+  if (!btn) return;
+  const st = progress.defis;
+  const set = st?.e && !st.e.done ? st.e : st?.m;
+  btn.hidden = !set || !defisOn();
+  if (!set) return;
+  const k = set.ids.filter((i) => (set.n[i] ?? 0) >= defiById(i).goal).length;
+  const label = `🎯 ${k}/3`;
+  if (btn.textContent !== label) btn.textContent = label;
+  btn.classList.toggle('is-done', !!set.done);
+}
+// The jumping chest: hops, giggles, then a word opens it.
+function setupJumpChest() {
+  const jc = scene3D?.jumpChest;
+  if (!jc) return;
+  scene3D.setSpotMaterial(jc.obj, 'chest', lang === 'en' ? '🎁 Jumping chest' : '🎁 Coffre sauteur');
+  jc.obj.iconHolder.visible = jc.out;
+  jc.onHop = (n) => {
+    playTone(220, 0.28, 'sine', 0.12, 0, 660); playTone(330, 0.2, 'triangle', 0.06, 0.05, 880);
+    const line = dtx().hop[(n - 1) % 3];
+    const pos = scene3D.worldToScreen(jc.mesh.position.clone().setY(jc.mesh.position.y + 1.4));
+    if (pos) showFloatingText(pos.x, pos.y, line, '#ffe08a');
+    speak(line, 1.1);
+  };
+  jc.onLand = (left) => {
+    playNoise({ type: 'lowpass', freq: 400, q: 1, volume: 0.12, duration: 0.15 });
+    scene3D.particleBurst(jc.mesh.position.clone().setY(jc.mesh.position.y + 0.2), '#d8c8a0', 10);
+    if (left === 0) { toast(`🎁 ${dtx().caught}`, 4000); setTimeout(() => speak(dtx().caught, 0.95), 700); }
+  };
+}
+function jumpChestInteract() {
+  const jc = scene3D.jumpChest;
+  if (!jc?.out) return;
+  if (jc.hopsLeft > 0) { const n = jc.hopAway(); if (n) jc.onHop?.(n); return; }
+  spellContext = { type: 'jumpchest', word: pickWord(levelAt(0)), tries: 0 };
+  openSpellModal(`🎁 ${dtx().chestTitle}`, dtx().chestInstruction, '🎁');
+}
+function openJumpChest() {
+  const jc = scene3D.jumpChest;
+  const which = progress.chestQueue?.[0] ?? jc.which;
+  progress.chestQueue = (progress.chestQueue ?? []).slice(1);
+  jc.open();
+  setTimeout(() => { launchConfetti(); sfxVictory(); }, 150);
+  const got = [];
+  const stars = which === 'e' ? 10 : which === 'm' ? 8 : 5;
+  progress.stars += stars; game.starsEarned += stars;
+  got.push(`${stars} ★`);
+  const loot = (n) => { for (let i = 0; i < n; i++) for (const [m, k] of Object.entries(rollLoot().materials ?? {})) { game.materials[m] = (game.materials[m] ?? 0) + k; got.push(`${MATERIAL_EMOJI[m] ?? ''} ${materialName(m)} ×${k}`); } };
+  let say = dtx().chestOpen;
+  if (which === 'e') {
+    // The big evening chest: a new outfit (something to show), or diamonds.
+    const c = COSTUMES.filter((x) => x.id !== 'hero' && !costumeState().owned.includes(x.id)).sort((a, b) => a.price - b.price)[0];
+    if (c) { unlockCostume(c.id); got.push(`${c.emoji} ${c.name[lang]}`); say += ' ' + dtx().costume(c.name[lang]); }
+    else { game.materials.diamond = (game.materials.diamond ?? 0) + 2; got.push(`${MATERIAL_EMOJI.diamond ?? '💎'} ${materialName('diamond')} ×2`); }
+  } else loot(which === 'm' ? 2 : 1);
+  saveGame(); saveProgress();
+  return { got, say };
+}
+function cocotteInteract() {
+  const hen = scene3D.cocotte;
+  if (!hen || !hen.obj.active) return;
+  hen.flyAway();
+  ANIMAL_CRIES.chicken();
+  setTimeout(() => ANIMAL_CRIES.chicken(), 450);
+  const p = hen.mesh.position.clone(); p.y += 0.6;
+  for (let i = 0; i < 4; i++) setTimeout(() => scene3D.particleBurst(p, i % 2 ? '#ffd34a' : '#fff4c0', 18), i * 160);
+  progress.feathers = [...new Set([...(progress.feathers ?? []), hen.row.day])];
+  progress.stars += 3; if (game) game.starsEarned += 3;
+  const msg = dtx().cocotteSay;
+  toast(msg, 4500); speak(msg.replace(/^\S+ /, ''), 0.95);
+  sfxCraft();
+  defiEvent('cocotte');
+  updateGameUI(); saveProgress(); saveGame();
+}
+// The journal's "today" block: the two parts, the challenges and Cocotte's hint, written and read.
+function partsLine() {
+  const st = progress.defis, x = dtx();
+  if (!st?.m) return '';
+  const two = releasePart(2, `d:${st.date}`) === 2;
+  const p1 = st.m.done ? x.partDone : `: ${x.partPlay}`;
+  const p2 = !two ? `: ${x.partLater}` : st.e?.done ? x.partDone : `: ${x.partOpen}`;
+  return x.part(p1, p2);
+}
+function henHint() {
+  const r = henRow();
+  if (!r) return '';
+  return henFound() ? dtx().cocotteFound : r.hint[lang] ?? r.hint.fr;
+}
+function todaySpeech() { return [dtx().partSay(partsLine()), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
+function renderToday() {
+  const box = $('#journal-today');
+  if (!box) return;
+  const st = defisOn() ? ensureDefis() : null, x = dtx();
+  const kids = [el('h3', '', x.todayTitle)];
+  if (st) {
+    kids.push(el('p', 'journal-parts', partsLine()));
+    for (const part of ['m', 'e']) {
+      const set = st[part];
+      if (!set) continue;
+      kids.push(el('h4', '', part === 'm' ? `☀️ ${x.morningTitle}` : `🌙 ${x.eveningTitle}`));
+      const ul = el('ul', 'defis-list');
+      for (const id of set.ids) {
+        const d = defiById(id), n = set.n[id] ?? 0, ok = n >= d.goal;
+        ul.append(el('li', ok ? 'is-done' : '', `${ok ? '✅' : '⬜'} ${d.emoji} ${defiText(d)}${d.goal > 1 ? ` (${n}/${d.goal})` : ''}`));
+      }
+      kids.push(ul);
+    }
+  }
+  if (henRow()) kids.push(el('p', 'journal-hen', `🐔 ${x.cocotteTitle} ${henHint()}`), el('p', 'journal-feathers', x.feathers((progress.feathers ?? []).length)));
+  const listen = el('button', 'btn btn-ghost btn-small', '🔊');
+  listen.type = 'button';
+  listen.addEventListener('click', () => speak(todaySpeech(), 0.95));
+  kids.push(listen);
+  box.replaceChildren(...kids);
+  box.hidden = false;
 }
 
 /* ===== HORSES ===== */
@@ -1335,6 +1613,7 @@ function petInteract() {
     game.pet.meals = (game.pet.meals ?? 0) + 1;
     game.pet.fedDay = today();
     pet.joy();
+    defiEvent('feed');
     sfxCraft(); smile();
     if (hungry) { progress.stars += 2; game.starsEarned += 2; }
     const stage = petStage();
@@ -1353,6 +1632,7 @@ function petInteract() {
   }
   // No food: a cuddle (hearts, a happy little whine, the dog rolls over).
   pet.pat();
+  defiEvent('pat');
   animalVoice({ type: 'sine', f0: 700, mid: 1100, f1: 800, dur: 0.35, filter: 'lowpass', freq: 2000, vol: 0.06 });
   smile();
   toast(petHungry() ? t.petHungry(game.pet.name) : t.petPat(game.pet.name), 3000);
@@ -1893,6 +2173,16 @@ function handleSpellSuccess() {
 
   sfxMine();
   if (streak >= 2) sfxStreak(streak);
+  if (!copied) {
+    defiEvent('word');
+    if (firstTry) defiEvent('firstTry');
+    if (scene3D?.horses?.riding) defiEvent('horseWord');
+  }
+  if (type === 'mine') {
+    defiEvent('mine');
+    if (spellContext.material === 'chest') defiEvent('chest');
+    if (spellContext.material === 'flower') defiEvent('flower');
+  }
 
   const pos = scene3D?.getPlayerScreenPosition();
   if (pos) {
@@ -2004,6 +2294,15 @@ function handleSpellSuccess() {
     speak(t.petTamed + ' ' + t.petChooseName, 0.95);
     // A name must be chosen before going on (a default one if the child just taps Continue).
     spellContext.after = () => { if (!game.pet?.tamed) { game.pet = { tamed: true, name: (PET_NAMES[lang] ?? PET_NAMES.fr)[0], fedDay: null }; scene3D.pet.tame(); scene3D.pet.obj.labelText = null; applyExtras(); saveGame(); } };
+  } else if (type === 'jumpchest') {
+    const { got, say } = openJumpChest();
+    spellResultEl.replaceChildren(
+      el('p', 'spell-success', `🎉 ${dtx().chestOpen}`),
+      el('p', 'spell-material', `🎁 ${got.join(' · ')}`),
+      el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`),
+    );
+    spellResultEl.hidden = false;
+    speak(say, 0.95);
   } else if (type === 'flash') {
     sfxCraft();
     if (!copied) { progress.stars += 2; game.starsEarned += 2; }
@@ -2468,7 +2767,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');
@@ -3217,11 +3516,13 @@ let returnScreen = 'menu';
 function openPage(name) { returnScreen = document.body.dataset.screen === 'game' ? 'game' : 'menu'; showScreen(name); }
 $('#album-btn')?.addEventListener('click', () => openPage('album'));
 $('#wardrobe-btn')?.addEventListener('click', () => openPage('wardrobe'));
-$('#news-btn')?.addEventListener('click', () => { renderJournal(); $('#journal-modal').hidden = false; });
+function openJournal() { renderJournal(); renderToday(); $('#journal-modal').hidden = false; const say = todaySpeech(); if (say) speak(say, 0.95); }
+$('#news-btn')?.addEventListener('click', openJournal);
+$('#defis-btn')?.addEventListener('click', openJournal);
 $('#journal-close')?.addEventListener('click', () => { $('#journal-modal').hidden = true; stopSpeaking(); });
 $('#news-later')?.addEventListener('click', () => closeNews());
 $('#news-show')?.addEventListener('click', () => { const id = $('#news-modal').dataset.id; closeNews(); showMeNews(id); });
-$('#news-repeat')?.addEventListener('click', () => { const n = NEWS.find((x) => x.id === $('#news-modal').dataset.id); if (n) speak(`${newsTitle(n)}. ${newsText(n)}`, 0.95); });
+$('#news-repeat')?.addEventListener('click', () => { const n = NEWS.find((x) => x.id === $('#news-modal').dataset.id); if (n) speak(newsSpeech(n), 0.95); });
 $('#menu-album-btn')?.addEventListener('click', () => openPage('album'));
 $('#menu-wardrobe-btn')?.addEventListener('click', () => openPage('wardrobe'));
 $('#album-back-btn')?.addEventListener('click', () => showScreen(returnScreen));

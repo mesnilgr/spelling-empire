@@ -1,6 +1,7 @@
 // "Quoi de neuf ?": every release is presented to the child by Alaric, written and read aloud, the
 // first time the game is opened after it. The notes stay in the journal 📜 (newest first).
-// show: what the "Show me!" button points the golden arrow at ('mage', 'golem', … or {x, z}).
+// show: what the "Show me!" button points the golden arrow at ('mage', 'golem', 'jumpchest', … or {x, z}).
+// riddle: Alaric's riddle at the end of the card ({ q: {fr, en}, a: {fr, en} }); "The answer?" reads a.
 // Add one entry (or two) per release, at the END of the list.
 export const NEWS = [
   {
@@ -17,6 +18,18 @@ export const NEWS = [
     text: {
       fr: 'Un gardien est arrivé au village : Fer, le golem de fer ! Il fait le tour de la place, et la nuit il écrase les zombies qui s’approchent des maisons. Va lui dire bonjour : il a peut-être une fleur pour toi.',
       en: 'A guardian has come to the village: Iron, the iron golem! He walks round the square, and at night he crushes the zombies that come near the houses. Go and say hello: he may have a flower for you.',
+    },
+  },
+  {
+    id: '1.20.0-defis', day: 2, date: '2026-11-21', emoji: '🎯', show: 'jumpchest',
+    title: { fr: 'Les défis du jour et le coffre sauteur', en: 'Daily challenges and the jumping chest' },
+    text: {
+      fr: 'Nouveau ! Chaque jour, trois défis le matin et trois défis le soir. Réussis-les et attrape le coffre sauteur… s’il se laisse faire ! Et regarde bien : Cocotte la poule s’est cachée quelque part.',
+      en: 'New! Every day, three challenges in the morning and three in the evening. Do them and catch the jumping chest… if it lets you! And look carefully: Cocotte the hen is hiding somewhere.',
+    },
+    riddle: {
+      q: { fr: 'Plus j’ai de gardiens, moins je suis gardé. Qui suis-je ?', en: 'The more people keep me, the less I am kept. What am I?' },
+      a: { fr: 'Un secret !', en: 'A secret!' },
     },
   },
 ];

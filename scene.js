@@ -10,6 +10,9 @@ import { PLACES, buildPlace, buildExtras, buildTrails, buildGroves, buildRegionF
 import { FaunaManager } from './fauna.js';
 import { HorseManager, RIDE } from './horse.js';
 import { IronGolem } from './golem.js';
+import { JumpChest } from './daily.js';
+import { Cocotte, cocotteToday } from './cocotte.js';
+import { NEWS } from './news.js';
 import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
 import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -222,6 +225,10 @@ export class GameScene {
     this.fauna = new FaunaManager(this);
     this.horses = new HorseManager(this);
     this.golem = new IronGolem(this, { x: 0, z: 0 });
+    // The daily jumping chest (in front of the cottage) and Cocotte the hen (today's hiding spot).
+    this.jumpChest = new JumpChest(this);
+    const hen = cocotteToday(Math.max(...NEWS.map((n) => n.day)));
+    if (hen) this.cocotte = new Cocotte(this, hen);
   }
 
   _insideAnyHouse(x, z, margin = 0.6) {
@@ -2438,7 +2445,7 @@ export class GameScene {
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
     this._tickRegions();
-    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); } this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
+    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); } this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

@@ -13,7 +13,7 @@ export async function launch() {
 // A fresh page on the game, with speech replaced by a recorder and the given saved progress.
 // render: false skips drawing most frames (much faster in the test browser); keep it for checks on
 // what is drawn (display budget, screenshots).
-export async function openGame(browser, base, progress, { quality = 1, width = 1180, height = 820, render = false } = {}) {
+export async function openGame(browser, base, progress, { quality = 1, width = 1180, height = 820, render = false, defis = false } = {}) {
   const page = await browser.newPage({ viewport: { width, height } });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -28,7 +28,8 @@ export async function openGame(browser, base, progress, { quality = 1, width = 1
   await page.reload();
   await page.waitForSelector('#loading.is-done', { timeout: 180000 });
   // No surprise flash challenge in the middle of a scenario (the ones that test it lower this).
-  await page.evaluate(() => { if (window.__se) window.__se.flashAfter = 1e9; });
+  // Daily challenges and the jumping chest stay quiet too, unless the scenario asks for them.
+  await page.evaluate((d) => { if (window.__se) { window.__se.flashAfter = 1e9; window.__se.noDefis = !d; } }, defis);
   await page.waitForFunction(() => window.__se?.scene, null, { timeout: 60000 });
   return { page, errors, ...api(page) };
 }

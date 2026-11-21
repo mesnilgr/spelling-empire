@@ -922,7 +922,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 2,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: [], save: save(story(2, 0)) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis'], save: save(story(2, 0)) }, { quality: 0 });
       await g.click('#continue-btn');
       // Alaric presents the release, written and spoken; the newest note comes first.
       const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
@@ -938,7 +938,7 @@ export const SCENARIOS = [
       await g.click('#news-btn');
       await g.page.waitForTimeout(300);
       const journal = await g.page.evaluate(() => [...document.querySelectorAll('#journal-list .journal-item h3')].map((e) => e.textContent));
-      check(journal.length >= 2 && /golem/i.test(journal[0]), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
+      check(journal.length >= 3 && /défis/i.test(journal[0]) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
       await g.click('#journal-close');
       // Iron walks round the square, says hello and offers a flower once a day.
       const walk = await g.page.evaluate(() => { const gl = window.__se.scene.golem, a = gl.mesh.position.clone(); gl.pause = 0; for (let k = 0; k < 150; k++) gl.update(1 / 30, k / 30); return { points: gl.points.length, moved: a.distanceTo(gl.mesh.position) }; });
@@ -963,6 +963,136 @@ export const SCENARIOS = [
         return r;
       });
       check(smash === true, 'la nuit, Fer écrase un zombie qui s’approche du village', String(smash));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Défis du jour, coffre sauteur, Cocotte et devinette (J2)',
+    quick: true,
+    weight: 4,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem'], save: save(story(2, 0)) }, { quality: 0, defis: true });
+      const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
+      let words = 0;
+      const spellOne = async () => { const r = await g.spell(); words++; return r; };
+      const mineWord = async () => { const u = await g.use("i.kind === 'house' && i.active"); if (u !== 'ok') check(false, 'un endroit à miner', u); await spellOne(); };
+      await g.click('#continue-btn');
+      // Alaric presents J2, written and spoken, with his riddle; "La réponse ?" reads the answer.
+      const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
+      const card = await g.page.evaluate(() => ({ title: document.querySelector('#news-title').textContent, riddle: document.querySelector('#news-riddle').innerText, said: window.__spoken.join(' | ') }));
+      check(shown && /défis/i.test(card.title) && /trois défis le matin/.test(card.said), 'Alaric présente les défis du jour (écrit et lu)', JSON.stringify(card));
+      check(/Plus j’ai de gardiens/.test(card.riddle) && /Plus j’ai de gardiens/.test(card.said), 'la carte finit par la devinette d’Alaric, lue aussi', card.riddle);
+      await g.page.evaluate(() => document.querySelector('#news-riddle .news-answer').click());
+      await g.page.waitForTimeout(200);
+      const ans = await g.page.evaluate(() => ({ shown: document.querySelector('#news-riddle .news-riddle-a').hidden === false, said: window.__spoken.slice(-1)[0] }));
+      check(ans.shown && /Un secret/.test(ans.said), '« La réponse ? » affiche et lit la réponse', JSON.stringify(ans));
+      // "Montre-moi !": the arrow points at the jumping chest, out in front of the cottage.
+      await g.click('#news-show');
+      await g.page.waitForTimeout(900);
+      const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), c = s.jumpChest; return { out: c.out, which: c.which, d: q ? Math.hypot(q.x - c.mesh.position.x, q.z - c.mesh.position.z) : 99, home: Math.hypot(c.mesh.position.x, c.mesh.position.z - 18) }; });
+      check(arrow.out && arrow.which === 'welcome' && arrow.d < 1 && arrow.home < 9, '« Montre-moi ! » pointe la flèche vers le coffre sauteur devant la chaumière', JSON.stringify(arrow));
+      // The wow moment: walk up to it and it hops away, giggling, three times.
+      const near = () => g.page.evaluate(() => { const s = window.__se.scene, c = s.jumpChest.mesh.position; s.teleport(c.x - 1.4, c.z - 0.6); return c.clone(); });
+      const p0 = await near();
+      await g.page.waitForTimeout(1300);
+      const hop1 = await g.page.evaluate((a) => { const c = window.__se.scene.jumpChest; return { left: c.hopsLeft, moved: Math.hypot(c.mesh.position.x - a.x, c.mesh.position.z - a.z) }; }, p0);
+      check(hop1.left === 2 && hop1.moved > 2, 'quand on s’approche, le coffre fait un bond pour s’échapper', JSON.stringify(hop1));
+      check(/Hihi ! Attrape-moi/.test(await said()), 'il rigole (« Hihi ! Attrape-moi ! »), à l’oral');
+      for (let k = 0; k < 2; k++) { await g.use("i.kind === 'jumpchest'"); await g.page.waitForTimeout(1000); }
+      check(await g.page.evaluate(() => window.__se.scene.jumpChest.hopsLeft) === 0, 'trois bonds, puis il se laisse attraper');
+      const caught = await g.page.waitForFunction(() => /tu m’as attrapé/.test(window.__spoken.join(' | ')), null, { timeout: 8000 }).then(() => true, () => false);
+      check(caught, '« Bon d’accord… tu m’as attrapé ! » (gag, lu)', await said());
+      const stars0 = await g.page.evaluate(() => window.__se.progress().stars);
+      await g.use("i.kind === 'jumpchest'");
+      const open = await spellOne();
+      check(/confettis/.test(open.result), 'un mot l’ouvre : il éclate en confettis', open.result);
+      check(await g.page.evaluate((s0) => window.__se.progress().stars - s0 >= 5, stars0), 'le coffre donne des étoiles');
+      // Session 1: the three morning challenges.
+      const st1 = await g.page.evaluate(() => window.__se.defis());
+      const date = st1.date;
+      check(st1.m?.ids.length === 3 && st1.m.ids[0] === 'first5' && !st1.e, 'trois défis du matin (dont un défi de mots), pas encore ceux du soir', JSON.stringify(st1));
+      const doDefi = async (id) => {
+        if (id === 'first5') { for (let k = 0; k < 5; k++) await mineWord(); }
+        else if (id === 'words7') { for (let k = 0; k < 7; k++) await mineWord(); }
+        else if (id === 'mine') { for (let k = 0; k < 4; k++) await mineWord(); }
+        else if (id === 'jump') await g.page.evaluate(() => { for (let k = 0; k < 10; k++) window.__se.scene.onJump(); });
+        else if (id === 'sheep') {
+          for (let k = 0; k < 8; k++) {
+            await g.page.evaluate(() => { const s = window.__se.scene, a = s.fauna.list.find((x) => x.kind.startsWith('sheep')); s.teleport(a.mesh.position.x + 1.2, a.mesh.position.z); });
+            await g.page.waitForTimeout(400);
+            if (await g.page.evaluate(() => (window.__se.defis().m.n.sheep ?? 0) >= 1)) break;
+          }
+        } else if (id === 'mage') { await g.use("i.kind === 'npc' && i.npcId === 'mage'"); await g.page.waitForTimeout(200); await g.skipDialog(); await g.click('#quest-close-btn'); }
+        else if (id === 'golem') await g.use("i.kind === 'golem'");
+        else if (id === 'chests') { for (let k = 0; k < 2; k++) { await g.use("i.nodeType === 'chest' && i.active"); await spellOne(); await g.page.waitForTimeout(1600); } }
+        else if (id === 'flower') { await g.use("i.nodeType === 'flower' && i.active"); await spellOne(); }
+        else if (id === 'cocotte') await g.use("i.kind === 'cocotte'");
+        await g.page.waitForTimeout(300);
+      };
+      for (const id of st1.m.ids) await doDefi(id);
+      const m = await g.page.evaluate(() => ({ st: window.__se.defis().m, queue: window.__se.progress().chestQueue }));
+      check(m.st.done && m.queue.includes('m'), 'les trois défis du matin réussis : un coffre sauteur arrive', JSON.stringify(m));
+      check(words >= 7, `au moins 7 mots en session 1 (${words})`);
+      await g.page.waitForTimeout(600);
+      const catchChest = async () => {
+        for (let k = 0; k < 8; k++) {
+          const st = await g.page.evaluate(() => { const c = window.__se.scene.jumpChest; return { left: c.hopsLeft, hop: !!c.hop, modal: !document.querySelector('#spell-modal').hidden, active: c.obj.active }; });
+          if (st.modal) break;
+          if (!st.hop) await g.use("i.kind === 'jumpchest'");
+          await g.page.waitForTimeout(st.left > 0 ? 1000 : 400);
+        }
+        const dbg = await g.page.evaluate(() => { const c = window.__se.scene.jumpChest; return JSON.stringify({ which: c.which, left: c.hopsLeft, hop: !!c.hop, active: c.obj.active, modal: !document.querySelector('#spell-modal').hidden, dialog: !document.querySelector('#dialog').hidden, quest: !document.querySelector('#quest-modal').hidden }); });
+        if (!dbg.includes('"modal":true')) check(false, 'la fenêtre du mot s’ouvre sur le coffre', dbg);
+        return spellOne();
+      };
+      check(await g.page.evaluate(() => window.__se.scene.jumpChest.which) === 'm', 'le coffre du matin est devant la chaumière');
+      const mOpen = await catchChest();
+      check(/confettis/.test(mOpen.result), 'on attrape et on ouvre le coffre du matin', mOpen.result);
+      // The journal: parts 1 and 2 and Cocotte's hint, written and read.
+      await g.page.waitForTimeout(4500);
+      await g.click('#defis-btn');
+      await g.page.waitForTimeout(300);
+      const j1 = await g.page.evaluate(() => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(-1)[0] }));
+      check(/Partie 1 ✓ · Partie 2 : à ton prochain retour !/.test(j1.txt), 'journal : « Partie 1 ✓ · Partie 2 : à ton prochain retour ! »', j1.txt);
+      check(/prochain retour/.test(j1.said) && /toit de ta chaumière/.test(j1.said) && /toit de ta chaumière/.test(j1.txt), 'les parties et l’indice de Cocotte sont lus à voix haute', j1.said);
+      await g.click('#journal-close');
+      // Session 2: the game is opened again 31 minutes later.
+      await g.page.evaluate(([key, k]) => { const p = JSON.parse(localStorage.getItem(key)); p.parts[k].last -= 31 * 60 * 1000; localStorage.setItem(key, JSON.stringify(p)); }, [STORE, `d:${date}`]);
+      await g.page.evaluate(() => { window.__se.noDefis = true; });
+      await g.page.reload();
+      await g.page.waitForSelector('#loading.is-done', { timeout: 180000 });
+      await g.page.evaluate(() => { window.__se.flashAfter = 1e9; window.__se.noDefis = false; });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1500);
+      const st2 = await g.page.evaluate(() => ({ st: window.__se.defis(), part: window.__se.releasePart(2, `d:${window.__se.defis().date}`) }));
+      check(st2.part === 2 && st2.st.e?.ids.length === 3 && st2.st.e.ids[0] === 'words7', 'au retour (30 min plus tard), les trois défis du soir arrivent', JSON.stringify(st2));
+      check(st2.st.e.ids.every((id) => !st2.st.m.ids.includes(id)), 'les défis du soir sont différents de ceux du matin');
+      const eveSaid = await g.page.waitForFunction(() => /Défis du soir/.test(window.__spoken.join(' | ')), null, { timeout: 15000 }).then(() => true, () => false);
+      check(eveSaid, 'les défis du soir sont annoncés à voix haute', await said());
+      words = 0;
+      for (const id of st2.st.e.ids) await doDefi(id);
+      // Cocotte on the cottage roof: "Cot cot!", a golden feather.
+      if (!st2.st.e.ids.includes('cocotte')) await doDefi('cocotte');
+      const hen = await g.page.evaluate(() => ({ feathers: window.__se.progress().feathers, active: window.__se.scene.cocotte.obj.active, y: window.__se.scene.cocotte.base.y }));
+      check(hen.feathers?.includes(2) && !hen.active && hen.y > 3, 'Cocotte, sur le toit de la chaumière, s’envole et laisse une plume dorée', JSON.stringify(hen));
+      check(/Cot cot/.test(await said()), '« Cot cot codêêt ! » est dit à voix haute');
+      const e = await g.page.evaluate(() => ({ st: window.__se.defis().e, which: window.__se.scene.jumpChest.which, scale: window.__se.scene.jumpChest.mesh.scale.x }));
+      check(e.st.done && e.which === 'e' && e.scale > 1.3, 'défis du soir réussis : un gros coffre sauteur arrive', JSON.stringify(e));
+      const owned0 = await g.page.evaluate(() => window.__se.progress().costumes?.owned?.length ?? 1);
+      const eOpen = await catchChest();
+      const owned1 = await g.page.evaluate(() => window.__se.progress().costumes?.owned ?? []);
+      check(/costume/.test(eOpen.result + await said()) && owned1.length === owned0 + 1, 'le gros coffre donne un nouveau costume à montrer', `${eOpen.result} / ${owned1}`);
+      check(words >= 7, `au moins 7 mots en session 2 (${words})`);
+      await g.page.waitForTimeout(4000);
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
+      check(/Partie 1 ✓ · Partie 2 ✓/.test(j2) && /trouvé Cocotte/.test(j2) && /Plumes dorées : 1/.test(j2), 'journal : les deux parties faites, Cocotte trouvée, 1 plume', j2);
+      await g.click('#journal-close');
+      // Part 2 also opens after 15 minutes of play on part 1, without leaving the game.
+      const fifteen = await g.page.evaluate(async () => { const st = window.__se.partState('J99'); const before = window.__se.releasePart(99); st.play = 15 * 60 - 0.4; await new Promise((r) => setTimeout(r, 1500)); return { before, after: window.__se.releasePart(99) }; });
+      check(fifteen.before === 1 && fifteen.after === 2, 'la partie 2 s’ouvre aussi après 15 min de jeu sur la partie 1', JSON.stringify(fifteen));
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },
   },
@@ -1068,6 +1198,8 @@ export const SCENARIOS = [
       const g = await openGame(browser, base, { lang: 'fr', age: 7, save: save(story(2, 0)) }, { render: true });
       await g.click('#continue-btn');
       await g.page.waitForTimeout(1200);
+      // The jumping chest (J2) is out in front of the cottage, Cocotte on its roof: count them too.
+      await g.page.evaluate(() => window.__se.scene.jumpChest.spawn('welcome'));
       const measure = (x, z) => g.page.evaluate(([px, pz]) => {
         const s = window.__se.scene;
         s.teleport(px, pz); s._tickRegions();

@@ -78,6 +78,7 @@
               <button class="hud-btn" id="wardrobe-btn" type="button" aria-label="Wardrobe">👕</button>
               <button class="hud-btn" id="grimoire-btn" type="button" aria-label="Spellbook">🔮</button>
               <button class="hud-btn" id="news-btn" type="button" aria-label="What is new">📜</button>
+              <button class="hud-btn defis-btn" id="defis-btn" type="button" aria-label="Challenges" hidden>🎯 0/3</button>
               <span class="hud-time" id="hud-time" aria-hidden="true">☀️</span>
             </div>
             <div class="streak-display is-hidden" id="streak-display"></div>
@@ -410,6 +411,7 @@
     <div class="modal card news-card" role="dialog" aria-labelledby="news-title">
       <div class="news-head"><span class="news-portrait" aria-hidden="true">🧙</span><div><div class="news-kicker" id="news-kicker"></div><h2 id="news-title"></h2></div></div>
       <p class="news-text" id="news-text"></p>
+      <div id="news-riddle" hidden></div>
       <div class="news-actions">
         <button class="btn btn-ghost btn-small" id="news-repeat" type="button" aria-label="Repeat">🔊</button>
         <button class="btn btn-ghost" id="news-later" type="button"></button>
@@ -420,6 +422,7 @@
   <div class="modal-overlay" id="journal-modal" hidden>
     <div class="modal card journal-card">
       <h2 id="journal-title"></h2>
+      <div class="journal-today" id="journal-today" hidden></div>
       <div class="journal-list" id="journal-list"></div>
       <button class="btn btn-ghost" id="journal-close" type="button"></button>
     </div>

@@ -64,7 +64,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   Carte d'Alaric écrite + lue à chaque release (Montre-moi / Plus tard), journal 📜 ; Fer patrouille la place,
   écrase les zombies la nuit, offre une fleur par jour.
 
-- [ ] **J2 · sam. 21 nov. · v1.20.0 — Défis du jour, Cocotte et devinettes.**
+- [x] **J2 · sam. 21 nov. · v1.20.0 — Défis du jour, Cocotte et devinettes.**
   - Session 1 : trois **défis du matin** adaptés à ce que l'enfant possède (« Nourris ton chien », « Fais un câlin
     à un mouton », « Épelle 5 mots du premier coup »…) ; quand les trois sont faits, un **coffre sauteur**
     apparaît devant la chaumière.

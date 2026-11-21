@@ -1720,3 +1720,21 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .journal-item p { margin: 0 0 8px; }
 .journal-item .journal-date { font-size: 0.8rem; color: #8a6a3a; font-weight: 700; }
 .journal-item .journal-actions { display: flex; gap: 8px; }
+
+/* Daily challenges (J2), Alaric's riddle, the journal's "today" block. */
+.hud-btn.defis-btn { width: auto; padding: 0 10px; font-weight: 800; font-size: 0.95rem; white-space: nowrap; }
+.hud-btn.defis-btn.is-done { background: linear-gradient(180deg, #ffe08a, #f2b33a); }
+.news-riddle { margin: 0 0 14px; padding: 10px 12px; border-radius: 12px; background: rgba(120, 90, 200, 0.08); border: 2px dashed #b9a2e8; }
+.news-riddle-q { margin: 0 0 8px; font-weight: 700; }
+.news-riddle-a { margin: 8px 0 0; font-weight: 800; color: #6a3ab0; }
+.journal-today { text-align: left; padding: 10px 12px; margin: 8px 0 0; border-radius: 12px; background: rgba(220, 240, 255, 0.8); border: 2px solid #a8cce8; }
+.journal-today h3 { margin: 0 0 4px; font-size: 1.1rem; }
+.journal-today h4 { margin: 8px 0 2px; font-size: 1rem; }
+.journal-today .journal-parts { font-weight: 800; color: #2a5a8a; margin: 0 0 4px; }
+.journal-today .defis-list { list-style: none; margin: 0; padding: 0; }
+.journal-today .defis-list li { padding: 2px 0; }
+.journal-today .defis-list li.is-done { color: #2a7a3a; font-weight: 700; }
+.journal-today .journal-hen { margin: 8px 0 2px; font-weight: 700; }
+.journal-today .journal-feathers { margin: 0 0 6px; color: #8a6a1a; }
+.journal-card { max-height: 92vh; overflow-y: auto; }
+.journal-card .journal-list { max-height: 42vh; }
