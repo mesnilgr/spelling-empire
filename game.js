@@ -2018,7 +2018,7 @@ function renderGrimoire() {
     card.append(
       el('span', 'spell-emoji-big', sp.emoji),
       el('span', 'spell-name', spellName(sp)),
-      el('span', 'spell-word', open ? w.word : '• • •'),
+      el('span', 'spell-word', open ? showWord(w.word) : '• • •'),
       el('span', 'spell-effect', sp.effect[lang] ?? sp.effect.fr),
       el('span', 'spell-state', sp.unlock === null ? (sp.soon?.[lang] ?? t.spellSoon) : !open ? `🔒 ${sp.unlock} ★` : cast ? `✓ ${t.spellUsed}` : t.spellReady),
     );
@@ -2125,16 +2125,30 @@ function setSpellLocked(locked) {
   spellContinueBtn.hidden = !locked;
 }
 
+// Letters as the child sees them on the keyboard, in the boxes and on the writing pad:
+// a capital for the first letter of the word, small letters after (é → É keeps its accent).
+function showLetter(ch, i) {
+  return i === 0 ? ch.toLocaleUpperCase(lang === 'fr' ? 'fr-FR' : 'en-GB') : ch.toLocaleLowerCase();
+}
+const showWord = (w) => [...w].map(showLetter).join('');
+// The keyboard shows capitals for the first letter only, then small letters.
+function refreshKeyCase() {
+  const first = spellInput.value.length === 0;
+  spellKeyboard.classList.toggle('is-caps', first);
+  for (const k of spellKeyboard.querySelectorAll('.key[data-letter]')) k.textContent = first ? showLetter(k.dataset.letter, 0) : k.dataset.letter;
+}
+
 function renderSpellTiles() {
   const target = spellContext?.word?.word ?? '';
   const length = Math.max(target.length, spellInput.value.length);
   const tiles = Array.from({ length }, (_, i) => {
     if (target[i] === ' ') return el('div', 'tile tile-space', '');
-    const tile = el('div', 'tile', (spellInput.value[i] ?? '').toUpperCase());
+    const tile = el('div', 'tile', showLetter(spellInput.value[i] ?? '', i));
     if (i === spellInput.value.length && !isLocked) tile.classList.add('is-next');
     return tile;
   });
   spellTilesEl.replaceChildren(...tiles);
+  refreshKeyCase();
   // "Check" only works once every letter is filled in (no quick empty guesses).
   spellCheckBtn.disabled = isLocked || spellInput.value.length !== target.length;
 }
@@ -2155,7 +2169,7 @@ function scoreGuess(guess, target) {
 }
 
 function scoredTiles(guess, target) {
-  return scoreGuess(guess, target).map(({ letter, state }) => el('div', `tile tile-${state}`, letter.toUpperCase()));
+  return scoreGuess(guess, target).map(({ letter, state }, i) => el('div', `tile tile-${state}`, showLetter(letter, i)));
 }
 
 function updateSpellAttempts() {
@@ -2486,7 +2500,7 @@ function handleSpellFailure(target) {
   } else {
     spellContext.copyMode = true;
     spellRevealEl.hidden = false;
-    revealTiles.replaceChildren(...[...target].map((l) => el('div', 'tile tile-correct', l.toUpperCase())));
+    revealTiles.replaceChildren(...[...target].map((l, i) => el('div', 'tile tile-correct', showLetter(l, i))));
     spellResultEl.replaceChildren(
       el('p', 'spell-fail', t.wordWas(target)),
       el('p', 'spell-fail-detail', t.copyIt),
@@ -2672,8 +2686,8 @@ function buildSpellKeyboard() {
   const rows = LANGUAGES[lang].keyRows.map((letters) => {
     const row = el('div', 'key-row');
     for (const letter of letters) {
-      const key = el('button', `key${/[aeiouyàâäéèêëîïôöùûü]/.test(letter) ? ' key-vowel' : ''}`, letter.toUpperCase());
-      key.type = 'button'; key.setAttribute('aria-label', letter);
+      const key = el('button', `key${/[aeiouyàâäéèêëîïôöùûü]/.test(letter) ? ' key-vowel' : ''}`, letter);
+      key.type = 'button'; key.setAttribute('aria-label', letter); key.dataset.letter = letter;
       key.addEventListener('click', () => typeLetter(letter));
       row.append(key);
     }
@@ -2684,6 +2698,7 @@ function buildSpellKeyboard() {
   del.type = 'button'; del.addEventListener('click', deleteLetter);
   bottom.append(del);
   spellKeyboard.replaceChildren(...rows, bottom);
+  refreshKeyCase();
 }
 
 /* ===== JOYSTICK ===== */
@@ -3640,7 +3655,7 @@ function redrawHw() {
     g.font = `600 ${Math.round(h * 0.6)}px "Chalkboard SE", "Comic Sans MS", "Segoe Print", system-ui, sans-serif`;
     g.textAlign = 'center';
     g.textBaseline = 'alphabetic';
-    g.fillText(expected, w / 2, h * 0.78);
+    g.fillText(showLetter(expected, spellInput.value.length), w / 2, h * 0.78);
     g.restore();
   }
   g.strokeStyle = '#1f2a44'; g.lineWidth = 7; g.lineCap = 'round'; g.lineJoin = 'round';
@@ -3740,7 +3755,7 @@ async function recognizeDrawing() {
       saveProgress();
     }
     sfxError();
-    hwFeedback(t.hwTryAgain(res.letter.toUpperCase()), 'wrong');
+    hwFeedback(t.hwTryAgain(showLetter(res.letter, spellInput.value.length)), 'wrong');
     const tile = spellTilesEl.children[spellInput.value.length];
     if (tile) { tile.classList.remove('tile-shake'); void tile.offsetWidth; tile.classList.add('tile-shake'); }
   }

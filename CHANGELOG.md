@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.20.2 — Une majuscule au début, des minuscules ensuite
+
+- ⌨️ **Clavier** : pour la première lettre du mot, les touches sont en majuscules (A, Z, É, Ç…) ; dès qu'elle est tapée, le clavier passe en minuscules. Si l'on efface tout, il repasse en majuscules.
+- 🔤 **Cases du mot** : la première lettre s'affiche en majuscule, les suivantes en minuscules (« Chocolat »), y compris quand le mot est montré à recopier après trois essais et dans le grimoire des sorts.
+- ✏️ **Écriture** : la lettre modèle grise à repasser est une majuscule pour la première lettre, puis des minuscules ; le message « On dirait un… » suit la même règle. La reconnaissance lisait déjà les majuscules, les minuscules d'imprimerie et les minuscules cursives.
+- La vérification du mot ne change pas : elle ne tient pas compte des majuscules.
+
 ## v1.20.1 — Le prénom de l'enfant, et le mot « cinéma »
 
 - 👋 **Le jeu demande le prénom de l'enfant** au premier « Jouer » (et une seule fois, à la prochaine partie, pour un joueur qui a déjà commencé), écrit et dit à voix haute : « Comment tu t'appelles ? ». Alaric répond « Enchanté, Léo ! » avant de demander l'âge. « Plus tard » permet de passer ; le prénom reste sur cet appareil.

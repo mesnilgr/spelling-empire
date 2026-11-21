@@ -1248,6 +1248,66 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'Clavier et écriture : une majuscule au début, des minuscules ensuite',
+    quick: true,
+    weight: 1,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, inputMode: 'keys', save: save(story(2, 0)) });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      // The writing pad's grey model letter: record what is drawn on it.
+      await g.page.evaluate(() => {
+        const f = CanvasRenderingContext2D.prototype.fillText;
+        window.__pad = [];
+        CanvasRenderingContext2D.prototype.fillText = function (txt, ...a) { if (this.canvas?.id === 'hw-canvas') window.__pad.push(String(txt)); return f.call(this, txt, ...a); };
+      });
+      await g.use("i.kind === 'node'");
+      await g.page.waitForFunction(() => !document.querySelector('#spell-modal').hidden, null, { timeout: 8000 });
+      const word = await g.page.evaluate(() => window.__se.spell().word.word);
+      const st = () => g.page.evaluate(() => ({
+        keys: ['a', 'm', 'é', 'ç'].map((l) => document.querySelector(`#spell-keyboard .key[data-letter="${l}"]`)?.textContent).join(''),
+        tiles: [...document.querySelectorAll('#spell-tiles .tile')].map((t) => t.textContent).join(''),
+      }));
+      const press = (ch) => g.page.evaluate((c) => document.querySelector(`#spell-keyboard .key[data-letter="${c}"]`).click(), ch);
+      let s = await st();
+      check(s.keys === 'AMÉÇ', 'pour la première lettre, le clavier montre des majuscules', s.keys);
+      await press(word[0]);
+      s = await st();
+      check(s.keys === 'améç' && s.tiles === word[0].toLocaleUpperCase('fr-FR'), 'ensuite, le clavier passe en minuscules ; la première case a une majuscule', `${s.keys} / ${s.tiles}`);
+      await press(word[1]);
+      s = await st();
+      check(s.tiles === word[0].toLocaleUpperCase('fr-FR') + word[1], 'la deuxième lettre s’écrit en minuscule', s.tiles);
+      await g.page.evaluate(() => { document.querySelector('#spell-keyboard .key-wide').click(); document.querySelector('#spell-keyboard .key-wide').click(); });
+      s = await st();
+      check(s.keys === 'AMÉÇ' && s.tiles === '', 'tout effacé : le clavier repasse en majuscules', s.keys);
+      // Writing pad with the model letter: a capital for the first letter, then a small letter.
+      await g.page.evaluate(() => { window.__se.progress().traceGuide = true; });
+      await g.click('#hw-toggle');
+      await g.page.waitForTimeout(500);
+      const first = await g.page.evaluate(() => window.__pad.at(-1));
+      check(first === word[0].toLocaleUpperCase('fr-FR'), 'en écriture, la lettre modèle de la première lettre est une majuscule', first);
+      await press(word[0]);
+      await g.click('#hw-clear');
+      await g.page.waitForTimeout(300);
+      const second = await g.page.evaluate(() => window.__pad.at(-1));
+      check(second === word[1], 'puis les lettres modèles sont en minuscules', second);
+      await g.click('#hw-toggle');
+      // When the word is shown to be copied out (after 3 misses), it has the same look.
+      await g.page.evaluate(() => { document.querySelector('#spell-keyboard .key-wide').click(); });
+      const wrong = word[0] === 'z' ? 'y' : 'z';
+      for (let k = 0; k < 3; k++) {
+        await g.page.waitForFunction(() => !document.querySelector('#spell-check-btn').hidden && document.querySelector('#spell-input').value === '', null, { timeout: 8000 });
+        await g.page.evaluate(([w, n]) => { for (let i = 0; i < n; i++) document.querySelector(`#spell-keyboard .key[data-letter="${w}"]`).click(); document.querySelector('#spell-check-btn').click(); }, [wrong, word.length]);
+        await g.page.waitForTimeout(300);
+      }
+      await g.page.waitForFunction(() => !document.querySelector('#spell-reveal').hidden, null, { timeout: 8000 }).catch(() => {});
+      const shown = await g.page.evaluate(() => [...document.querySelectorAll('#reveal-tiles .tile')].map((t) => t.textContent).join(''));
+      check(shown === word[0].toLocaleUpperCase('fr-FR') + word.slice(1), 'le mot à recopier est montré avec une majuscule au début', shown);
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
     name: 'Fluidité iPad (budget d’affichage)',
     quick: true,
     weight: 4,

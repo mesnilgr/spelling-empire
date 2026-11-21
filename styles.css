@@ -628,7 +628,6 @@ p { margin: 0; }
   color: var(--ink-900);
   font-size: 1.75rem;
   font-weight: 800;
-  text-transform: uppercase;
   animation: tile-in 0.25s ease both;
 }
 
@@ -1618,7 +1617,7 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .spell-card { font: inherit; text-align: center; border: 2px solid #c8a46a; border-radius: 14px; background: #fffaf0; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
 .spell-card .spell-emoji-big { font-size: 2rem; }
 .spell-card .spell-name { font-weight: 900; }
-.spell-card .spell-word { font-weight: 900; letter-spacing: 0.12em; font-size: 1.25rem; color: #5a3cc8; text-transform: uppercase; }
+.spell-card .spell-word { font-weight: 900; letter-spacing: 0.12em; font-size: 1.25rem; color: #5a3cc8; }
 .spell-card .spell-effect { font-size: 0.78rem; color: var(--ink-500, #556); }
 .spell-card .spell-state { font-size: 0.75rem; font-weight: 800; color: #8a6a2a; }
 .spell-card.is-locked { opacity: 0.55; filter: grayscale(0.6); }
