@@ -1,4 +1,4 @@
-# Plan des 30 releases (20 novembre → 19 décembre 2026)
+# Plan des 31 releases (20 novembre → 20 décembre 2026)
 
 Source de vérité pour la release automatique quotidienne. Une release par jour, week-ends compris.
 Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
@@ -39,12 +39,28 @@ Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
 
 - **Cocotte la poule** se cache chaque jour à un endroit lié à la nouveauté (ligne « Cocotte » de chaque
   release). La toucher : « Cot cot ! », elle s'envole en tournant et laisse une **plume dorée** (une par jour).
-  Le journal 📜 donne l'indice du jour, écrit et lu. Les plumes vont dans l'album (J4) ; à la fête (J29),
+  Le journal 📜 donne l'indice du jour, écrit et lu. Les plumes vont dans l'album (J4) ; à la fête (J30),
   Cocotte vient quoi qu'il arrive et porte un chapeau avec une plume par plume trouvée. Code : `cocotte.js`
   (table `{ day, pos, hint, pose }`, une ligne ajoutée par release).
 - **La devinette d'Alaric** : chaque carte « Quoi de neuf » finit par une devinette (champ `riddle` fr/en dans
   `news.js`) ; bouton « La réponse ? » qui l'affiche et la lit. Ajouté en J2.
 - **Le journal 📜** garde les cartes, les deux parties du jour et l'indice de Cocotte.
+
+## Programme de la semaine (contenu choisi par le parent, en parallèle des releases)
+
+`programme.js` (v1.21.1) sert les thèmes aux dates prévues : environ un mot sur deux (pas pour les boss, les
+portails ni les Mimots), avec une carte d'Alaric datée dans `news.js` (`from`, `only: 'fr'`) et la carte
+« Programme de la semaine » de l'espace parents (automatique, thème au choix, ou désactivé).
+
+- 23–25 nov. : les pronoms (je, tu, il, elle, nous, vous), avec une image de qui parle.
+- 26–29 nov. : être, avoir, aller (pronom écrit en gris, l'enfant écrit le verbe).
+- 30 nov. – 6 déc. : mini-phrases (« Je vais au cinéma. », « Tu es énervé ? », « Nous avons une maison. »),
+  servies à partir de J11 ; d'ici là, révision d'être, avoir, aller.
+- 7–13 déc. : les verbes en -er au présent, sans orthographe compliquée (pas de -ger, -cer, -yer, ni e → è).
+- Ensuite : à décider avec le parent (par exemple ils / elles, ou d'autres verbes).
+
+Une release ne change le programme que si sa ligne le demande (J11). Un nouveau thème = une entrée dans
+`PROGRAMME`, ses mots dans `PROGRAMME_WORDS`, sa carte datée dans `news.js`, et un test.
 
 ## Processus
 
@@ -53,7 +69,7 @@ Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
 `mesnilgr <gregoire@incalia.fr>`) → `git push origin HEAD:main` → publier `dist/` sur l'artifact
 `272c1d81-9603-4155-88c3-832920e17093` (mode replace, label = version) → cocher la ligne ci-dessous.
 
-## Les 30 releases
+## Les 31 releases
 
 Statut : `[x]` publiée · `[ ]` à faire. Version : J1 = v1.19.0, puis +1 en mineure par jour (J2 = v1.20.0…).
 Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17).
@@ -150,7 +166,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Dans la montagne, un golem de neige veut jouer ! Évite ses boules de neige et renvoie-lui les tiennes. Ensuite, construis ton propre bonhomme de neige ! »
   - Devinette : « Quel est le plat préféré du bonhomme de neige ? » — « Les frites… bien glacées ! »
 
-### Semaine 2 — Aventures et hiver
+### Semaine 2 — Aventures, phrases et hiver
 
 - [ ] **J8 · ven. 27 nov. · v1.26.0 — Wagonnet de la mine.**
   - Session 1 : trajet en wagonnet depuis la mine abandonnée (rails, tunnels) ; à chaque aiguillage, choisir le
@@ -193,33 +209,59 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Le pirate a laissé une carte au trésor ! Lis bien chaque indice : il te dira où aller ensuite. Au bout, un coffre plein d'or… et un perroquet bavard ! »
   - Devinette : « Pourquoi les pirates ont-ils du mal à finir l'alphabet ? » — « Parce qu'ils restent bloqués sur le R : Arrr ! »
 
-- [ ] **J11 · lun. 30 nov. · v1.29.0 — Surprises et marchand ambulant.**
-  - Session 1 : un **marchand ambulant** arrive avec deux lamas et reste toute la session : 3 objets rares contre
-    des étoiles + un mot ; à la nuit du jeu, une **étoile filante** à attraper : elle exauce un vœu (on épelle
-    l'un des 3 mots proposés en images, par exemple CHAPEAU, GÂTEAU, LAMA, et on le reçoit).
-  - Session 2 : une averse puis un **arc-en-ciel** qui mène à un coffre ; le marchand revient avec d'autres objets.
-  - Plus fun : les lamas crachent (« Ptou ! ») quand on les touche ; le coffre de l'arc-en-ciel joue une note par
-    couleur quand on l'ouvre.
-  - Cocotte : sur le dos d'un lama du marchand.
-  - Réduite : étoile filante + marchand ; arc-en-ciel en session 2.
-  - S'appuie sur : étoiles, nuit, coffres.
-  - Texte lu : « Ouvre l'œil ! Des étoiles filantes, des arcs-en-ciel et un marchand mystérieux avec ses lamas apparaissent parfois. Attention, les lamas crachent ! »
-  - Devinette : « Pourquoi le lama crache-t-il ? » — « Pour dire bonjour… à sa façon ! »
+- [ ] **J11 · lun. 30 nov. · v1.29.0 — Mini-phrases défi.**
+  - Session 1 : la **mise en page des phrases** : la phrase s'écrit mot par mot, chaque mot sur ses cases, avec
+    retour à la ligne entre les mots (jamais au milieu d'un mot) ; la majuscule du début est déjà là (v1.20.2),
+    l'apostrophe se place toute seule ; à la fin, l'enfant choisit « . » ou « ? » après avoir entendu
+    l'intonation. Le **défi mini-phrase** arrive au hasard au moins une fois par tranche de 15 minutes de jeu
+    (comme les défis éclair) : 3 phrases, grosse récompense d'étoiles.
+  - Session 2 : la **semaine des mini-phrases** du programme : dans `programme.js`, passer `SENTENCES_READY` à
+    `true` et remplir `PROGRAMME_WORDS['mini-phrases']` depuis `MINI_PHRASES` ; environ un mot sur deux est alors
+    une petite phrase faite des pronoms et d'être, avoir, aller (« Je vais au cinéma. », « Tu es énervé ? »,
+    « Nous avons une maison. »). Une phrase ratée montre seulement les mots à corriger.
+  - Accords : accepter les deux formes quand la phrase parle de l'enfant (« énervé » ou « énervée », « content »
+    ou « contente »).
+  - Plus fun : chaque mot réussi tombe en place avec un petit bruit de bloc ; la phrase finie est lue par Alaric
+    avec la bonne intonation ; pendant le « ? », le chien penche la tête.
+  - Cocotte : dans une bulle de bande dessinée au-dessus de la taverne.
+  - Réduite : le point final est mis tout seul (pas de choix) ; défi de 2 phrases.
+  - S'appuie sur : programme de la semaine (v1.21.1), majuscule au début (v1.20.2), défis éclair.
+  - Texte lu : « Nouveau défi : les mini-phrases ! Écris une petite phrase mot par mot, puis choisis : un point, ou un point d'interrogation ? Écoute bien la voix d'Alaric pour savoir ! »
+  - Devinette : « Quel signe pose toujours des questions ? » — « Le point d'interrogation ! »
 
 - [ ] **J12 · mar. 1er déc. · v1.30.0 — L'hiver et le calendrier de l'Avent.**
   - Session 1 : la neige tombe sur le monde (sol blanc, traces de pas du héros et du chien) ; **case 1 du
-    calendrier** : un mot de Noël à épeler et un cadeau (boules de sapin pour J20, décorations, étoiles).
+    calendrier** : un mot de Noël à épeler et un cadeau (boules de sapin pour J21, décorations, étoiles).
   - Session 2 : **luge des lettres** sur la pente de la montagne : en glissant, on attrape les lettres du mot dans
     l'ordre ; 3 descentes de plus en plus rapides.
   - Plus fun : chaque case s'ouvre comme une boîte à ressort (« Boïng ! ») ; les moutons portent un bonnet ;
     certains jours, la case contient une blague de Noël lue par Alaric.
   - Cocotte : juste sa crête qui dépasse de la neige.
   - Réduite : calendrier + neige ; luge sur une piste droite.
-  - S'appuie sur : J7 (montagne enneigée), J11.
+  - S'appuie sur : J7 (montagne enneigée).
   - Texte lu : « Il neige sur l'Empire des Mots ! Chaque jour jusqu'à Noël, ouvre une case du calendrier : épelle le mot caché et découvre ton cadeau. Et attrape les lettres en luge ! »
   - Devinette : « Qu'est-ce qui tombe tout le temps sans jamais se faire mal ? » — « La neige ! »
 
-- [ ] **J13 · mer. 2 déc. · v1.31.0 — Laine et couleurs.**
+- [ ] **J13 · mer. 2 déc. · v1.31.0 — Le nid du dragon.**
+  - Session 1 : au sommet de la montagne, le **nid de Zéphyr**, un dragon des nuages (dessin à nous : bleu-vert,
+    petites ailes rondes, très gentil ; pas une copie d'un dragon connu). Défi : 3 mini-phrases d'affilée
+    (personne ne bouge pendant les phrases). Récompense : **45 secondes de vol** sur le dos de Zéphyr, l'enfant
+    dirige avec le joystick, et attrape des **étoiles filantes** en vol.
+  - Session 2 : à la fin du vol, Zéphyr fait un looping et **l'enfant saute** : chute avec la caméra qui recule,
+    une petite cape s'ouvre, atterrissage en douceur avec un « pouf » de poussière. Un deuxième parcours de vol
+    (au-dessus de la forêt et de la rivière) se débloque. Le vol est une **méga récompense, une fois par
+    session** (le défi mini-phrase au hasard continue en plus).
+  - iPad : vol à hauteur moyenne, brume au loin et distance d'affichage réduite pendant le vol ; le test
+    « Fluidité iPad » mesure aussi une image en plein vol.
+  - Plus fun : le rugissement de Zéphyr est un tout petit « couic » ; ses ailes soufflent les feuilles des arbres ;
+    le chien court vers le point d'atterrissage en aboyant.
+  - Cocotte : dans le nid, assise sur un « œuf »… qui est une pierre ronde.
+  - Réduite : vol sur un parcours fixe (sans joystick), saut avec atterrissage automatique.
+  - S'appuie sur : J11 (mini-phrases), montagne, J5 (planer).
+  - Texte lu : « Au sommet de la montagne vit Zéphyr, le dragon des nuages ! Écris trois mini-phrases et il t'emmènera voler au-dessus de l'île… Accroche-toi : à la fin, il faut sauter ! »
+  - Devinette : « Je vole sans ailes et je pleure sans yeux. Qui suis-je ? » — « Un nuage ! »
+
+- [ ] **J14 · jeu. 3 déc. · v1.32.0 — Laine et couleurs.**
   - Session 1 : recette des ciseaux ; **tondre les moutons** (laine de leur couleur) ; la laine repousse en 10 min.
   - Session 2 : **teindre** : donner une fleur à un mouton lui donne sa couleur, en épelant la couleur (ROUGE,
     BLEU, JAUNE…) ; mission « troupeau arc-en-ciel » de 5 couleurs ; tondre à nouveau pour avoir de la laine
@@ -232,9 +274,11 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Tes moutons ont une belle laine ! Tonds-les avec des ciseaux, puis donne-leur une fleur pour les colorer. Tu vas pouvoir construire en couleurs ! »
   - Devinette : « Que compte un mouton pour s'endormir ? » — « Des enfants ! »
 
-- [ ] **J14 · jeu. 3 déc. · v1.32.0 — Mode construction.**
+### Semaine 3 — Mes amis, ma maison, mon village
+
+- [ ] **J15 · ven. 4 déc. · v1.33.0 — Mode construction.**
   - Session 1 : terrain près de la chaumière ; poser, empiler, retirer des blocs (bois, pierre, verre, laine colorée
-    de J13) ; chaque bloc coûte un matériau (un petit stock offert pour démarrer) ; sauvegardé. Défi d'Alaric :
+    de J14) ; chaque bloc coûte un matériau (un petit stock offert pour démarrer) ; sauvegardé. Défi d'Alaric :
     « Construis une tour de 5 blocs ».
   - Session 2 : **défi du plan** : reproduire un petit modèle montré en transparence (maison, pont), puis épeler
     son nom (MAISON) pour le valider ; **bouton photo** pour montrer sa construction aux parents (gardée dans le
@@ -243,13 +287,11 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
     viennent visiter et commentent (« Quelle belle tour ! »).
   - Cocotte : dans un bloc de laine sur le terrain de construction.
   - **Point de contrôle joueurs.** Réduite : un niveau, 3 sortes de blocs, un modèle par session.
-  - S'appuie sur : J13, fabrication, chaumière.
+  - S'appuie sur : J14, fabrication, chaumière.
   - Texte lu : « À toi de construire ! Pose des blocs de bois, de pierre, de verre ou de laine sur ton terrain. Tour, château ou cabane : tout est possible… même le bloc qui explose en confettis ! »
   - Devinette : « Qu'est-ce qui a une tête et un pied, mais pas de corps ? » — « Un lit ! »
 
-### Semaine 3 — Mes amis, ma maison, mon village
-
-- [ ] **J15 · ven. 4 déc. · v1.33.0 — Chats et loups apprivoisables.**
+- [ ] **J16 · sam. 5 déc. · v1.34.0 — Chats et loups apprivoisables.**
   - Session 1 : des chats au village ; on les apprivoise avec un poisson + un mot ; on donne un **nom** à son chat
     en l'épelant (3 noms au choix) ; il ronronne quand on le caresse.
   - Session 2 : des loups dans la forêt ; on les apprivoise avec un os + un mot ; on choisit qui accompagne (le
@@ -263,7 +305,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Les chats et les loups peuvent devenir tes amis ! Épelle un mot pour les apprivoiser, donne-leur un nom, puis choisis qui part à l'aventure avec toi. »
   - Devinette : « Quel est le comble pour un chat ? » — « D'avoir un chat dans la gorge ! »
 
-- [ ] **J16 · sam. 5 déc. · v1.34.0 — Le potager.**
+- [ ] **J17 · dim. 6 déc. · v1.35.0 — Le potager.**
   - Session 1 : des carrés de potager devant la chaumière ; graines de carotte, pomme de terre et citrouille ;
     planter, puis arroser en épelant EAU ; les légumes poussent pendant le jeu (environ 10 min).
   - Session 2 : la **récolte** ; une graine sur dix donne un **légume géant** ; replanter ; donner une carotte au
@@ -276,7 +318,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Ton potager t'attend devant la maison ! Plante des graines, arrose-les, et reviens les récolter quand elles ont poussé. Attention au lapin gourmand ! »
   - Devinette : « Pourquoi les carottes sont-elles bonnes pour les yeux ? » — « As-tu déjà vu un lapin avec des lunettes ? »
 
-- [ ] **J17 · dim. 6 déc. · v1.35.0 — La cuisine.**
+- [ ] **J18 · lun. 7 déc. · v1.36.0 — La cuisine.**
   - Session 1 : une marmite dans la chaumière ; on cuisine en **épelant les ingrédients dans l'ordre** ; soupe
     (+1 cœur temporaire) ; un livre de recettes à remplir.
   - Session 2 : gâteau (donne un pouvoir de J5), **carotte dorée** (cheval plus rapide, à essayer sur la course
@@ -285,28 +327,30 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
     roter « Burp ! », sans effet négatif).
   - Cocotte : dans la marmite (sans danger : elle prend un bain !).
   - Réduite : soupe en session 1, carotte dorée et gâteau du chien en session 2.
-  - S'appuie sur : J16, J5, J9.
+  - S'appuie sur : J17, J5, J9.
   - Texte lu : « À la cuisine ! Avec tes légumes, prépare une soupe qui donne des forces ou un gâteau magique plein de pouvoirs. Épelle bien chaque ingrédient… sinon, burp ! »
   - Devinette : « Qu'est-ce qui est jaune et qui attend ? » — « Jonathan ! »
 
-- [ ] **J18 · lun. 7 déc. · v1.36.0 — Tableau des quêtes.**
+- [ ] **J19 · mar. 8 déc. · v1.37.0 — Tableau des quêtes.**
   - Session 1 : à la taverne, un tableau avec 3 demandes de villageois, chacune avec une petite histoire drôle
     (« Le boulanger a perdu sa moustache ! ») : légumes, laine, poissons, plats.
   - Session 2 : 3 nouvelles demandes + une **demande mystère** dont on ne découvre la récompense qu'à la fin ;
     chaque demande réussie fait monter la **réputation du village** (une statue du héros sur la place après
     10 demandes, sur plusieurs jours).
+  - Aussi : le **marchand ambulant** et ses deux lamas passent devant la taverne (3 objets rares contre des étoiles
+    + un mot) ; les lamas crachent (« Ptou ! ») quand on les touche.
   - Plus fun : le villageois content fait une danse de la joie.
   - Cocotte : sur le tableau, en affiche « Avis de recherche : Cocotte ».
   - Réduite : 3 demandes par session, sans statue.
-  - S'appuie sur : J13, J15, J16, J17.
+  - S'appuie sur : J14, J16, J17, J18.
   - Texte lu : « Les villageois ont besoin de toi ! Regarde le tableau de la taverne : chaque demande réussie rapporte des étoiles et des surprises. »
   - Devinette : « Qu'est-ce qui est à toi, mais que les autres utilisent plus que toi ? » — « Ton prénom ! »
 
-- [ ] **J19 · mar. 8 déc. · v1.37.0 — Lettres et facteur.**
+- [ ] **J20 · mer. 9 déc. · v1.38.0 — Lettres et facteur.**
   - Session 1 : un sac de facteur ; écrire une courte lettre (phrase dictée, niveau adapté à l'âge) et la porter à
     Fer, au boulanger ou au golem de neige.
   - Session 2 : un **pigeon voyageur** apporte les réponses (chacun répond avec sa personnalité) ; un colis à
-    livrer à cheval en moins de 2 minutes ; on écrit une **lettre au Père Noël** (réponse à la fête, J29).
+    livrer à cheval en moins de 2 minutes ; on écrit une **lettre au Père Noël** (réponse à la fête, J30).
   - Plus fun : Fer écrit comme un robot (« BIP. MERCI. FLEUR. BIP. ») ; le golem de neige envoie une lettre gelée
     qu'il faut réchauffer près de Flammèche.
   - Cocotte : dans la boîte aux lettres.
@@ -315,7 +359,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Tu deviens le facteur du village ! Écris une petite lettre, porte-la à son destinataire… et attends que le pigeon t'apporte sa réponse ! »
   - Devinette : « Qu'est-ce qui commence par E, finit par E, et ne contient qu'une seule lettre ? » — « Une enveloppe ! »
 
-- [ ] **J20 · mer. 9 déc. · v1.38.0 — Le sapin du village.**
+- [ ] **J21 · jeu. 10 déc. · v1.39.0 — Le sapin du village.**
   - Session 1 : un immense sapin arrive sur la place ; on y accroche les boules et guirlandes gagnées en épelant
     et dans le calendrier ; secouer le sapin fait tomber la neige.
   - Session 2 : poser l'**étoile** au sommet en montant une échelle de mots (un mot par barreau) ; allumer le sapin
@@ -328,7 +372,9 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Un immense sapin est arrivé sur la place ! Gagne des boules et des guirlandes en épelant, décore-le, puis allume-le pour la grande fête de Noël. »
   - Devinette : « Qu'est-ce qui est vert l'été, vert l'hiver, et brille à Noël ? » — « Le sapin ! »
 
-- [ ] **J21 · jeu. 10 déc. · v1.39.0 — Grand rallye et journée des farces.**
+### Semaine 4 — Le Monde de feu et le grand final
+
+- [ ] **J22 · ven. 11 déc. · v1.40.0 — Grand rallye et journée des farces.**
   - Session 1 : **journée des farces** (24 h) : les moutons portent des lunettes, Fer danse, les zombies ont un nez
     de clown la nuit ; trouver 10 fausses Cocottes en carton (une seule est la vraie).
   - Session 2 : **grand rallye de l'Empire** : 8 balises dans les nouveautés des semaines 1 à 3 (wagonnet, album,
@@ -337,56 +383,54 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Plus fun : les farces elles-mêmes ; Alaric fait semblant d'être un zombie, puis rit.
   - Cocotte : la vraie, parmi les 10 en carton.
   - **Point de contrôle joueurs.** Réduite : farces + rallye à 5 balises.
-  - S'appuie sur : J1 à J20.
+  - S'appuie sur : J1 à J21.
   - Texte lu : « Aujourd'hui, c'est la journée des farces ! Regarde bien les moutons et Fer… Et lance-toi dans le grand rallye de l'Empire pour gagner ton diplôme ! »
   - Devinette : « Qu'est-ce qui devient de plus en plus mouillé quand il sèche ? » — « Une serviette ! »
 
-### Semaine 4 — Le Nether et le grand final
-
-- [ ] **J22 · ven. 11 déc. · v1.40.0 — Le Nether.**
+- [ ] **J23 · sam. 12 déc. · v1.41.0 — Le Monde de feu.**
   - Session 1 : le portail mène à une petite zone séparée (chargée à l'entrée) : sol rouge, rivières de lave,
     pierre lumineuse, champignons géants ; ramasser 5 pierres lumineuses (un mot chacune).
   - Session 2 : la **forteresse** et son coffre ; traverser des rivières de lave en les transformant en obsidienne ;
     portail de retour ; la pierre lumineuse devient une lampe dans la chaumière.
   - Plus fun : le passage du portail fait un tourbillon violet (« Wouuuch ! ») ; de petits **cubes de magma**
     rebondissent partout comme des balles (« Boing ! ») ; le chien porte des petites bottes anti-feu.
-  - Cocotte : dans le Nether, avec des lunettes de soleil.
+  - Cocotte : dans le Monde de feu, avec des lunettes de soleil.
   - Réduite : une île rouge + coffre en session 1, forteresse simple en session 2.
   - S'appuie sur : portail, seau de lave, obsidienne.
-  - Texte lu : « Le portail s'ouvre sur un monde de feu : le Nether ! Rivières de lave et pierres qui brillent… Explore-le, mais garde ton seau près de toi ! »
+  - Texte lu : « Le portail s'ouvre sur un monde de flammes : le Monde de feu ! Rivières de lave et pierres qui brillent… Explore-le, mais garde ton seau près de toi ! »
   - Devinette : « Qu'est-ce qui est rouge, très chaud, et fait glouglou ? » — « Une rivière de lave qui a soif ! »
 
-- [ ] **J23 · sam. 12 déc. · v1.41.0 — Les habitants du Nether.**
-  - Session 1 : les **Piglins** marchands : on leur donne de l'or et ils l'échangent contre des objets rares ; un mot
+- [ ] **J24 · dim. 13 déc. · v1.42.0 — Les habitants du Monde de feu.**
+  - Session 1 : les **Groins d’or** marchands : on leur donne de l'or et ils l'échangent contre des objets rares ; un mot
     pour chaque échange.
-  - Session 2 : recette du seau d'eau ; mission « éteins les 6 petits monstres de feu de la forteresse » ; un Piglin
-    devenu ami montre le chemin du repaire du dragon (annonce de J24).
-  - Plus fun : un Piglin qui reçoit de l'or le regarde, ébahi, puis danse ; ses échanges sont parfois farfelus
+  - Session 2 : recette du seau d'eau ; mission « éteins les 6 petits monstres de feu de la forteresse » ; un Groin d’or
+    devenu ami montre le chemin du repaire du dragon (annonce de J25).
+  - Plus fun : un Groin d’or qui reçoit de l'or le regarde, ébahi, puis danse ; ses échanges sont parfois farfelus
     (une chaussure dorée, une plume) ; les monstres de feu éternuent des étincelles et, une fois éteints,
     deviennent de petits nuages de fumée qui boudent.
-  - Cocotte : chez un Piglin, sur une pile d'or.
-  - Réduite : Piglins en session 1, 3 monstres de feu en session 2.
-  - S'appuie sur : J22, or, fabrication.
-  - Texte lu : « Dans le Nether vivent les Piglins : ils adorent l'or ! Échange avec eux, et éteins les petits monstres de feu avec ton seau d'eau. »
+  - Cocotte : chez un Groin d’or, sur une pile d'or.
+  - Réduite : Groins d’or en session 1, 3 monstres de feu en session 2.
+  - S'appuie sur : J23, or, fabrication.
+  - Texte lu : « Dans le Monde de feu vivent les Groins d’or : ils adorent l'or ! Échange avec eux, et éteins les petits monstres de feu avec ton seau d'eau. »
   - Devinette : « Où les cochons rangent-ils leurs pièces ? » — « Dans une tirelire… cochon ! »
 
-- [ ] **J24 · dim. 13 déc. · v1.42.0 — Le Dragon de lave.**
-  - Session 1 : préparer le combat : trouver 3 **écailles de courage** dans le Nether (un mot chacune) ;
+- [ ] **J25 · lun. 14 déc. · v1.43.0 — Le Dragon de lave.**
+  - Session 1 : préparer le combat : trouver 3 **écailles de courage** dans le Monde de feu (un mot chacune) ;
     approcher du dragon endormi sur la pointe des pieds ; phase 1 : il se réveille et s'enfuit plus loin.
   - Session 2 : son repaire profond ; phases 2 et 3, 5 mots plus difficiles, pouvoirs + seau d'eau ; victoire.
   - Plus fun : chaque phase finit par un énorme « ATCHOUM » de fumée ; après la victoire, le dragon avoue qu'il
     avait juste mal aux dents ; il laisse un **œuf de dragon** qui bouge dans la chaumière… et éclora à la fête
-    (J29).
+    (J30).
   - Cocotte : derrière le dragon endormi.
   - Réduite : boss à 5 mots ; écailles en session 1, combat en session 2.
-  - S'appuie sur : J5, J22, J23, boss.
-  - Texte lu : « Au fond du Nether dort le Dragon de lave, le plus grand boss de l'Empire ! Il faudra du courage, cinq mots et tous tes pouvoirs pour le vaincre. Chut… il dort ! »
+  - S'appuie sur : J5, J23, J24, boss.
+  - Texte lu : « Au fond du Monde de feu dort le Dragon de lave, le plus grand boss de l'Empire ! Il faudra du courage, cinq mots et tous tes pouvoirs pour le vaincre. Chut… il dort ! »
   - Devinette : « Comment appelle-t-on un dragon enrhumé ? » — « Un cracheur de mouchoirs ! »
 
-- [ ] **J25 · lun. 14 déc. · v1.43.0 — Le tournoi des mots d'Alaric.**
+- [ ] **J26 · mar. 15 déc. · v1.44.0 — Le tournoi des mots d'Alaric.**
   - Session 1 : manches 1 à 3 (coupe de bronze), de plus en plus difficiles ; un **mot doré** bonus qui double
     les points.
-  - Session 2 : manches 4 à 6 (argent, puis or) avec les mots ratés ces 30 jours (révision espacée) ; la coupe
+  - Session 2 : manches 4 à 6 (argent, puis or) avec les mots ratés ce mois-ci (révision espacée) ; la coupe
     trône dans la chaumière ; on peut retenter chaque jour.
   - Plus fun : les gradins se remplissent de tes amis (chien, golems, moutons, Cocotte) qui applaudissent à chaque
     mot ; Alaric commente comme un présentateur.
@@ -396,7 +440,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Grand tournoi des mots ! Tous tes amis sont dans les gradins. Chaque manche est un peu plus difficile : arriveras-tu jusqu'à la coupe d'or ? »
   - Devinette : « Quel est le mot le plus long ? » — « Élastique : il s'étire tant qu'on veut ! »
 
-- [ ] **J26 · mar. 15 déc. · v1.44.0 — Duel à deux (ou contre le chien).**
+- [ ] **J27 · mer. 16 déc. · v1.45.0 — Duel à deux (ou contre le chien).**
   - Session 1 : **duel sur le même iPad** : chacun son animal-avatar, tour à tour, chacun avec les mots de son âge.
     Seul ? **Duel contre le chien**, qui « épelle » en aboyant (niveau réglé pour que l'enfant gagne souvent).
   - Session 2 : **mode équipe** : à deux (ou avec le chien), ensemble contre une vague de zombies de nuit, chacun
@@ -405,11 +449,11 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
     (couronne pour le gagnant, chapeau du courage pour l'autre).
   - Cocotte : sur l'écran du duel, entre les deux joueurs.
   - Réduite : mêmes mots pour les deux joueurs ; duel contre le chien ; équipe en session 2.
-  - S'appuie sur : chien, zombies, J25.
+  - S'appuie sur : chien, zombies, J26.
   - Texte lu : « Invite un frère, une sœur ou un copain : c'est l'heure du duel ! Tu es seul ? Défie ton chien… il aboie les lettres ! »
   - Devinette : « Combien de lettres y a-t-il dans "l'alphabet" ? » — « Huit : A, L, P, H, A, B, E, T ! »
 
-- [ ] **J27 · mer. 16 déc. · v1.45.0 — Bulletin et médailles.**
+- [ ] **J28 · jeu. 17 déc. · v1.46.0 — Bulletin et médailles.**
   - Session 1 : le **bulletin** arrive par le pigeon voyageur (mots appris, zombies, lieux) ; Alaric le lit avec une
     petite fanfare ; médailles rigolotes (« Ami des moutons », « Roi des mots longs », « Le plus gourmand ») ;
     résumé dans l'espace parents. Ensuite, chaque dimanche.
@@ -418,11 +462,11 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Plus fun : la fanfare ; les noms des médailles.
   - Cocotte : sur le podium, avec une médaille en chocolat.
   - Réduite : bilan à la demande ; 3 médailles à gagner.
-  - S'appuie sur : J4, J19, statistiques.
+  - S'appuie sur : J4, J20, statistiques.
   - Texte lu : « Bravo ! Voici ton bulletin, avec tes médailles. Il en reste à gagner : à toi de jouer ! Montre-le à tes parents : ils seront fiers de toi ! »
   - Devinette : « Que dit le zéro au huit ? » — « Jolie ceinture ! »
 
-- [ ] **J28 · jeu. 17 déc. · v1.46.0 — Le temple des énigmes.**
+- [ ] **J29 · ven. 18 déc. · v1.47.0 — Le temple des énigmes.**
   - Session 1 : un temple englouti sort du marais ; salles 1 et 2 : leviers et anagrammes posées par une statue
     géante.
   - Session 2 : salles 3 et 4 : mots croisés simples, passage secret derrière une lettre à toucher, le trésor
@@ -435,21 +479,20 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Un temple ancien est sorti du marais ! Ses portes s'ouvrent avec des énigmes de mots. Seras-tu assez malin pour atteindre son trésor ? »
   - Devinette : « Je suis plein de trous, mais je garde l'eau. Qui suis-je ? » — « Une éponge ! »
 
-- [ ] **J29 · ven. 18 déc. · v1.47.0 — La grande fête de Noël.**
+- [ ] **J30 · sam. 19 déc. · v1.48.0 — La grande fête de Noël.**
   - Session 1 : les préparatifs : le pigeon distribue les invitations, l'**œuf de dragon éclot** (un bébé dragon
     devient compagnon), Cocotte arrive avec son chapeau de plumes, le sapin s'illumine.
   - Session 2 : la fête : **feux d'artifice qui écrivent dans le ciel** les mots appris (chaque fusée = un mot
-    épelé) ; **photo de groupe** avec tous les amis, à garder ; la réponse du Père Noël (J19).
+    épelé) ; **photo de groupe** avec tous les amis, à garder ; la réponse du Père Noël (J20).
   - Plus fun : tout le village danse ; le bébé dragon éternue de petites flammes.
   - Cocotte : elle ne se cache plus, elle est l'invitée d'honneur.
   - Réduite : feux d'artifice + amis sur la place en session 2 ; éclosion en session 1.
-  - S'appuie sur : J19, J20, J24, fils rouges.
+  - S'appuie sur : J20, J21, J25, fils rouges.
   - Texte lu : « C'est la grande fête de l'Empire des Mots ! Tous tes amis t'attendent sur la place, et quelqu'un sort de son œuf… Joyeux Noël, champion des mots ! »
   - Devinette : « Que fait le Père Noël quand il fait une roulade ? » — « Ho ho ho… à l'envers : oh oh oh ! »
 
-- [ ] **J30 · sam. 19 déc. · v1.48.0 — Mode Légende.**
-  - Session 1 : **cérémonie** : Alaric te sacre « Légende des mots » devant tout le village, avec ton bilan des
-    30 jours.
+- [ ] **J31 · dim. 20 déc. · v1.49.0 — Mode Légende.**
+  - Session 1 : **cérémonie** : Alaric te sacre « Légende des mots » devant tout le village, avec ton bilan du mois.
   - Session 2 : le **mode Légende**, une deuxième sauvegarde (la partie actuelle continue) : on garde le chien, le
     bébé dragon, la maison et les costumes ; mots plus durs ; nouveaux défis ; **modes farfelus** à choisir (tout
     le monde géant, moutons arc-en-ciel, zombies en pyjama la nuit).
