@@ -18,7 +18,7 @@ import { NEWS } from './news.js';
 import { DTX, drawDefis, defiById } from './daily.js';
 import { cocotteToday } from './cocotte.js';
 import { FTX, CALENDAR, FLAME_STEPS, SNEEZE_STARS, HEARTH } from './flame.js';
-import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themeFor, themeWords, upcomingThemes } from './programme.js';
+import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themeFor, themeWords, themeDay, upcomingThemes } from './programme.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -315,9 +315,14 @@ function renderProgrammeCard() {
   const opt = (value, text) => { const o = el('option', '', text); o.value = value; return o; };
   sel.replaceChildren(opt('auto', t.progAuto), ...PROGRAMME.map((p) => opt(p.id, `${p.emoji} ${p.name}`)), opt('off', t.progOff));
   sel.value = progress.programme ?? 'auto';
-  sel.onchange = () => { progress.programme = sel.value; saveProgress(); renderProgrammeCard(); };
+  sel.onchange = () => {
+    progress.programme = sel.value;
+    // A theme picked by hand opens progressively from today.
+    if (sel.value !== 'auto' && sel.value !== 'off') progress.programmeSince = todayKey(); else delete progress.programmeSince;
+    saveProgress(); renderProgrammeCard();
+  };
   const th = programmeTheme();
-  $('#dash-prog-now').textContent = lang !== 'fr' ? t.progFrOnly : th ? t.progNow(`${th.emoji} ${th.name}`, th.blurb) : t.progNone;
+  $('#dash-prog-now').textContent = lang !== 'fr' ? t.progFrOnly : th ? `${t.progNow(`${th.emoji} ${th.name}`, th.blurb)} ${t.progOpen(programmeItems(th).length, themeWords(th).length)}` : t.progNone;
   const day = (d) => d.split('-').reverse().slice(0, 2).join('/');
   $('#dash-prog-list').replaceChildren(...upcomingThemes(todayKey()).map((p) => el('li', '', `${day(p.from)} → ${day(p.to)} : ${p.emoji} ${p.name} (${p.blurb})${p.needs === 'sentences' && !SENTENCES_READY ? ` — ${t.progSoon}` : ''}`)));
 }
@@ -342,11 +347,18 @@ let lastPicked = '';
 // Programme de la semaine (programme.js): the theme running today, from the calendar or the
 // parents' choice. About one word in two comes from it (not for bosses, portals or Mimots).
 function programmeTheme() { return lang === 'fr' ? themeFor(todayKey(), progress.programme ?? 'auto') : null; }
+// The theme opens progressively: its day counts from its start on the calendar, or from the day the
+// parents picked it by hand.
+function programmeDay(theme) {
+  const today = todayKey(), manual = (progress.programme ?? 'auto') !== 'auto';
+  return themeDay(theme, today, manual ? (progress.programmeSince ?? today) : undefined);
+}
+function programmeItems(theme) { return themeWords(theme, { day: programmeDay(theme) }); }
 function programmeWord(stats, opts) {
   const theme = programmeTheme();
   if (!theme) return null;
   if (!window.__se?.programmeAlways && Math.random() >= PROGRAMME_SHARE) return null;
-  const items = themeWords(theme);
+  const items = programmeItems(theme);
   if (!items.length) return null;
   return chooseWord(items, stats, (w) => `${lang}:${w.id}`, { ...opts, newPerDay: 99 })?.w ?? items[Math.floor(Math.random() * items.length)];
 }

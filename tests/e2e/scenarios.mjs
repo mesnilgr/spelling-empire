@@ -1463,6 +1463,7 @@ export const SCENARIOS = [
       await g.page.waitForSelector('#spell-modal:not([hidden])', { timeout: 8000 });
       const w2 = await g.page.evaluate(() => window.__se.spell().word);
       check(!!w2.prefix && !!w2.verb, 'un mot du thème : pronom + verbe', w2.id);
+      check(w2.verb === 'être', 'le thème s’ouvre petit à petit : le premier jour, seulement être', w2.verb);
       const view = await g.page.evaluate(() => ({
         prefix: document.querySelector('#spell-tiles .tile-prefix')?.textContent,
         ctx: document.querySelector('#spell-context').textContent,
@@ -1487,11 +1488,15 @@ export const SCENARIOS = [
       await g.click('#parents-btn');
       await g.page.waitForTimeout(300);
       const dash = await g.page.evaluate(() => ({ value: document.querySelector('#dash-programme').value, n: document.querySelectorAll('#dash-programme option').length, now: document.querySelector('#dash-prog-now').textContent, list: document.querySelectorAll('#dash-prog-list li').length }));
-      check(dash.value === 'etre-avoir-aller' && dash.n === 6 && dash.now.includes('Être, avoir, aller'), 'l’espace parents montre le thème choisi', JSON.stringify(dash));
+      check(dash.value === 'etre-avoir-aller' && dash.n === 7 && dash.now.includes('Être, avoir, aller') && dash.now.includes('6 mots sur 18'), 'l’espace parents montre le thème choisi et ce qui est déjà ouvert', JSON.stringify(dash));
       await g.page.selectOption('#dash-programme', 'off');
       await g.page.waitForTimeout(200);
       p = await g.page.evaluate(() => window.__se.progress());
       check(p.programme === 'off' && (await g.page.$eval('#dash-prog-now', (e) => e.textContent)).includes('Pas de thème'), 'les parents peuvent le désactiver');
+      await g.page.selectOption('#dash-programme', 'premier-groupe');
+      await g.page.waitForTimeout(200);
+      const picked = await g.page.evaluate(() => ({ p: window.__se.progress(), now: document.querySelector('#dash-prog-now').textContent }));
+      check(picked.p.programme === 'premier-groupe' && !!picked.p.programmeSince && picked.now.includes('24 mots sur 60'), 'un thème choisi à la main s’ouvre aussi petit à petit (4 verbes sur 10 le premier jour)', picked.now);
       await g.page.selectOption('#dash-programme', 'auto');
       check((await g.page.evaluate(() => window.__se.progress().programme)) === 'auto', 'ou revenir au calendrier automatique');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));

@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.21.2 — Un programme qui s'ouvre petit à petit
+
+- 🪜 **Chaque thème du programme s'ouvre par étapes**, pour ne pas mettre l'enfant en difficulté : être le jeudi 26, avoir en plus le vendredi, aller en plus le samedi. Un thème choisi à la main dans l'espace parents s'ouvre aussi petit à petit, à partir du jour où il est choisi. L'espace parents affiche ce qui est déjà ouvert (« 6 mots sur 18 pour l'instant »).
+- 🎵 **Verbes en -er (7–13 décembre) : les 10 plus fréquents**, d'après la liste de fréquence d'Éduscol, sans les verbes abstraits et sans aucun piège d'orthographe : jouer, aimer, regarder, donner le lundi ; parler, trouver, chercher en plus le mercredi ; demander, arriver, tomber en plus le vendredi.
+- 🛠️ **Nouvelle semaine : faire, dire, venir (14–20 décembre)**, avec je, tu, il, elle d'abord, puis nous et vous à partir du jeudi. Alaric présente chaque nouvelle semaine, avec une devinette.
+- 💬 Les mini-phrases (semaine du 30 novembre) commenceront par des phrases de trois mots (« Je suis là. »).
+
 ## v1.21.1 — Le programme de la semaine : pronoms, puis être, avoir, aller
 
 - 📅 **Programme de la semaine** : pendant un thème, environ un mot sur deux vient de ce thème, le reste continue les révisions habituelles. Le thème change tout seul selon le calendrier :

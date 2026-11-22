@@ -69,4 +69,28 @@ export const NEWS = [
       a: { fr: 'Il est !', en: 'He is!' },
     },
   },
+  {
+    id: 'prog-premier-groupe', day: 18, date: '2026-12-07', from: '2026-12-07', only: 'fr', emoji: '🎵', show: null,
+    title: { fr: 'Le programme de la semaine : les verbes en -er', en: 'This week: -er verbs' },
+    text: {
+      fr: 'Cette semaine, les verbes qui finissent par -er : je joue, tu joues, nous jouons ! Attention aux lettres qu’on n’entend pas à la fin. Chaque jour, de nouveaux verbes arrivent.',
+      en: 'This week: French verbs ending in -er, a few more each day.',
+    },
+    riddle: {
+      q: { fr: 'Je joue, tu joues… Quelle lettre se cache à la fin de « tu joues » ?', en: 'Which silent letter ends “tu joues”?' },
+      a: { fr: 'Un S, qu’on n’entend pas !', en: 'An S, which you can’t hear!' },
+    },
+  },
+  {
+    id: 'prog-faire-dire-venir', day: 25, date: '2026-12-14', from: '2026-12-14', only: 'fr', emoji: '🛠️', show: null,
+    title: { fr: 'Le programme de la semaine : faire, dire, venir', en: 'This week: faire, dire, venir' },
+    text: {
+      fr: 'Cette semaine, trois verbes qu’on dit tout le temps : faire, dire et venir. Je fais, tu dis, il vient : écoute bien, la dernière lettre ne s’entend pas !',
+      en: 'This week: three verbs we use all the time.',
+    },
+    riddle: {
+      q: { fr: 'Je fais, tu fais, il… ?', en: 'Je fais, tu fais, il… ?' },
+      a: { fr: 'Il fait, avec un T !', en: 'Il fait, with a T!' },
+    },
+  },
 ];

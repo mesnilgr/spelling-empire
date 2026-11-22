@@ -52,12 +52,22 @@ Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
 portails ni les Mimots), avec une carte d'Alaric datée dans `news.js` (`from`, `only: 'fr'`) et la carte
 « Programme de la semaine » de l'espace parents (automatique, thème au choix, ou désactivé).
 
+**Progressif, pour ne pas créer de frustration** (choix du parent, on pourra accélérer plus tard) : chaque
+thème s'ouvre par étapes (champ `day` des mots, compté depuis le début du thème ou depuis le jour où les
+parents l'ont choisi), et l'espace parents affiche ce qui est déjà ouvert.
+
 - 23–25 nov. : les pronoms (je, tu, il, elle, nous, vous), avec une image de qui parle.
-- 26–29 nov. : être, avoir, aller (pronom écrit en gris, l'enfant écrit le verbe).
-- 30 nov. – 6 déc. : mini-phrases (« Je vais au cinéma. », « Tu es énervé ? », « Nous avons une maison. »),
-  servies à partir de J11 ; d'ici là, révision d'être, avoir, aller.
-- 7–13 déc. : les verbes en -er au présent, sans orthographe compliquée (pas de -ger, -cer, -yer, ni e → è).
-- Ensuite : à décider avec le parent (par exemple ils / elles, ou d'autres verbes).
+- 26–29 nov. : être (jeudi), puis avoir (vendredi), puis aller (samedi) ; pronom écrit en gris, l'enfant écrit le verbe.
+- 30 nov. – 6 déc. : mini-phrases, servies à partir de J11 (d'ici là, révision d'être, avoir, aller) :
+  phrases de 3 mots les deux premiers jours (« Je suis là. »), puis 4–5 mots (« Je vais au cinéma. »,
+  « Tu es énervé ? », « Nous avons une maison. ») — `MINI_PHRASES` porte le jour de chaque phrase.
+- 7–13 déc. : les 10 verbes en -er réguliers les plus fréquents (liste de fréquence Éduscol, sans les verbes
+  abstraits) : jouer, aimer, regarder, donner (lundi) ; + parler, trouver, chercher (mercredi) ; + demander,
+  arriver, tomber (vendredi). Pas de -ger, -cer, -yer, -eler, -eter ni e → è.
+- 14–20 déc. : faire, dire, venir (les verbes irréguliers du CE1) : je, tu, il, elle d'abord, nous et vous
+  à partir du jeudi.
+- Ensuite, à décider avec le parent : pouvoir, vouloir, voir, prendre ; puis, en CE2, les verbes à piège dans
+  l'ordre de fréquence (appeler, jeter, commencer, lever, manger) ; ils et elles.
 
 Une release ne change le programme que si sa ligne le demande (J11). Un nouveau thème = une entrée dans
 `PROGRAMME`, ses mots dans `PROGRAMME_WORDS`, sa carte datée dans `news.js`, et un test.
@@ -216,7 +226,8 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
     l'intonation. Le **défi mini-phrase** arrive au hasard au moins une fois par tranche de 15 minutes de jeu
     (comme les défis éclair) : 3 phrases, grosse récompense d'étoiles.
   - Session 2 : la **semaine des mini-phrases** du programme : dans `programme.js`, passer `SENTENCES_READY` à
-    `true` et remplir `PROGRAMME_WORDS['mini-phrases']` depuis `MINI_PHRASES` ; environ un mot sur deux est alors
+    `true` et remplir `PROGRAMME_WORDS['mini-phrases']` depuis `MINI_PHRASES` (en gardant le champ `day` :
+    3 mots les deux premiers jours, puis 4–5 mots ; le défi au hasard suit la même règle) ; environ un mot sur deux est alors
     une petite phrase faite des pronoms et d'être, avoir, aller (« Je vais au cinéma. », « Tu es énervé ? »,
     « Nous avons une maison. »). Une phrase ratée montre seulement les mots à corriger.
   - Accords : accepter les deux formes quand la phrase parle de l'enfant (« énervé » ou « énervée », « content »
