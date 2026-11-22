@@ -923,7 +923,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 2,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis'], save: save(story(2, 0)) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis', '1.21.0-flamme'], save: save(story(2, 0)) }, { quality: 0 });
       await g.click('#continue-btn');
       // Alaric presents the release, written and spoken; the newest note comes first.
       const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
@@ -939,7 +939,7 @@ export const SCENARIOS = [
       await g.click('#news-btn');
       await g.page.waitForTimeout(300);
       const journal = await g.page.evaluate(() => [...document.querySelectorAll('#journal-list .journal-item h3')].map((e) => e.textContent));
-      check(journal.length >= 3 && /défis/i.test(journal[0]) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
+      check(journal.length >= 3 && /Flammèche/i.test(journal[0]) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
       await g.click('#journal-close');
       // Iron walks round the square, says hello and offers a flower once a day.
       const walk = await g.page.evaluate(() => { const gl = window.__se.scene.golem, a = gl.mesh.position.clone(); gl.pause = 0; for (let k = 0; k < 150; k++) gl.update(1 / 30, k / 30); return { points: gl.points.length, moved: a.distanceTo(gl.mesh.position) }; });
@@ -972,7 +972,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem'], save: save(story(2, 0)) }, { quality: 0, defis: true });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme'], save: save(story(2, 0)) }, { quality: 0, defis: true });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       let words = 0;
       const spellOne = async () => { const r = await g.spell(); words++; return r; };
@@ -1033,7 +1033,6 @@ export const SCENARIOS = [
       for (const id of st1.m.ids) await doDefi(id);
       const m = await g.page.evaluate(() => ({ st: window.__se.defis().m, queue: window.__se.progress().chestQueue }));
       check(m.st.done && m.queue.includes('m'), 'les trois défis du matin réussis : un coffre sauteur arrive', JSON.stringify(m));
-      check(words >= 7, `au moins 7 mots en session 1 (${words})`);
       await g.page.waitForTimeout(600);
       const catchChest = async () => {
         for (let k = 0; k < 8; k++) {
@@ -1049,13 +1048,15 @@ export const SCENARIOS = [
       check(await g.page.evaluate(() => window.__se.scene.jumpChest.which) === 'm', 'le coffre du matin est devant la chaumière');
       const mOpen = await catchChest();
       check(/confettis/.test(mOpen.result), 'on attrape et on ouvre le coffre du matin', mOpen.result);
+      check(words >= 7, `au moins 7 mots en session 1, coffres compris (${words})`);
       // The journal: parts 1 and 2 and Cocotte's hint, written and read.
       await g.page.waitForTimeout(4500);
       await g.click('#defis-btn');
       await g.page.waitForTimeout(300);
       const j1 = await g.page.evaluate(() => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(-1)[0] }));
       check(/Partie 1 ✓ · Partie 2 : à ton prochain retour !/.test(j1.txt), 'journal : « Partie 1 ✓ · Partie 2 : à ton prochain retour ! »', j1.txt);
-      check(/prochain retour/.test(j1.said) && /toit de ta chaumière/.test(j1.said) && /toit de ta chaumière/.test(j1.txt), 'les parties et l’indice de Cocotte sont lus à voix haute', j1.said);
+      const henTip = await g.page.evaluate(() => window.__se.scene.cocotte.row.hint.fr.slice(0, 30));
+      check(/prochain retour/.test(j1.said) && j1.said.includes(henTip) && j1.txt.includes(henTip), 'les parties et l’indice de Cocotte sont lus à voix haute', j1.said);
       await g.click('#journal-close');
       // Session 2: the game is opened again 31 minutes later.
       await g.page.evaluate(([key, k]) => { const p = JSON.parse(localStorage.getItem(key)); p.parts[k].last -= 31 * 60 * 1000; localStorage.setItem(key, JSON.stringify(p)); }, [STORE, `d:${date}`]);
@@ -1072,10 +1073,10 @@ export const SCENARIOS = [
       check(eveSaid, 'les défis du soir sont annoncés à voix haute', await said());
       words = 0;
       for (const id of st2.st.e.ids) await doDefi(id);
-      // Cocotte on the cottage roof: "Cot cot!", a golden feather.
+      // Cocotte in today's hiding spot: "Cot cot!", a golden feather.
       if (!st2.st.e.ids.includes('cocotte')) await doDefi('cocotte');
-      const hen = await g.page.evaluate(() => ({ feathers: window.__se.progress().feathers, active: window.__se.scene.cocotte.obj.active, y: window.__se.scene.cocotte.base.y }));
-      check(hen.feathers?.includes(2) && !hen.active && hen.y > 3, 'Cocotte, sur le toit de la chaumière, s’envole et laisse une plume dorée', JSON.stringify(hen));
+      const hen = await g.page.evaluate(() => ({ feathers: window.__se.progress().feathers, active: window.__se.scene.cocotte.obj.active, day: window.__se.scene.cocotte.row.day }));
+      check(hen.feathers?.includes(hen.day) && !hen.active, 'Cocotte, dans sa cachette du jour, s’envole et laisse une plume dorée', JSON.stringify(hen));
       check(/Cot cot/.test(await said()), '« Cot cot codêêt ! » est dit à voix haute');
       const e = await g.page.evaluate(() => ({ st: window.__se.defis().e, which: window.__se.scene.jumpChest.which, scale: window.__se.scene.jumpChest.mesh.scale.x }));
       check(e.st.done && e.which === 'e' && e.scale > 1.3, 'défis du soir réussis : un gros coffre sauteur arrive', JSON.stringify(e));
@@ -1096,6 +1097,125 @@ export const SCENARIOS = [
       const after = await g.page.waitForFunction(() => window.__se.releasePart(99) === 2, null, { timeout: 12000 }).then(() => 2, () => g.page.evaluate(() => window.__se.releasePart(99)));
       const fifteen = { before, after };
       check(fifteen.before === 1 && fifteen.after === 2, 'la partie 2 s’ouvre aussi après 15 min de jeu sur la partie 1', JSON.stringify(fifteen));
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Flammèche, la flamme des jours (J3)',
+    quick: true,
+    weight: 4,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
+      const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
+      const flame = () => g.page.evaluate(() => { const f = window.__se.flame() ?? {}, fl = window.__se.scene.flame; return { ...f, state: { ...fl.state }, out: fl.starsOut(), part: window.__se.releasePart(3) }; });
+      let words = 0;
+      const atFlame = async () => { const u = await g.use("i.kind === 'flame'"); if (u !== 'ok') check(false, 'on peut toucher Flammèche', u); const r = await g.spell(); words++; return r; };
+      await g.click('#continue-btn');
+      // Alaric presents J3, written and spoken, with his riddle.
+      const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
+      const card = await g.page.evaluate(() => ({ title: document.querySelector('#news-title').textContent, riddle: document.querySelector('#news-riddle').innerText, said: window.__spoken.join(' | ') }));
+      check(shown && /Flammèche/.test(card.title) && /Voici Flammèche, ta flamme magique/.test(card.said), 'Alaric présente Flammèche (écrit et lu)', JSON.stringify(card));
+      check(/Je mange tout/.test(card.riddle) && /Je mange tout/.test(card.said), 'la devinette d’Alaric est écrite et lue', card.riddle);
+      await g.page.evaluate(() => document.querySelector('#news-riddle .news-answer').click());
+      await g.page.waitForTimeout(200);
+      check(/Le feu/.test(await g.page.evaluate(() => window.__spoken.slice(-1)[0])), '« La réponse ? » lit « Le feu ! »');
+      // "Montre-moi !": the golden arrow points at the hearth of the cottage chimney.
+      await g.click('#news-show');
+      await g.page.waitForTimeout(900);
+      const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.flame.obj.worldPos; return { d: q ? Math.hypot(q.x - w.x, q.z - w.z) : 99, home: Math.hypot(w.x, w.z - 14) }; });
+      check(arrow.d < 1 && arrow.home < 5, '« Montre-moi ! » pointe la flèche vers la cheminée de la chaumière', JSON.stringify(arrow));
+      // Walking up: the little ember opens its eyes: "Psst! Spell FEU!"
+      await g.page.evaluate(() => { const w = window.__se.scene.flame.obj.worldPos; window.__se.scene.teleport(w.x - 0.4, w.z + 2.6); });
+      check(await saidLater(/Psst ! Je suis Flammèche/, 10000), 'en approchant, la petite braise dit « Psst ! Épelle FEU ! » (lu)', await said());
+      // Session 1: spell FEU, she lights up (the wow moment).
+      const t0 = Date.now();
+      const light = await atFlame();
+      check(light.word === 'feu' && /Coucou, je suis Flammèche/.test(light.result), 'on épelle FEU : Flammèche s’allume', JSON.stringify(light));
+      await g.page.waitForTimeout(300);
+      const lit = await flame();
+      check(lit.lit && lit.state.lit && lit.state.size === 1 && (Date.now() - t0) < 30000, 'elle s’allume avec un « Fwoosh » et des étincelles, en moins de 30 s', JSON.stringify(lit));
+      check(/Fwoosh/.test(await said()), '« Fwoosh ! Coucou, je suis Flammèche ! » est lu');
+      // Every good word gives her a log: she hiccups and grows (5 sizes).
+      const sizes = [];
+      for (let k = 0; k < 10 && (await flame()).state.size < 5; k++) { const r = await atFlame(); if (k === 0) check(/bûche/.test(r.result), 'un mot près d’elle = une bûche', r.result); sizes.push((await flame()).state.size); }
+      check(sizes.at(-1) === 5 && sizes.every((s, i) => i === 0 || s >= sizes[i - 1]), `elle grandit jusqu’à la taille 5 (${sizes.join(' → ')})`);
+      check(/Hips/.test(await said()), 'gag : elle a le hoquet après chaque bûche (« Hips ! »)');
+      const scale = await g.page.evaluate(() => window.__se.scene.flame.flame.scale.x);
+      check(scale > 0.7, 'on voit qu’elle est grande', String(scale));
+      check(await saidLater(/toute grande ! Reviens plus tard/, 40000), 'toute grande : « Reviens plus tard : elle a une surprise » (lu)', await said());
+      check(/grandit : taille 2/.test(await said()), 'chaque taille est annoncée à voix haute');
+      check(words >= 7, `au moins 7 mots en session 1 (${words})`);
+      // A word right first time elsewhere also gives a log.
+      const logs0 = (await flame()).logs;
+      await g.use("i.kind === 'house' && i.active"); await g.spell();
+      check((await flame()).logs === logs0 + 1, 'un mot réussi du premier coup ailleurs donne aussi une bûche');
+      // The journal: Flammèche's parts and Cocotte's hint, written and read.
+      const n0 = await g.page.evaluate(() => window.__spoken.length);
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j1 = await g.page.evaluate((n) => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(n).join(' | ') }), n0);
+      check(/Flammèche — Partie 1 ✓ · Partie 2 : à ton prochain retour !/.test(j1.txt) && /Série : 1 jour/.test(j1.txt), 'journal : « Flammèche — Partie 1 ✓ · Partie 2 : à ton prochain retour ! », série 1 jour', j1.txt);
+      check(/prochain retour/.test(j1.said) && /tas de bois/.test(j1.said) && /tas de bois/.test(j1.txt), 'les parties et l’indice de Cocotte (tas de bois) sont lus', j1.said);
+      await g.click('#journal-close');
+      // Session 2: the game is opened again 31 minutes later.
+      await g.page.evaluate((key) => { const p = JSON.parse(localStorage.getItem(key)); p.parts.J3.last -= 31 * 60 * 1000; localStorage.setItem(key, JSON.stringify(p)); }, STORE);
+      await g.page.reload();
+      await g.page.waitForSelector('#loading.is-done', { timeout: 180000 });
+      await g.page.evaluate(() => { window.__se.flashAfter = 1e9; window.__se.noDefis = true; });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      const s2 = await flame();
+      check(s2.part === 2 && s2.state.size === 5 && s2.state.lit, 'au retour (30 min plus tard), la partie 2 de Flammèche est ouverte, elle est toujours grande', JSON.stringify(s2));
+      check(await saidLater(/nez qui chatouille/, 15000), '« Flammèche a le nez qui chatouille… » (lu)', await said());
+      // Every word next to her: ATCHOUM! Stars fall around the cottage (7 words = 10 stars).
+      words = 0;
+      for (let k = 0; k < 7; k++) { const r = await atFlame(); if (!/ATCHOUM/.test(r.result)) check(false, 'un mot = un éternuement', r.result); await g.page.waitForTimeout(1700); }
+      await g.page.waitForFunction(() => { const l = window.__se.scene.flame.starList; return l.length === 10 && l.every((s) => s.landed); }, null, { timeout: 15000 }).catch(() => {});
+      const sn = await flame();
+      check(sn.sneezes === 7 && sn.out === 10, `7 mots, 7 éternuements, 10 étoiles par terre (${sn.out})`, JSON.stringify(sn));
+      check(/ATCHOUM/.test(await said()), 'gag : « Ah… ah… ATCHOUM ! » à voix haute');
+      check(words >= 7, `au moins 7 mots en session 2 (${words})`);
+      const spots = await g.page.evaluate(() => window.__se.scene.flame.starList.map((s) => ({ x: s.to.x, z: s.to.z, d: Math.hypot(s.to.x, s.to.z - 14) })));
+      check(spots.every((p) => p.d < 9.5), 'les étoiles tombent autour de la chaumière', JSON.stringify(spots));
+      const stars0 = await g.page.evaluate(() => window.__se.progress().stars);
+      for (const p of spots) { await g.page.evaluate(([x, z]) => window.__se.scene.teleport(x, z), [p.x, p.z]); await g.page.waitForFunction(([x, z]) => window.__se.scene.flame.starList.find((s) => Math.hypot(s.to.x - x, s.to.z - z) < 0.01)?.got, [p.x, p.z], { timeout: 5000 }).catch(() => {}); }
+      const got = await flame();
+      check(got.starsGot === 10 && got.out === 0, 'on ramasse les 10 étoiles en marchant dessus', JSON.stringify(got));
+      check(await g.page.evaluate((s0) => window.__se.progress().stars - s0 >= 10, stars0), 'elles donnent des étoiles');
+      check(/Étoile 10 sur 10/.test(await said()), 'chaque étoile est comptée à voix haute');
+      // The first box of the calendar: sunglasses for the dog (something to show).
+      check(await saidLater(/case 1 : 🕶️ des lunettes de soleil pour ton chien|case 1 : des lunettes de soleil pour ton chien/, 8000), 'case 1 du calendrier : des lunettes de soleil pour le chien (lu)', await said());
+      const glasses = await g.page.evaluate(() => { const fl = window.__se.scene.flame, head = window.__se.scene.pet.mesh.userData.parts.head; return { cal: window.__se.flame().cal, onDog: fl.acc.meshes.some((m) => m.parent === head) }; });
+      check(glasses.cal.join() === 'glasses' && glasses.onDog, 'le chien porte ses lunettes de soleil', JSON.stringify(glasses));
+      // Cocotte on the woodpile next to the chimney.
+      check(await g.use("i.kind === 'cocotte'") === 'ok', 'on trouve Cocotte');
+      const hen = await g.page.evaluate(() => { const c = window.__se.scene.cocotte; return { feathers: window.__se.progress().feathers, d: Math.hypot(c.base.x + 4.1, c.base.z - 17.4), y: c.base.y - window.__se.scene.groundAt(c.base.x, c.base.z) }; });
+      check(hen.feathers?.includes(3) && hen.d < 0.5 && hen.y > 0.3 && hen.y < 0.8, 'Cocotte, sur le tas de bois, laisse une plume dorée', JSON.stringify(hen));
+      check(/Cot cot/.test(await said()), '« Cot cot codêêt ! » (lu)');
+      await g.page.waitForTimeout(4500);
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
+      check(/Flammèche — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /\(1\/7\)/.test(j2) && /trouvé Cocotte/.test(j2), 'journal : les deux parties faites, calendrier 1/7, Cocotte trouvée', j2);
+      await g.click('#journal-close');
+      // The next day: a word for her adds a day to the streak and opens box 2.
+      await g.page.evaluate(() => { const f = window.__se.flame(), y = new Date(Date.now() - 86400000).toISOString().slice(0, 10); f.last = y; f.calDay = y; });
+      await atFlame();
+      const d2 = await flame();
+      check(d2.days === 2 && d2.cal.length === 2, 'le lendemain : série de 2 jours et case 2 du calendrier', JSON.stringify({ days: d2.days, cal: d2.cal }));
+      check(await saidLater(/Série : 2 jours/, 15000), '« Série : 2 jours » (lu)', await said());
+      // A missed day: she falls asleep and snores; the magic log wakes her up, the streak goes on.
+      await g.page.evaluate(() => { const f = window.__se.flame(); f.last = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10); f.magic = 1; });
+      await g.page.waitForFunction(() => window.__se.flame().asleep && window.__se.scene.flame.state.asleep, null, { timeout: 10000 }).catch(() => {});
+      const zz = await flame();
+      check(zz.asleep && zz.state.asleep, 'un jour manqué : elle ne s’éteint pas, elle s’endort', JSON.stringify({ asleep: zz.asleep }));
+      check(await saidLater(/endormie/, 15000), '« Flammèche s’est endormie… » (lu)');
+      await g.use("i.kind === 'flame'");
+      check(await saidLater(/bûche magique réveille Flammèche ! Ta série continue : 3 jours/, 6000), 'la bûche magique la réveille et la série continue (lu)', await said());
+      const up = await flame();
+      check(!up.asleep && up.days === 3 && up.magic === 0, 'réveillée, série gardée', JSON.stringify({ asleep: up.asleep, days: up.days, magic: up.magic }));
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },
@@ -1317,6 +1437,8 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(1200);
       // The jumping chest (J2) is out in front of the cottage, Cocotte on its roof: count them too.
       await g.page.evaluate(() => window.__se.scene.jumpChest.spawn('welcome'));
+      // Flammèche (J3), big, with her 10 stars around the cottage.
+      await g.page.evaluate(() => { const fl = window.__se.scene.flame; fl.setState({ lit: true, size: 5 }); for (const p of fl.starSpots(10, 3)) fl.addStar(p); });
       const measure = (x, z) => g.page.evaluate(([px, pz]) => {
         const s = window.__se.scene;
         s.teleport(px, pz); s._tickRegions();

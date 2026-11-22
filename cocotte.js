@@ -14,6 +14,13 @@ export const COCOTTE = [
       en: 'Cocotte climbed up high: on the roof of your cottage, next to the chest!',
     },
   },
+  {
+    day: 3, pos: { x: -4.1, y: 0.5, z: 17.4 }, ry: 0.4, pose: 'perch',
+    hint: {
+      fr: 'Cocotte a froid : elle s’est cachée sur le tas de bois, à côté de la cheminée de Flammèche !',
+      en: 'Cocotte is cold: she is hiding on the woodpile, next to Flammèche’s chimney!',
+    },
+  },
 ];
 
 // The row for the current release (the highest day not after `maxDay`).

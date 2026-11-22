@@ -32,4 +32,16 @@ export const NEWS = [
       a: { fr: 'Un secret !', en: 'A secret!' },
     },
   },
+  {
+    id: '1.21.0-flamme', day: 3, date: '2026-11-22', emoji: '🔥', show: 'flame',
+    title: { fr: 'Flammèche, la flamme des jours', en: 'Flammèche, the flame of the days' },
+    text: {
+      fr: 'Voici Flammèche, ta flamme magique ! Elle t’attend dans la cheminée de ta chaumière : épelle FEU pour l’allumer, et chaque mot réussi la fait grandir. Reviens chaque jour : au septième jour, une grosse surprise pour ton chien !',
+      en: 'Meet Flammèche, your magic flame! She is waiting in your cottage chimney: spell FIRE to light her, and every good word makes her grow. Come back every day: on the seventh day, a big surprise for your dog!',
+    },
+    riddle: {
+      q: { fr: 'Je mange tout, mais si je bois, je m’éteins. Qui suis-je ?', en: 'I eat everything, but if I drink, I go out. What am I?' },
+      a: { fr: 'Le feu !', en: 'Fire!' },
+    },
+  },
 ];

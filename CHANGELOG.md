@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.21.0 — J3 : Flammèche, la flamme des jours 🔥
+
+- 🔥 **Flammèche**, une petite flamme avec des yeux, vit dans une cheminée en pierre devant la chaumière. En s’approchant, la petite braise ouvre les yeux : « Psst ! Épelle FEU pour m’allumer ! ». On épelle FEU (la lettre F à 5 ans) : « Fwoosh ! », elle s’allume dans une pluie d’étincelles.
+- 🪵 **Chaque mot réussi lui donne une bûche** : un mot épelé près d’elle, ou un mot réussi du premier coup n’importe où. Elle a le hoquet après chaque bûche (« Miam, une bûche ! … Hips ! »), grandit (5 tailles, annoncées à voix haute) et danse de plus en plus fort.
+- 🤧 **Partie 2** (au retour suivant, au moins 30 minutes plus tard, ou après 15 minutes de jeu) : devenue grande, Flammèche a le nez qui chatouille. Chaque mot épelé près d’elle la fait éternuer (« Ah… ah… ATCHOUM ! ») : 7 mots, 10 étoiles qui retombent autour de la chaumière, à ramasser en marchant dessus.
+- 📅 **Le calendrier de Flammèche** (7 cases) : les 10 étoiles ouvrent la première case, des **lunettes de soleil pour le chien** (pour Fer s’il n’y a pas encore de chien). Ensuite, une case par jour joué : 10 étoiles, un nœud papillon pour Fer, 2 diamants, une Flammèche arc-en-ciel, 15 étoiles, et au 7e jour un chapeau que le chien fait tourner.
+- 😴 **La série** : chaque jour joué ajoute un jour (affiché au-dessus de Flammèche). Un jour manqué ne l’éteint pas : elle s’endort et ronfle (« Zzz… »). Une **bûche magique** (gagnée avec 10 mots réussis du premier coup dans la semaine, une par semaine) la réveille sans perdre la série ; sans bûche magique, on épelle FEU et une nouvelle série commence.
+- 📜 Le journal montre les deux parties de Flammèche, sa taille, la série, les bûches magiques et le calendrier, écrit et lu.
+- 🐔 **Cocotte** s’est cachée sur le tas de bois, à côté de la cheminée de Flammèche (indice dans le journal).
+- ❓ Devinette d’Alaric : « Je mange tout, mais si je bois, je m’éteins. Qui suis-je ? »
+
 ## v1.20.2 — Une majuscule au début, des minuscules ensuite
 
 - ⌨️ **Clavier** : pour la première lettre du mot, les touches sont en majuscules (A, Z, É, Ç…) ; dès qu'elle est tapée, le clavier passe en minuscules. Si l'on efface tout, il repasse en majuscules.

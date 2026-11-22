@@ -17,6 +17,7 @@ import { HORSES } from './horse.js';
 import { NEWS } from './news.js';
 import { DTX, drawDefis, defiById } from './daily.js';
 import { cocotteToday } from './cocotte.js';
+import { FTX, CALENDAR, FLAME_STEPS, SNEEZE_STARS, HEARTH } from './flame.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -638,6 +639,7 @@ function init3DScene() {
     };
   }
   setupJumpChest();
+  setupFlame();
   if (henFound()) scene3D.cocotte?.hide();
   else if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', `🐔 Cocotte`);
   scene3D.onDismount = () => { const h = scene3D.horses.list.find((x) => x.tamed && !x.leftAt); $('#dismount-btn').hidden = true; };
@@ -650,7 +652,7 @@ function init3DScene() {
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, levelAt: (tier) => levelAt(tier), pickWord: (lvl) => pickWord(lvl) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, levelAt: (tier) => levelAt(tier), pickWord: (lvl) => pickWord(lvl) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -674,7 +676,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte'].includes(obj.kind)) continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -719,6 +721,7 @@ function saveGame() {
     maxHearts: game.maxHearts ?? 2,
     horses: game.horses ?? {},
     golemFlowerDay: game.golemFlowerDay ?? null,
+    flame: game.flame ?? null,
     heartsFrom: game.heartsFrom ?? [],
     savedAt: Date.now(),
   };
@@ -749,6 +752,7 @@ function continueGame() {
     maxHearts: s.maxHearts ?? 2,
     horses: JSON.parse(JSON.stringify(s.horses ?? {})),
     golemFlowerDay: s.golemFlowerDay ?? null,
+    flame: s.flame ? JSON.parse(JSON.stringify(s.flame)) : null,
     heartsFrom: [...(s.heartsFrom ?? [])],
   });
   // Lasting spells come back: the bridge, the lit braziers.
@@ -849,6 +853,7 @@ function interactWith(obj) {
   if (obj.kind === 'npc' && obj.npcId === 'mage') defiEvent('mage');
   if (obj.kind === 'jumpchest') { jumpChestInteract(); return; }
   if (obj.kind === 'cocotte') { cocotteInteract(); return; }
+  if (obj.kind === 'flame') { flameInteract(); return; }
   if (obj.kind === 'npc' && obj.npcId === 'mage' && storyAt('talkMage')) { playScene('mage1', () => { advanceStory('talkMage'); toast('🔮 ' + t.grimoireTitle + ' !'); }); return; }
   if (obj.kind === 'npc' && (obj.npcId === 'forester' || obj.npcId === 'fisher')) {
     const id = obj.npcId;
@@ -1078,7 +1083,7 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐', quest: true });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden; tickNews(); }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden; tickNews(); }, 300);
 
 /* ===== FLASH CHALLENGE: never more than 2 minutes of play without a word ===== */
 const FLASH_AFTER = 120; // seconds of play
@@ -1281,6 +1286,7 @@ function tickParts(dt) {
 }
 function onPartTwo(key) {
   if (key === `d:${today()}`) ensureDefis();
+  if (key === 'J3') onFlamePartTwo();
 }
 
 /* ===== DAILY CHALLENGES, THE JUMPING CHEST AND COCOTTE (J2) ===== */
@@ -1473,7 +1479,7 @@ function henHint() {
   if (!r) return '';
   return henFound() ? dtx().cocotteFound : r.hint[lang] ?? r.hint.fr;
 }
-function todaySpeech() { return [dtx().partSay(partsLine()), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
+function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
 function renderToday() {
   const box = $('#journal-today');
   if (!box) return;
@@ -1493,6 +1499,7 @@ function renderToday() {
       kids.push(ul);
     }
   }
+  for (const line of flameLines()) kids.push(el('p', 'journal-flame', line));
   if (henRow()) kids.push(el('p', 'journal-hen', `🐔 ${x.cocotteTitle} ${henHint()}`), el('p', 'journal-feathers', x.feathers((progress.feathers ?? []).length)));
   const listen = el('button', 'btn btn-ghost btn-small', '🔊');
   listen.type = 'button';
@@ -1500,6 +1507,246 @@ function renderToday() {
   kids.push(listen);
   box.replaceChildren(...kids);
   box.hidden = false;
+}
+
+/* ===== FLAMMÈCHE, THE FLAME OF THE DAYS (J3) ===== */
+// Session 1: spell FEU to light her, every good word gives her a log (5 sizes). Session 2 (part 2 of
+// J3): big enough, every word spelled next to her makes her sneeze stars around the cottage (7 words
+// = 10 stars); the 10 stars open the first box of her 7-day calendar. Each day played adds a day to
+// her streak; a missed day puts her to sleep (she snores), a magic log (one a week) wakes her up.
+const ftx = () => FTX[lang] ?? FTX.fr;
+function flameState() { return game ? (game.flame ??= { lit: false, logs: 0, days: 0, last: null, asleep: false, magic: 0, week: null, weekFirst: 0, weekGot: false, cal: [], calDay: null, sneezes: 0, starsGot: 0 }) : null; }
+const flameSize = (f = game?.flame) => (!f?.lit ? 0 : FLAME_STEPS.filter((n) => f.logs >= n).length);
+const dayGap = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+const shiftDay = (d, k) => new Date(Date.parse(d) + k * 86400000).toISOString().slice(0, 10);
+function weekKey() { const d = new Date(`${today()}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); }
+const sneezeStars = (k) => SNEEZE_STARS.slice(0, k).reduce((a, b) => a + b, 0);
+let flameMsgs = [], flamePsst = false, flameP2Said = false, flameLoaded = null, flameSnoreAt = 0;
+function queueFlameMsg(text, say = text.replace(/^\S+ /, ''), sfx = null) { flameMsgs.push({ text, say, sfx }); }
+function flameWord() {
+  if ((progress.age ?? 6) <= 5) return { word: lang === 'en' ? 'f' : 'f', level: 'story', say: lang === 'en' ? 'The letter F… as in fire.' : 'La lettre F… comme dans feu.' };
+  return { word: lang === 'en' ? 'fire' : 'feu', level: 'story', say: lang === 'en' ? 'fire.' : 'feu.' };
+}
+function sfxWhoosh() { playNoise({ type: 'bandpass', freq: 500, q: 0.5, volume: 0.2, duration: 0.6 }); playTone(180, 0.5, 'sawtooth', 0.05, 0, 520); }
+function sfxHic() { playTone(520, 0.08, 'square', 0.07, 0, 900); }
+function sfxSneeze() { playTone(300, 0.5, 'triangle', 0.07, 0, 600); playNoise({ type: 'highpass', freq: 1800, q: 0.7, volume: 0.22, duration: 0.25, delay: 0.95 }); }
+function sfxSnore() { playNoise({ type: 'lowpass', freq: 260, q: 2, volume: 0.12, duration: 0.7 }); playTone(80, 0.6, 'sawtooth', 0.04); playNoise({ type: 'highpass', freq: 2500, q: 0.5, volume: 0.04, duration: 0.4, delay: 0.9 }); }
+function sfxStar() { playTone(988, 0.08, 'triangle', 0.1); playTone(1319, 0.14, 'triangle', 0.1, 0.06); }
+function flameLabel() {
+  const fl = scene3D?.flame, f = game?.flame;
+  if (!fl) return;
+  const want = f?.lit ? ftx().label(f.days) : ftx().labelOff;
+  if (fl.obj.labelText !== want) { fl.obj.labelText = want; scene3D.setSpotMaterial(fl.obj, 'talk', want); }
+}
+function applyFlameLook() {
+  const fl = scene3D?.flame, f = game?.flame;
+  if (!fl) return;
+  fl.setState({ lit: !!f?.lit, size: flameSize(f), asleep: !!f?.asleep, rainbow: !!f?.cal?.includes('rainbow') });
+  const cal = f?.cal ?? [], dog = !!game?.pet?.tamed;
+  const dogAcc = [], golemAcc = [];
+  if (cal.includes('glasses')) (dog ? dogAcc : golemAcc).push('glasses');
+  if (cal.includes('bowtie')) golemAcc.push('bowtie');
+  if (cal.includes('hat')) (dog ? dogAcc : golemAcc).push('hat');
+  fl.dress({ dog: dogAcc, golem: golemAcc });
+  flameLabel();
+}
+// Stars still on the ground (after a reload) come back where she sneezed them.
+function restoreFlameStars() {
+  const fl = scene3D?.flame, f = game?.flame;
+  if (!fl || flameLoaded === game) return;
+  flameLoaded = game;
+  fl.clearStars();
+  if (!f) return;
+  const out = sneezeStars(f.sneezes) - f.starsGot;
+  if (out > 0) for (const p of fl.starSpots(out, f.sneezes + 7)) fl.addStar(p);
+}
+function setupFlame() {
+  const fl = scene3D?.flame;
+  if (!fl) return;
+  flameLabel();
+  fl.onStar = onFlameStar;
+}
+function flameInteract() {
+  const f = flameState(), x = ftx(), fl = scene3D.flame;
+  if (!f) return;
+  if (!f.lit) {
+    spellContext = { type: 'flame', mode: 'light', word: flameWord(), tries: 0 };
+    openSpellModal(`🔥 ${x.title}`, x.lightInstr, '🔥');
+    return;
+  }
+  if (f.asleep) {
+    // The gag first: she snores. Then the magic log wakes her up, or a word does.
+    sfxSnore();
+    const pos = scene3D.worldToScreen(fl.top);
+    if (pos) showFloatingText(pos.x, pos.y, 'Zzz…', '#a8b8ff');
+    if (f.magic > 0) {
+      f.magic -= 1;
+      setTimeout(() => wakeFlame(true), 1400);
+    } else {
+      speak(x.snore, 0.9);
+      setTimeout(() => {
+        if (!$('#spell-modal').hidden || !game) return;
+        spellContext = { type: 'flame', mode: 'wake', word: flameWord(), tries: 0 };
+        openSpellModal(`🔥 ${x.title}`, x.wakeInstr, '😴');
+      }, 1400);
+    }
+    saveGame();
+    return;
+  }
+  const sneeze = releasePart(3) === 2 && flameSize(f) >= 5 && f.sneezes < SNEEZE_STARS.length;
+  spellContext = { type: 'flame', mode: sneeze ? 'sneeze' : 'log', word: pickWord(levelAt(0)), tries: 0 };
+  openSpellModal(`🔥 ${x.title}`, sneeze ? x.sneezeInstr : x.logInstr, sneeze ? '🤧' : '🪵');
+}
+function wakeFlame(magic) {
+  const f = flameState(), x = ftx(), fl = scene3D?.flame;
+  if (!f) return;
+  f.asleep = false;
+  if (magic) f.last = shiftDay(today(), -1); // the streak goes on
+  else { f.days = 0; f.last = null; }
+  countFlameDay(f);
+  fl?.light(); sfxWhoosh();
+  const msg = magic ? x.wakeMagic(f.days) : x.wakeNew;
+  toast(magic ? msg : `🔥 ${msg}`, 4500); speak(msg.replace(/^\S+ /, ''), 0.95);
+  applyFlameLook(); saveGame();
+}
+// The first log of a new day adds a day to the streak (and opens the next calendar box).
+function countFlameDay(f) {
+  const d = today();
+  if (f.last === d) return;
+  const fresh = f.last !== null;
+  f.days = f.last && dayGap(f.last, d) === 1 ? f.days + 1 : 1;
+  f.last = d;
+  if (fresh) queueFlameMsg(ftx().newDay(f.days), undefined, 'pop');
+  if (f.cal.length >= 1 && f.cal.length < CALENDAR.length && f.calDay !== d) openCalendarBox();
+}
+// A log: she gulps, hiccups and grows.
+function flameLog(n = 1) {
+  const f = flameState();
+  if (!f?.lit || f.asleep) return;
+  countFlameDay(f);
+  const before = flameSize(f);
+  f.logs += n;
+  const after = flameSize(f);
+  applyFlameLook();
+  if (after > before) {
+    if (after >= 5) queueFlameMsg(releasePart(3) === 2 && f.sneezes < SNEEZE_STARS.length ? ftx().bigNow : ftx().bigLater, undefined, 'victory');
+    else queueFlameMsg(ftx().grow(after), undefined, 'craft');
+  }
+  saveGame();
+}
+// Every word right first time (anywhere) gives a log; ten in a week give a magic log.
+function flameFirstTry() {
+  const f = game?.flame;
+  if (!f?.lit) return;
+  const wk = weekKey();
+  if (f.week !== wk) { f.week = wk; f.weekFirst = 0; f.weekGot = false; }
+  f.weekFirst += 1;
+  if (!f.weekGot && f.weekFirst >= 10) { f.weekGot = true; f.magic = Math.min(2, f.magic + 1); queueFlameMsg(ftx().magicGot, undefined, 'craft'); }
+}
+function flameSpelled(mode) {
+  const f = flameState(), x = ftx(), fl = scene3D?.flame;
+  if (mode === 'light') {
+    f.lit = true; f.logs = 0;
+    countFlameDay(f);
+    saveGame();
+    return { text: `🔥 ${x.lit}`, say: x.lit, after: () => { fl?.light(); sfxWhoosh(); setTimeout(() => sfxVictory(), 300); applyFlameLook(); } };
+  }
+  if (mode === 'wake') return { text: `🔥 ${x.wakeNew}`, say: x.wakeNew, after: () => wakeFlame(false) };
+  if (mode === 'sneeze') {
+    const n = SNEEZE_STARS[f.sneezes] ?? 1;
+    f.sneezes += 1;
+    flameLog(1);
+    saveGame();
+    return {
+      text: x.sneezeText(n), say: x.sneeze,
+      after: () => {
+        if (!fl) return;
+        fl.sneeze(n, fl.starSpots(n, f.sneezes));
+        sfxSneeze();
+        setTimeout(() => { speak(x.sneeze, 1.05); const p = scene3D.worldToScreen(fl.top); if (p) showFloatingText(p.x, p.y, 'ATCHOUM !', '#ffe08a'); }, 100);
+      },
+    };
+  }
+  flameLog(1);
+  return { text: `🪵 ${x.log}`, say: x.log, after: () => { fl?.hiccup(); setTimeout(sfxHic, 420); const p = fl && scene3D.worldToScreen(fl.top); if (p) setTimeout(() => showFloatingText(p.x, p.y, x.hips, '#ffe08a'), 400); } };
+}
+function onFlameStar() {
+  const f = flameState(), x = ftx();
+  if (!f) return;
+  f.starsGot = Math.min(10, f.starsGot + 1);
+  progress.stars += 1; game.starsEarned += 1;
+  sfxStar();
+  const p = scene3D.getPlayerScreenPosition();
+  if (p) showFloatingText(p.x, p.y - 30, '+1 ★', '#ffc233');
+  const msg = x.star(f.starsGot);
+  toast(msg, 2200); speak(msg.replace(/^\S+ /, ''), 1);
+  if (f.starsGot >= 10 && !f.cal.length) setTimeout(openCalendarBox, 1200);
+  updateGameUI(); saveGame(); saveProgress();
+}
+function openCalendarBox() {
+  const f = flameState(), x = ftx();
+  if (!f || f.cal.length >= CALENDAR.length) return;
+  const box = CALENDAR[f.cal.length];
+  f.cal.push(box.id); f.calDay = today();
+  if (box.stars) { progress.stars += box.stars; game.starsEarned += box.stars; }
+  if (box.diamonds) game.materials.diamond = (game.materials.diamond ?? 0) + box.diamonds;
+  const what = (!game.pet?.tamed && box.alt ? box.alt : box.text)[lang] ?? box.text.fr;
+  let msg = x.calOpen(f.cal.length, `${box.emoji} ${what}`);
+  if (box.id === 'hat' && game.pet?.tamed) msg += ` ${x.hatSpin}`;
+  toast(msg, 5000); speak(msg.replace(/^\S+ /, ''), 0.95);
+  sfxVictory(); launchConfetti();
+  const pet = game.pet?.tamed ? scene3D?.pet : null;
+  if (pet) { pet.joy(); pet.trick?.(); }
+  applyFlameLook(); updateGameUI(); renderCraftMenu(); saveGame(); saveProgress();
+}
+function onFlamePartTwo() {
+  const f = game?.flame;
+  if (!f?.lit || flameSize(f) < 5 || f.sneezes >= SNEEZE_STARS.length || flameP2Said) return;
+  flameP2Said = true;
+  queueFlameMsg(ftx().partTwo, undefined, 'pop');
+}
+function tickFlame() {
+  if (!game || !scene3D?.flame || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
+  const f = game.flame, fl = scene3D.flame;
+  restoreFlameStars();
+  if (game.story?.intro) partState('J3');
+  // A missed day: she falls asleep (she is never put out).
+  if (f?.lit && !f.asleep && f.last && dayGap(f.last, today()) >= 2) { f.asleep = true; queueFlameMsg(ftx().asleep); saveGame(); }
+  applyFlameLook();
+  if (releasePart(3) === 2) onFlamePartTwo();
+  const p = scene3D.player.position, d = Math.hypot(p.x - HEARTH.x, p.z - HEARTH.z);
+  const busy = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight;
+  // The unlit ember wakes up when the hero comes near: "Psst! Spell FEU!"
+  if (!f?.lit && !flamePsst && d < 3.6 && !busy) { flamePsst = true; queueFlameMsg(`🔥 ${ftx().psst}`, ftx().psst, 'pop'); }
+  // Asleep: she snores when the hero is near.
+  if (f?.asleep && d < 6 && !busy && performance.now() - flameSnoreAt > 4000) {
+    flameSnoreAt = performance.now(); sfxSnore();
+    const s = scene3D.worldToScreen(fl.top); if (s) showFloatingText(s.x, s.y, 'Zzz…', '#a8b8ff');
+  }
+  if (flameMsgs.length && !busy && performance.now() - defiMsgAt > 3800) {
+    defiMsgAt = performance.now();
+    const m = flameMsgs.shift();
+    toast(m.text, 4500);
+    speak(m.say, 0.95);
+    if (m.sfx === 'victory') { sfxVictory(); launchConfetti(); } else if (m.sfx === 'craft') sfxCraft(); else if (m.sfx === 'pop') sfxPop();
+  }
+}
+// The journal: Flammèche's two parts, size, streak, magic logs and calendar, written and read.
+function flameLines() {
+  const f = game?.flame, x = ftx(), dx = dtx();
+  if (!game || !scene3D?.flame) return [];
+  if (!f?.lit) return [`🔥 ${x.unlit}`];
+  const two = releasePart(3) === 2;
+  const p1 = flameSize(f) >= 5 ? dx.partDone : `: ${dx.partPlay}`;
+  const p2 = !two ? `: ${dx.partLater}` : f.cal.length ? dx.partDone : `: ${dx.partOpen}`;
+  const cal = CALENDAR.map((b, i) => (i < f.cal.length ? b.emoji : '🎁')).join(' ');
+  return [`🔥 ${x.name} — ${dx.part(p1, p2)}`, `${x.size(flameSize(f))} · ${x.streak(f.days)}${f.asleep ? ' · 😴' : ''} · ${x.magic(f.magic)}`, `📅 ${x.calTitle} : ${cal} (${f.cal.length}/7)`];
+}
+function flameSpeech() {
+  const f = game?.flame, x = ftx(), dx = dtx(), l = flameLines();
+  if (!l.length) return '';
+  if (!f?.lit) return x.unlit;
+  return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${x.size(flameSize(f)).replace('/', ' sur ')}. ${x.streak(f.days)}.`;
 }
 
 /* ===== HORSES ===== */
@@ -2241,6 +2488,8 @@ function handleSpellSuccess() {
   if (!copied) {
     defiEvent('word');
     if (firstTry) defiEvent('firstTry');
+    if (firstTry) flameFirstTry();
+    if (firstTry && type !== 'flame') flameLog(1);
     if (scene3D?.horses?.riding) defiEvent('horseWord');
   }
   if (type === 'mine') {
@@ -2359,6 +2608,12 @@ function handleSpellSuccess() {
     speak(t.petTamed + ' ' + t.petChooseName, 0.95);
     // A name must be chosen before going on (a default one if the child just taps Continue).
     spellContext.after = () => { if (!game.pet?.tamed) { game.pet = { tamed: true, name: (PET_NAMES[lang] ?? PET_NAMES.fr)[0], fedDay: null }; scene3D.pet.tame(); scene3D.pet.obj.labelText = null; applyExtras(); saveGame(); } };
+  } else if (type === 'flame') {
+    const r = flameSpelled(spellContext.mode);
+    spellResultEl.replaceChildren(el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
+    spellResultEl.hidden = false;
+    speak(r.say, 0.95);
+    spellContext.after = r.after;
   } else if (type === 'jumpchest') {
     const { got, say } = openJumpChest();
     spellResultEl.replaceChildren(
@@ -2833,7 +3088,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');

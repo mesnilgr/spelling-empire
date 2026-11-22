@@ -78,7 +78,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Nouveau ! Chaque jour, trois défis le matin et trois défis le soir. Réussis-les et attrape le coffre sauteur… s'il se laisse faire ! Et regarde bien : Cocotte la poule s'est cachée quelque part. »
   - Devinette : « Plus j'ai de gardiens, moins je suis gardé. Qui suis-je ? » — « Un secret ! »
 
-- [ ] **J3 · dim. 22 nov. · v1.21.0 — Flammèche, la flamme des jours 🔥.**
+- [x] **J3 · dim. 22 nov. · v1.21.0 — Flammèche, la flamme des jours 🔥.** (complète ; la cheminée de Flammèche est devant la chaumière, du côté que voit la caméra)
   - Session 1 : **Flammèche**, une petite flamme avec des yeux, s'allume dans la cheminée de la chaumière quand on
     épelle FEU ; chaque mot réussi du premier coup lui donne une bûche : elle grandit (5 tailles) et danse.
   - Session 2 : devenue grande, elle éternue des étincelles qui retombent en **10 étoiles** autour de la chaumière
