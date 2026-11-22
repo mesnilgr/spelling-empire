@@ -1,5 +1,6 @@
 import { LANGUAGES, LEVELS, WORDS, UI, buildSentence, AGE_LADDER, AGE_START, AGES, frComplexity } from './language-engine.js';
 import { SRS, ensureCard, grade, gradeFromAttempt, chooseWord } from './srs.js';
+import { PROGRAMME, PROGRAMME_WORDS, MINI_PHRASES, SENTENCES_READY, themeFor, themeWords, upcomingThemes } from './programme.js';
 
 let pass = 0;
 let fail = 0;
@@ -288,6 +289,36 @@ for (const w of WORDS.fr.filter(x => x.level === 'challenge').map(x => x.word)) 
 assert(frMedium.length >= 45, `fr/medium: enough words (${frMedium.length})`);
 // v1.20.1: « cinéma » asked by a parent (one complex spelling: the soft c), with its sentence and album picture.
 assert(frMedium.includes('cinéma') && buildSentence('cinéma', 'fr').startsWith('Ce soir'), 'fr/medium: cinéma, with its own sentence');
+
+// --- Programme de la semaine (v1.21.1): pronouns 23–25 Nov, être / avoir / aller 26–29 Nov,
+// mini-sentences 30 Nov – 6 Dec (until their layout exists: être / avoir / aller), -er verbs 7–13 Dec.
+{
+  const at = (d, set) => themeFor(d, set)?.id ?? null;
+  assert(at('2026-11-22') === null && at('2026-11-23') === 'pronoms' && at('2026-11-25') === 'pronoms', 'programme: pronouns from Monday 23 to Wednesday 25 November');
+  assert(at('2026-11-26') === 'etre-avoir-aller' && at('2026-11-29') === 'etre-avoir-aller', 'programme: être, avoir, aller from Thursday 26 to Sunday 29');
+  assert(at('2026-11-30') === 'mini-phrases' && at('2026-12-07') === 'premier-groupe' && at('2026-12-13') === 'premier-groupe' && at('2026-12-14') === null, 'programme: mini-sentences week, then -er verbs, then nothing');
+  assert(at('2026-11-24', 'off') === null && at('2026-12-20', 'pronoms') === 'pronoms' && at('2026-11-24', 'auto') === 'pronoms', 'programme: parents can turn it off or pick a theme');
+  if (!SENTENCES_READY) assert(themeWords(themeFor('2026-12-01')) === PROGRAMME_WORDS['etre-avoir-aller'], 'programme: until the sentence layout exists, the mini-sentence week serves être / avoir / aller');
+  assert(PROGRAMME.every((p, i) => p.from <= p.to && (i === 0 || PROGRAMME[i - 1].to < p.from)), 'programme: themes in order, no overlap');
+  assert(upcomingThemes('2026-11-27').map((p) => p.id).join() === 'etre-avoir-aller,mini-phrases,premier-groupe', 'programme: upcoming themes for the parents');
+  const keys = new Set([...LANGUAGES.fr.keyRows.join('')]);
+  for (const [id, items] of Object.entries(PROGRAMME_WORDS)) {
+    const ids = new Set(items.map((w) => w.id));
+    assert(ids.size === items.length, `programme/${id}: each item has its own id`);
+    for (const w of items) {
+      assert([...w.word].every((c) => keys.has(c)), `programme/${id}: « ${w.word} » can be typed on the keyboard`);
+      assert(/^[A-ZÀ-Ý]/.test(w.sentence) && /[.!?]$/.test(w.sentence) && w.sentence.toLowerCase().includes(w.word), `programme/${id}: « ${w.id} » has a sentence that uses it`, w.sentence);
+      assert(w.level === 'programme', `programme/${id}: « ${w.id} » is counted under the programme`);
+    }
+  }
+  assert(PROGRAMME_WORDS.pronoms.map((w) => w.word).join() === 'je,tu,il,elle,nous,vous' && PROGRAMME_WORDS.pronoms.every((w) => w.pic && w.who), 'programme: the six pronouns asked, each with a picture of who');
+  const eaa = Object.fromEntries(PROGRAMME_WORDS['etre-avoir-aller'].map((w) => [w.id, w]));
+  assert(eaa['nous sommes']?.prefix === 'nous' && eaa['nous sommes'].word === 'sommes' && eaa['j’ai']?.prefix === 'j’' && eaa['j’ai'].word === 'ai' && eaa['il est'].word === 'est' && eaa['tu es'].word === 'es', 'programme: pronoun written, verb to spell (nous… sommes, j’… ai, il… est, tu… es)');
+  assert(PROGRAMME_WORDS['etre-avoir-aller'].length === 18, 'programme: être, avoir, aller with je, tu, il, elle, nous, vous');
+  const pg = Object.fromEntries(PROGRAMME_WORDS['premier-groupe'].map((w) => [w.id, w]));
+  assert(PROGRAMME_WORDS['premier-groupe'].length === 60 && pg['je joue'] && pg['tu joues'] && pg['nous jouons'] && pg['vous jouez'] && pg['j’aime'] && pg['j’écoute'] && pg['tu écoutes'], 'programme: -er verbs in the present (je joue… vous jouez, j’aime)');
+  assert(MINI_PHRASES.includes('Je vais au cinéma.') && MINI_PHRASES.includes('Tu es énervé ?') && MINI_PHRASES.includes('Nous avons une maison.'), 'programme: the parent’s example sentences are in the mini-sentence list');
+}
 for (const w of WORDS.en.filter(x => x.level === 'easy').map(x => x.word)) {
   assert(/^[^aeiou][aeiou][^aeiouwy]$/.test(w) || w === 'yes', `en/easy "${w}": consonant-vowel-consonant`);
 }

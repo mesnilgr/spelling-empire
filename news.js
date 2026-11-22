@@ -44,4 +44,29 @@ export const NEWS = [
       a: { fr: 'Le feu !', en: 'Fire!' },
     },
   },
+  // Programme de la semaine (programme.js): dated cards, shown from their day on, in French only.
+  {
+    id: 'prog-pronoms', day: 4, date: '2026-11-23', from: '2026-11-23', only: 'fr', emoji: '🙋', show: null,
+    title: { fr: 'Le programme de la semaine : les pronoms', en: 'This week: pronouns' },
+    text: {
+      fr: 'Cette semaine, on apprend les petits mots qui disent qui fait l’action : je, tu, il, elle, nous, vous. Regarde bien l’image : elle te montre qui parle !',
+      en: 'This week: the little words that tell who does the action.',
+    },
+    riddle: {
+      q: { fr: 'Quel petit mot dis-tu pour parler de toi ?', en: 'Which little word do you say to talk about yourself?' },
+      a: { fr: 'Je !', en: 'I!' },
+    },
+  },
+  {
+    id: 'prog-etre-avoir-aller', day: 7, date: '2026-11-26', from: '2026-11-26', only: 'fr', emoji: '🏃', show: null,
+    title: { fr: 'Le programme de la semaine : être, avoir, aller', en: 'This week: to be, to have, to go' },
+    text: {
+      fr: 'Nouveau défi : les verbes être, avoir et aller ! Le petit mot est déjà écrit, à toi d’écrire le verbe : nous… sommes, tu… as, il… va.',
+      en: 'New challenge: the verbs to be, to have and to go.',
+    },
+    riddle: {
+      q: { fr: 'Je suis, tu es, il… ?', en: 'I am, you are, he… ?' },
+      a: { fr: 'Il est !', en: 'He is!' },
+    },
+  },
 ];

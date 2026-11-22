@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.21.1 — Le programme de la semaine : pronoms, puis être, avoir, aller
+
+- 📅 **Programme de la semaine** : pendant un thème, environ un mot sur deux vient de ce thème, le reste continue les révisions habituelles. Le thème change tout seul selon le calendrier :
+  - **du lundi 23 au mercredi 25 novembre : les pronoms** (je, tu, il, elle, nous, vous). Une image montre qui c'est (🙋 moi, 👉 toi, 👦 un garçon, 👧 une fille, 🙋👫 moi et mes amis, 👉👫 toi et tes amis) et le pronom est dit dans une petite phrase (« nous. Nous jouons ensemble. ») ;
+  - **du jeudi 26 au dimanche 29 novembre : être, avoir, aller**. Le pronom est déjà écrit en gris, avec sa majuscule (« Nous », « J’ »), l'enfant écrit le verbe (sommes, ai, va…), et on entend les deux ensemble. Les pièges tu es / il est, tu as / il a sont dedans ;
+  - semaine du 30 novembre : les mini-phrases (elles arrivent avec la release « Mini-phrases défi » ; d'ici là, révision d'être, avoir, aller) ;
+  - semaine du 7 décembre : les verbes en -er au présent, sans orthographe compliquée (je joue, tu joues, nous jouons…, j'aime, j'écoute).
+- 🧙 **Alaric présente chaque thème** le jour où il commence, à l'écrit et à voix haute, avec une devinette.
+- 👨‍👩‍👧 **Espace parents** : nouvelle carte « Programme de la semaine » qui montre le thème du moment et les prochains. Choix : automatique (selon le calendrier), un thème au choix, ou désactivé.
+- Les boss, les portails et les Mimots gardent leurs mots habituels. Les mots du programme ont leurs propres statistiques et cartes (« il a » ne se confond pas avec la lettre « a »).
+- 🔥 « Le portail du Nether » devient **« le Portail de feu »** (un nom à nous plutôt qu'un nom de Minecraft).
+
 ## v1.21.0 — J3 : Flammèche, la flamme des jours 🔥
 
 - 🔥 **Flammèche**, une petite flamme avec des yeux, vit dans une cheminée en pierre devant la chaumière. En s’approchant, la petite braise ouvre les yeux : « Psst ! Épelle FEU pour m’allumer ! ». On épelle FEU (la lettre F à 5 ans) : « Fwoosh ! », elle s’allume dans une pluie d’étincelles.

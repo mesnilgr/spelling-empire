@@ -23,8 +23,9 @@ export async function openGame(browser, base, progress, { quality = 1, width = 1
   });
   await page.goto(`${base}/?test&quality=${quality}${render ? '' : '&norender'}`);
   // Alaric's "what's new" cards stay quiet unless a scenario asks for them (newsSeen given),
-  // and the first-name question is already answered unless a scenario leaves childName undefined.
-  const prog = { newsSeen: ['*'], childName: '', ...progress };
+  // the first-name question is already answered unless a scenario leaves childName undefined,
+  // and the programme of the week (dated themes) is off unless a scenario turns it on.
+  const prog = { newsSeen: ['*'], childName: '', programme: 'off', ...progress };
   await page.evaluate(([key, p]) => { localStorage.clear(); localStorage.setItem(key, JSON.stringify(p)); }, [STORE, prog]);
   await page.reload();
   await page.waitForSelector('#loading.is-done', { timeout: 180000 });

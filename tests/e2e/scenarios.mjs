@@ -777,8 +777,8 @@ export const SCENARIOS = [
       // Each place hides something: a chest in the tower.
       check(await g.page.evaluate(() => window.__se.scene.interactables.some((i) => i.nodeType === 'chest' && Math.hypot(i.worldPos.x + 38, i.worldPos.z + 31) < 3)), 'un trésor est caché dans la tour');
       check(await g.page.evaluate(() => ['iron', 'diamond'].every((m) => window.__se.scene.interactables.some((i) => i.material === m && Math.hypot(i.worldPos.x + 30, i.worldPos.z + 42) < 6))), 'la mine abandonnée a du fer et du diamant à miner');
-      // The Nether portal: lit with a word, then it takes the hero to the lava course.
-      check(await g.use("i.kind === 'portal'") === 'ok', 'on touche le portail du Nether');
+      // The fire portal: lit with a word, then it takes the hero to the lava course.
+      check(await g.use("i.kind === 'portal'") === 'ok', 'on touche le portail de feu');
       await g.spell();
       check(await g.page.evaluate(() => window.__se.game().portalLit && window.__se.scene.portalSurface.visible), 'un mot allume le portail');
       await g.page.waitForFunction(() => document.querySelector('#spell-modal').hidden, null, { timeout: 5000 }).catch(() => {});
@@ -999,7 +999,14 @@ export const SCENARIOS = [
       const hop1 = await g.page.evaluate((a) => { const c = window.__se.scene.jumpChest; return { left: c.hopsLeft, moved: Math.hypot(c.mesh.position.x - a.x, c.mesh.position.z - a.z) }; }, p0);
       check(hop1.left === 2 && hop1.moved > 2, 'quand on s’approche, le coffre fait un bond pour s’échapper', JSON.stringify(hop1));
       check(/Hihi ! Attrape-moi/.test(await said()), 'il rigole (« Hihi ! Attrape-moi ! »), à l’oral');
-      for (let k = 0; k < 2; k++) { await g.use("i.kind === 'jumpchest'"); await g.page.waitForTimeout(1000); }
+      // (waits for each hop to land rather than a fixed time: frames run late when the machine is busy)
+      for (let k = 0; k < 2; k++) {
+        await g.page.waitForFunction(() => { const c = window.__se.scene.jumpChest; return !c.hop && c.cool <= 0; }, null, { timeout: 15000 }).catch(() => {});
+        const before = await g.page.evaluate(() => window.__se.scene.jumpChest.hopsLeft);
+        await g.use("i.kind === 'jumpchest'");
+        await g.page.waitForFunction((b) => window.__se.scene.jumpChest.hopsLeft < b, before, { timeout: 15000 }).catch(() => {});
+      }
+      await g.page.waitForFunction(() => !window.__se.scene.jumpChest.hop, null, { timeout: 15000 }).catch(() => {});
       check(await g.page.evaluate(() => window.__se.scene.jumpChest.hopsLeft) === 0, 'trois bonds, puis il se laisse attraper');
       const caught = await g.page.waitForFunction(() => /tu m’as attrapé/.test(window.__spoken.join(' | ')), null, { timeout: 8000 }).then(() => true, () => false);
       check(caught, '« Bon d’accord… tu m’as attrapé ! » (gag, lu)', await said());
@@ -1423,6 +1430,70 @@ export const SCENARIOS = [
       await g.page.waitForFunction(() => !document.querySelector('#spell-reveal').hidden, null, { timeout: 8000 }).catch(() => {});
       const shown = await g.page.evaluate(() => [...document.querySelectorAll('#reveal-tiles .tile')].map((t) => t.textContent).join(''));
       check(shown === word[0].toLocaleUpperCase('fr-FR') + word.slice(1), 'le mot à recopier est montré avec une majuscule au début', shown);
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Programme de la semaine : pronoms, puis être, avoir, aller',
+    quick: true,
+    weight: 2,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, inputMode: 'keys', programme: 'pronoms', save: save(story(2, 0)) });
+      await g.page.evaluate(() => { window.__se = Object.assign(window.__se ?? {}, { programmeAlways: true }); });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      // Pronouns: a picture of who it is, the pronoun heard in a little sentence.
+      await g.use("i.kind === 'node' && i.active");
+      await g.page.waitForSelector('#spell-modal:not([hidden])', { timeout: 8000 });
+      const w1 = await g.page.evaluate(() => window.__se.spell().word);
+      check(['je', 'tu', 'il', 'elle', 'nous', 'vous'].includes(w1.word), 'un mot du thème : un pronom', w1.word);
+      const ctx = await g.page.$eval('#spell-context', (e) => (e.hidden ? '' : e.textContent));
+      check(ctx.includes(w1.pic) && ctx.includes(w1.who), 'l’image montre qui c’est', ctx);
+      const heard = await g.page.evaluate(() => window.__spoken.slice(-4));
+      check(heard.some((x) => x.includes(w1.sentence)), 'le pronom est dit dans une petite phrase', heard.join(' | '));
+      const r1 = await g.spell();
+      check(r1.result.includes(w1.sentence), 'réussi : la phrase du pronom s’affiche', r1.result);
+      let p = await g.page.evaluate(() => window.__se.progress());
+      check(p.wordStats[`fr:${w1.id}`]?.level === 'programme' && p.wordStats[`fr:${w1.id}`].correct === 1, 'le mot compte dans les statistiques, sous son propre nom');
+      // Être, avoir, aller: the pronoun is already written, the child writes the verb.
+      await g.page.evaluate(() => { window.__se.progress().programme = 'etre-avoir-aller'; });
+      await g.page.waitForTimeout(400);
+      await g.use("i.kind === 'node' && i.active");
+      await g.page.waitForSelector('#spell-modal:not([hidden])', { timeout: 8000 });
+      const w2 = await g.page.evaluate(() => window.__se.spell().word);
+      check(!!w2.prefix && !!w2.verb, 'un mot du thème : pronom + verbe', w2.id);
+      const view = await g.page.evaluate(() => ({
+        prefix: document.querySelector('#spell-tiles .tile-prefix')?.textContent,
+        ctx: document.querySelector('#spell-context').textContent,
+        keyA: document.querySelector('#spell-keyboard .key[data-letter="a"]').textContent,
+      }));
+      const shownPrefix = w2.prefix[0].toUpperCase() + w2.prefix.slice(1);
+      check(view.prefix === shownPrefix, 'le pronom est déjà écrit en gris, avec sa majuscule', view.prefix);
+      check(view.ctx.includes(w2.verb), 'le verbe est rappelé', view.ctx);
+      check(view.keyA === 'a', 'le verbe commence en minuscule (la majuscule est sur le pronom)', view.keyA);
+      check((await g.page.evaluate(() => window.__spoken.at(-1))).includes(w2.say), 'on entend le pronom et le verbe ensemble', w2.say);
+      const r2 = await g.spell();
+      check(r2.result.includes(w2.sentence), 'réussi : la phrase s’affiche', r2.result);
+      // Bosses, portals and Mimots keep their usual words.
+      const other = await g.page.evaluate(() => [0, 1, 2, 3, 4, 5].map(() => window.__se.pickWord(window.__se.levelAt(1), { programme: false })?.level));
+      check(other.every((l) => l !== 'programme'), 'les boss, portails et Mimots gardent leurs mots habituels', other.join());
+      // A dated card (the theme's presentation) waits for its day.
+      const live = await g.page.evaluate(() => [window.__se.newsLive({ from: '2000-01-01' }), window.__se.newsLive({ from: '2999-01-01' }), window.__se.newsLive({ only: 'en' })]);
+      check(live.join() === 'true,false,false', 'la carte d’Alaric du thème attend son jour (et reste en français)', live.join());
+      // Parents' corner.
+      await g.click('#quit-btn');
+      await g.page.waitForTimeout(300);
+      await g.click('#parents-btn');
+      await g.page.waitForTimeout(300);
+      const dash = await g.page.evaluate(() => ({ value: document.querySelector('#dash-programme').value, n: document.querySelectorAll('#dash-programme option').length, now: document.querySelector('#dash-prog-now').textContent, list: document.querySelectorAll('#dash-prog-list li').length }));
+      check(dash.value === 'etre-avoir-aller' && dash.n === 6 && dash.now.includes('Être, avoir, aller'), 'l’espace parents montre le thème choisi', JSON.stringify(dash));
+      await g.page.selectOption('#dash-programme', 'off');
+      await g.page.waitForTimeout(200);
+      p = await g.page.evaluate(() => window.__se.progress());
+      check(p.programme === 'off' && (await g.page.$eval('#dash-prog-now', (e) => e.textContent)).includes('Pas de thème'), 'les parents peuvent le désactiver');
+      await g.page.selectOption('#dash-programme', 'auto');
+      check((await g.page.evaluate(() => window.__se.progress().programme)) === 'auto', 'ou revenir au calendrier automatique');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },

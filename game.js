@@ -18,6 +18,7 @@ import { NEWS } from './news.js';
 import { DTX, drawDefis, defiById } from './daily.js';
 import { cocotteToday } from './cocotte.js';
 import { FTX, CALENDAR, FLAME_STEPS, SNEEZE_STARS, HEARTH } from './flame.js';
+import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themeFor, themeWords, upcomingThemes } from './programme.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -152,8 +153,8 @@ function loadProgress() {
    progress.daily["2026-11-15"] = { attempts, correct } */
 function wordStat(w) {
   progress.wordStats ??= {};
-  const key = `${lang}:${w.word}`;
-  progress.wordStats[key] ??= { lang, word: w.word, level: w.level, seen: 0, correct: 0, wrong: 0, firstTry: 0, lastSeen: 0, misspellings: [] };
+  const key = `${lang}:${w.id ?? w.word}`;
+  progress.wordStats[key] ??= { lang, word: w.id ?? w.word, level: w.level, seen: 0, correct: 0, wrong: 0, firstTry: 0, lastSeen: 0, misspellings: [] };
   return progress.wordStats[key];
 }
 function todayKey() {
@@ -307,6 +308,19 @@ function beforePlay(go) {
   else if (!progress.age) askAge(go);
   else go();
 }
+// Parents' corner: the programme of the week (follow the calendar, pick a theme, or turn it off).
+function renderProgrammeCard() {
+  const sel = $('#dash-programme');
+  if (!sel) return;
+  const opt = (value, text) => { const o = el('option', '', text); o.value = value; return o; };
+  sel.replaceChildren(opt('auto', t.progAuto), ...PROGRAMME.map((p) => opt(p.id, `${p.emoji} ${p.name}`)), opt('off', t.progOff));
+  sel.value = progress.programme ?? 'auto';
+  sel.onchange = () => { progress.programme = sel.value; saveProgress(); renderProgrammeCard(); };
+  const th = programmeTheme();
+  $('#dash-prog-now').textContent = lang !== 'fr' ? t.progFrOnly : th ? t.progNow(`${th.emoji} ${th.name}`, th.blurb) : t.progNone;
+  const day = (d) => d.split('-').reverse().slice(0, 2).join('/');
+  $('#dash-prog-list').replaceChildren(...upcomingThemes(todayKey()).map((p) => el('li', '', `${day(p.from)} → ${day(p.to)} : ${p.emoji} ${p.name} (${p.blurb})${p.needs === 'sentences' && !SENTENCES_READY ? ` — ${t.progSoon}` : ''}`)));
+}
 // "Bravo" messages say the child's name now and then (one success in three).
 let praiseCount = 0;
 function praise(firstTry) {
@@ -325,10 +339,23 @@ let wordQueues = {};
 // Anki-style choice: words due for (re)learning or review first, then new words up to the
 // daily limit, then practice of known words. Now and then a word due from an easier list.
 let lastPicked = '';
-function pickWord(levelId = 'easy') {
+// Programme de la semaine (programme.js): the theme running today, from the calendar or the
+// parents' choice. About one word in two comes from it (not for bosses, portals or Mimots).
+function programmeTheme() { return lang === 'fr' ? themeFor(todayKey(), progress.programme ?? 'auto') : null; }
+function programmeWord(stats, opts) {
+  const theme = programmeTheme();
+  if (!theme) return null;
+  if (!window.__se?.programmeAlways && Math.random() >= PROGRAMME_SHARE) return null;
+  const items = themeWords(theme);
+  if (!items.length) return null;
+  return chooseWord(items, stats, (w) => `${lang}:${w.id}`, { ...opts, newPerDay: 99 })?.w ?? items[Math.floor(Math.random() * items.length)];
+}
+function pickWord(levelId = 'easy', { programme = true } = {}) {
   const stats = progress.wordStats ?? {};
   const key = (w) => `${lang}:${w.word}`;
   const opts = { newToday: progress.daily?.[todayKey()]?.newCards ?? 0, newPerDay: progress.newPerDay ?? SRS.newPerDay, avoid: lastPicked };
+  const pw = programme ? programmeWord(stats, opts) : null;
+  if (pw) { lastPicked = pw.word; return pw; }
   const ladder = AGE_LADDER[lang] ?? AGE_LADDER.fr;
   const i = ladder.indexOf(levelId), a = AGE_START[lang]?.[progress.age ?? 6] ?? 0;
   let pick = null;
@@ -652,7 +679,7 @@ function init3DScene() {
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, levelAt: (tier) => levelAt(tier), pickWord: (lvl) => pickWord(lvl) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -937,6 +964,13 @@ function openSpellModal(title, instruction, emoji) {
     const [before, after] = word.blank.split('___');
     ctxEl.replaceChildren(document.createTextNode(before), el('span', 'blank', '\u00a0'), document.createTextNode(after));
     ctxEl.hidden = false;
+  } else if (word.pic) {
+    // Pronouns: a picture of who it is.
+    ctxEl.replaceChildren(el('span', 'prog-pic', word.pic), el('span', 'prog-who', word.who));
+    ctxEl.hidden = false;
+  } else if (word.verb) {
+    ctxEl.replaceChildren(el('span', 'prog-verb', t.progVerb(word.verb)));
+    ctxEl.hidden = false;
   } else ctxEl.hidden = true;
   $('#spell-emoji').textContent = emoji;
   $('#spell-emoji').hidden = false;
@@ -1119,10 +1153,10 @@ function checkPlaces() {
     if (game.places.length === PLACES.length) setTimeout(() => { progress.stars += 15; game.starsEarned += 15; launchConfetti(); sfxVictory(); toast(t.allPlaces, 5000); updateGameUI(); saveGame(); setTimeout(() => gainHeart('places'), 5200); }, 4200);
   }
 }
-// The Nether portal: lit with a word, then it takes the hero to the lava course.
+// The fire portal: lit with a word, then it takes the hero to the lava course.
 function usePortal() {
   if (!game.portalLit) {
-    spellContext = { type: 'portal', word: pickWord(levelAt(1)), tries: 0 };
+    spellContext = { type: 'portal', word: pickWord(levelAt(1), { programme: false }), tries: 0 };
     openSpellModal(`🌀 ${t.portalTitle}`, t.portalInstruction, '🌀');
     return;
   }
@@ -1159,14 +1193,16 @@ function tickNews() {
   if (!game || !scene3D || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
   if (newsQueue === null) {
     // A brand-new player has nothing "new": everything counts as seen, Alaric starts with the next release.
-    if (!progress.newsSeen && !Object.keys(progress.wordStats ?? {}).length && !progress.save?.story) { progress.newsSeen = NEWS.map((n) => n.id); saveProgress(); }
+    if (!progress.newsSeen && !Object.keys(progress.wordStats ?? {}).length && !progress.save?.story) { progress.newsSeen = NEWS.filter(newsLive).map((n) => n.id); saveProgress(); }
     const seen = newsSeen();
-    newsQueue = seen.includes('*') ? [] : NEWS.filter((n) => !seen.includes(n.id)).reverse().slice(0, 3);
+    newsQueue = seen.includes('*') ? [] : NEWS.filter((n) => !seen.includes(n.id) && newsLive(n)).reverse().slice(0, 3);
   }
   if (!newsQueue.length || !$('#news-modal').hidden || !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#travel-modal').hidden || knocking || bossFight) return;
   if (newsShown && performance.now() - newsShown < 1500) return;
   showNews(newsQueue.shift(), true);
 }
+// A card with a "from" date (the programme of the week) waits for that day; French-only cards stay in French.
+function newsLive(n) { return (!n.from || n.from <= todayKey()) && (!n.only || n.only === lang); }
 function newsTitle(n) { return n.title[lang] ?? n.title.fr; }
 function newsText(n) { return n.text[lang] ?? n.text.fr; }
 // Alaric's riddle at the end of the card: the question is read with the card, "The answer?" reads the answer.
@@ -1190,6 +1226,7 @@ function showNews(n, fresh) {
   $('#news-text').textContent = newsText(n);
   { const rb = riddleBox(n); $('#news-riddle').replaceChildren(...(rb ? [rb] : [])); $('#news-riddle').hidden = !rb; }
   $('#news-show').textContent = t.newsShow;
+  $('#news-show').hidden = !n.show;
   $('#news-later').textContent = t.newsLater;
   $('#news-modal').hidden = false;
   $('#news-modal').dataset.id = n.id;
@@ -1217,7 +1254,7 @@ function showMeNews(id) {
 function renderJournal() {
   $('#journal-title').textContent = `📜 ${t.journalTitle}`;
   $('#journal-close').textContent = t.journalClose;
-  $('#journal-list').replaceChildren(...[...NEWS].reverse().map((n) => {
+  $('#journal-list').replaceChildren(...NEWS.filter(newsLive).reverse().map((n) => {
     const item = el('div', 'journal-item');
     item.append(el('span', 'journal-date', `${t.newsDay(n.day)} · ${n.date.split('-').reverse().join('/')}`), el('h3', '', `${n.emoji} ${newsTitle(n)}`), el('p', '', newsText(n)));
     const rb = riddleBox(n);
@@ -1292,7 +1329,7 @@ function onPartTwo(key) {
 /* ===== DAILY CHALLENGES, THE JUMPING CHEST AND COCOTTE (J2) ===== */
 const dtx = () => DTX[lang] ?? DTX.fr;
 const defiText = (d) => d.text[lang] ?? d.text.fr;
-const latestDay = () => Math.max(...NEWS.map((n) => n.day));
+const latestDay = () => Math.max(...NEWS.filter((n) => !n.from).map((n) => n.day));
 const henRow = () => cocotteToday(latestDay());
 const henFound = () => { const r = henRow(); return !r || (progress.feathers ?? []).includes(r.day); };
 let defiMsgs = [], defiMsgAt = 0, defisAnnounced = {};
@@ -1842,7 +1879,7 @@ let bossFight = null;
 function nextBossWord() {
   if (!bossFight) return;
   const b = BOSSES.find((x) => x.id === bossFight.id);
-  spellContext = { type: 'boss', bossId: b.id, word: pickWord(levelAt(1)), tries: 0 };
+  spellContext = { type: 'boss', bossId: b.id, word: pickWord(levelAt(1), { programme: false }), tries: 0 };
   openSpellModal(`${b.emoji} ${t.bossTitle(b.name[lang])}`, t.bossInstruction(bossFight.hp), b.emoji);
 }
 function renderBossBar() {
@@ -2039,7 +2076,7 @@ function applyStoryState() {
     const tamed = st.mimots.includes(m.id);
     const show = !tamed && (m.story ? storyAt(m.story) : m.after ? storyPast(m.after) : storyPast('talkMage'));
     if (show && !st.mimotWords[m.id]) {
-      st.mimotWords[m.id] = pickWord(levelAt(1))?.word;
+      st.mimotWords[m.id] = pickWord(levelAt(1), { programme: false })?.word;
     }
     if (show && o._letter !== st.mimotWords[m.id]?.[0]) { o._letter = st.mimotWords[m.id]?.[0] ?? '?'; o.active = true; scene3D.setMimotLetter(m.id, o._letter); }
     scene3D.setStoryActive(o, show);
@@ -2085,7 +2122,7 @@ function beginSign(obj) {
 }
 function beginMimot(obj) {
   const w = game.story.mimotWords[obj.mimotId];
-  const word = WORDS[lang].find((x) => x.word === w) ?? pickWord(levelAt(1));
+  const word = WORDS[lang].find((x) => x.word === w) ?? pickWord(levelAt(1), { programme: false });
   spellContext = { type: 'mimot', mimotId: obj.mimotId, obj, word, tries: 0 };
   openSpellModal(`🐣 ${t.mimotTitle}`, t.mimotInstruction, '🐣');
 }
@@ -2375,12 +2412,14 @@ function setSpellLocked(locked) {
 // Letters as the child sees them on the keyboard, in the boxes and on the writing pad:
 // a capital for the first letter of the word, small letters after (é → É keeps its accent).
 function showLetter(ch, i) {
-  return i === 0 ? ch.toLocaleUpperCase(lang === 'fr' ? 'fr-FR' : 'en-GB') : ch.toLocaleLowerCase();
+  // With a pronoun written before the verb ("Nous" + sommes), the capital is on the pronoun.
+  return i === 0 && !spellContext?.word?.prefix ? ch.toLocaleUpperCase(lang === 'fr' ? 'fr-FR' : 'en-GB') : ch.toLocaleLowerCase();
 }
+function showPrefix(p) { return p[0].toLocaleUpperCase('fr-FR') + p.slice(1); }
 const showWord = (w) => [...w].map(showLetter).join('');
 // The keyboard shows capitals for the first letter only, then small letters.
 function refreshKeyCase() {
-  const first = spellInput.value.length === 0;
+  const first = spellInput.value.length === 0 && !spellContext?.word?.prefix;
   spellKeyboard.classList.toggle('is-caps', first);
   for (const k of spellKeyboard.querySelectorAll('.key[data-letter]')) k.textContent = first ? showLetter(k.dataset.letter, 0) : k.dataset.letter;
 }
@@ -2394,6 +2433,8 @@ function renderSpellTiles() {
     if (i === spellInput.value.length && !isLocked) tile.classList.add('is-next');
     return tile;
   });
+  const prefix = spellContext?.word?.prefix;
+  if (prefix) tiles.unshift(el('div', `tile-prefix${prefix.endsWith('’') ? ' is-elided' : ''}`, showPrefix(prefix)));
   spellTilesEl.replaceChildren(...tiles);
   refreshKeyCase();
   // "Check" only works once every letter is filled in (no quick empty guesses).
@@ -2416,6 +2457,11 @@ function scoreGuess(guess, target) {
 }
 
 function scoredTiles(guess, target) {
+  const prefix = spellContext?.word?.prefix;
+  const tiles = scoredTilesOnly(guess, target);
+  return prefix ? [el('div', `tile-prefix${prefix.endsWith('’') ? ' is-elided' : ''}`, showPrefix(prefix)), ...tiles] : tiles;
+}
+function scoredTilesOnly(guess, target) {
   return scoreGuess(guess, target).map(({ letter, state }, i) => el('div', `tile tile-${state}`, showLetter(letter, i)));
 }
 
@@ -2459,6 +2505,7 @@ function handleSpellSuccess() {
   const copied = !!spellContext.copyMode;
   const firstTry = tries === 1 && !copied && !spellContext.hwMissed;
   const wordStr = word.word;
+  const cardKey = word.id ?? word.word;
 
   if (copied) {
     streak = 0;
@@ -2477,11 +2524,11 @@ function handleSpellSuccess() {
   game.starsEarned += earned;
   if (!copied) game.wordsSpelled += 1;
   if (firstTry) {
-    if (!progress.mastered[wordStr]) setTimeout(() => toast(`🃏 ${t.newCard} : ${WORD_EMOJI[lang]?.[wordStr] ?? ''} ${wordStr}`), 600);
-    progress.mastered[wordStr] = true;
-    delete progress.difficult[wordStr];
+    if (!progress.mastered[cardKey]) setTimeout(() => toast(`🃏 ${t.newCard} : ${word.pic ?? WORD_EMOJI[lang]?.[wordStr] ?? ''} ${cardKey}`), 600);
+    progress.mastered[cardKey] = true;
+    delete progress.difficult[cardKey];
   }
-  else if (!copied) { progress.difficult[wordStr] = (progress.difficult[wordStr] ?? 0) + 1; }
+  else if (!copied) { progress.difficult[cardKey] = (progress.difficult[cardKey] ?? 0) + 1; }
 
   sfxMine();
   if (streak >= 2) sfxStreak(streak);
@@ -2676,11 +2723,11 @@ function handleSpellSuccess() {
     sfxVictory();
     spellResultEl.replaceChildren(
       el('p', 'spell-success', `🐣 ${t.mimotTamed}`),
-      el('p', 'spell-sentence', buildSentence(wordStr, lang)),
+      el('p', 'spell-sentence', word.sentence ?? buildSentence(wordStr, lang)),
       el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`),
     );
     spellResultEl.hidden = false;
-    speak(buildSentence(wordStr, lang), 0.9);
+    speak(word.sentence ?? buildSentence(wordStr, lang), 0.9);
     spellContext.after = () => {
       const def = MIMOTS.find((m) => m.id === id);
       const o = currentObjective();
@@ -2730,7 +2777,7 @@ function handleSpellSuccess() {
 }
 
 function handleSpellFailure(target) {
-  const wordStr = spellContext.word.word;
+  const wordStr = spellContext.word.id ?? spellContext.word.word;
   progress.difficult[wordStr] = (progress.difficult[wordStr] ?? 0) + 1;
   streak = 0;
   updateStreakDisplay();
@@ -2755,7 +2802,7 @@ function handleSpellFailure(target) {
   } else {
     spellContext.copyMode = true;
     spellRevealEl.hidden = false;
-    revealTiles.replaceChildren(...[...target].map((l, i) => el('div', 'tile tile-correct', showLetter(l, i))));
+    revealTiles.replaceChildren(...(spellContext.word.prefix ? [el('div', 'tile-prefix', showPrefix(spellContext.word.prefix))] : []), ...[...target].map((l, i) => el('div', 'tile tile-correct', showLetter(l, i))));
     spellResultEl.replaceChildren(
       el('p', 'spell-fail', t.wordWas(target)),
       el('p', 'spell-fail-detail', t.copyIt),
@@ -3229,6 +3276,7 @@ function renderWordLists() {
 
 function renderDashboard() {
   ageButtons($('#dash-age'), (a) => { setAge(a); renderDashboard(); });
+  renderProgrammeCard();
   const nm = $('#dash-name');
   if (nm) {
     nm.value = childName();

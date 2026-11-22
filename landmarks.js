@@ -1,5 +1,5 @@
 // Places to discover between the village and the edges of the world, in the spirit of Minecraft:
-// a ruined tower, a camp, an old mine, a Nether portal, a farm with a windmill, a bee meadow with
+// a ruined tower, a camp, an old mine, a fire portal, a farm with a windmill, a bee meadow with
 // giant mushrooms, a stone circle, a well, a tree house, a fairy ring, a witch's hut and a wreck.
 // Each place hides something (a chest, ores, a portal…) and appears on the map once found.
 import * as THREE from 'three';
@@ -9,7 +9,7 @@ export const PLACES = [
   { id: 'tower', emoji: '🏰', x: -38, z: -31, ry: 0.3, name: { fr: 'la Tour en ruine', en: 'the Ruined Tower' } },
   { id: 'camp', emoji: '🏕️', x: -45, z: -49, ry: 0.8, name: { fr: 'le Campement', en: 'the Camp' } },
   { id: 'mine', emoji: '⛏️', x: -30, z: -42, ry: 0, name: { fr: 'la Mine abandonnée', en: 'the Old Mine' } },
-  { id: 'portal', emoji: '🌀', x: 40, z: -25, ry: -0.6, name: { fr: 'le Portail du Nether', en: 'the Nether Portal' } },
+  { id: 'portal', emoji: '🌀', x: 40, z: -25, ry: -0.6, name: { fr: 'le Portail de feu', en: 'the Fire Portal' } },
   { id: 'farm', emoji: '🐷', x: 30, z: 37, ry: 0, name: { fr: 'la Ferme', en: 'the Farm' } },
   { id: 'windmill', emoji: '🌬️', x: 40, z: 21, ry: -0.5, name: { fr: 'le Moulin à vent', en: 'the Windmill' } },
   { id: 'meadow', emoji: '🐝', x: -34, z: 39, ry: 0, name: { fr: 'la Prairie des abeilles', en: 'the Bee Meadow' } },
@@ -111,7 +111,7 @@ function mine(g, add) {
 }
 
 function portal(g, add) {
-  // Netherrack ground, a frame of obsidian, a little lava pool and glowstone.
+  // Red rock ground, a frame of obsidian, a little lava pool and glowstone.
   const rack = C(0x7a2a24), rack2 = C(0x5a1e1a);
   for (let i = 0; i < 26; i++) { const a = i * 2.4, r = 1 + (i % 7) * 0.55; box(g, 1, 0.12, 1, i % 3 ? rack : rack2, Math.cos(a) * r, 0.04, Math.sin(a) * r + 0.6, { cast: false }); }
   for (const x of [-1.5, 1.5]) for (let k = 0; k < 5; k++) box(g, 1, 1, 1, 'obsidian', x, 0.5 + k, 0);
