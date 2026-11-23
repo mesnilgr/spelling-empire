@@ -119,7 +119,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Voici Flammèche, ta flamme magique ! Chaque mot réussi la fait grandir. Reviens chaque jour : au septième jour, une grosse surprise pour ton chien ! »
   - Devinette : « Je mange tout, mais si je bois, je m'éteins. Qui suis-je ? » — « Le feu ! »
 
-- [ ] **J4 · lun. 23 nov. · v1.22.0 — Album de collection.**
+- [x] **J4 · lun. 23 nov. · v1.22.0 — Album de collection.** (complète ; le pupitre de l'album est à côté de la chaumière, le bouton 📖 l'ouvre aussi ; l'album des mots reste dans l'onglet « 📝 Mots »)
   - Session 1 : l'album s'ouvre déjà rempli de ce que l'enfant a vu (pages **animaux** et **lieux**, depuis la
     sauvegarde). Pour coller une nouvelle vignette, on **épelle son nom** (MOUTON, CHEVAL…). Les cases manquantes
     sont des silhouettes « ??? » avec un indice lu ; objectif : 3 nouvelles vignettes.

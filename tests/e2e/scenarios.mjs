@@ -923,7 +923,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 2,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis', '1.21.0-flamme'], save: save(story(2, 0)) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms'], save: save(story(2, 0)) }, { quality: 0 });
       await g.click('#continue-btn');
       // Alaric presents the release, written and spoken; the newest note comes first.
       const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
@@ -939,7 +939,7 @@ export const SCENARIOS = [
       await g.click('#news-btn');
       await g.page.waitForTimeout(300);
       const journal = await g.page.evaluate(() => [...document.querySelectorAll('#journal-list .journal-item h3')].map((e) => e.textContent));
-      check(journal.length >= 3 && /Flammèche/i.test(journal[0]) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
+      check(journal.length >= 3 && /album/i.test(journal[0]) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
       await g.click('#journal-close');
       // Iron walks round the square, says hello and offers a flower once a day.
       const walk = await g.page.evaluate(() => { const gl = window.__se.scene.golem, a = gl.mesh.position.clone(); gl.pause = 0; for (let k = 0; k < 150; k++) gl.update(1 / 30, k / 30); return { points: gl.points.length, moved: a.distanceTo(gl.mesh.position) }; });
@@ -972,7 +972,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme'], save: save(story(2, 0)) }, { quality: 0, defis: true });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms'], save: save(story(2, 0)) }, { quality: 0, defis: true });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       let words = 0;
       const spellOne = async () => { const r = await g.spell(); words++; return r; };
@@ -1034,7 +1034,7 @@ export const SCENARIOS = [
         else if (id === 'golem') await g.use("i.kind === 'golem'");
         else if (id === 'chests') { for (let k = 0; k < 2; k++) { await g.use("i.nodeType === 'chest' && i.active"); await spellOne(); await g.page.waitForTimeout(1600); } }
         else if (id === 'flower') { await g.use("i.nodeType === 'flower' && i.active"); await spellOne(); }
-        else if (id === 'cocotte') await g.use("i.kind === 'cocotte'");
+        else if (id === 'cocotte') await g.page.evaluate(() => window.__se.findCocotte());
         await g.page.waitForTimeout(300);
       };
       for (const id of st1.m.ids) await doDefi(id);
@@ -1062,7 +1062,7 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(300);
       const j1 = await g.page.evaluate(() => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(-1)[0] }));
       check(/Partie 1 ✓ · Partie 2 : à ton prochain retour !/.test(j1.txt), 'journal : « Partie 1 ✓ · Partie 2 : à ton prochain retour ! »', j1.txt);
-      const henTip = await g.page.evaluate(() => window.__se.scene.cocotte.row.hint.fr.slice(0, 30));
+      const henTip = await g.page.evaluate(() => window.__se.henRow().hint.fr.slice(0, 30));
       check(/prochain retour/.test(j1.said) && j1.said.includes(henTip) && j1.txt.includes(henTip), 'les parties et l’indice de Cocotte sont lus à voix haute', j1.said);
       await g.click('#journal-close');
       // Session 2: the game is opened again 31 minutes later.
@@ -1082,7 +1082,7 @@ export const SCENARIOS = [
       for (const id of st2.st.e.ids) await doDefi(id);
       // Cocotte in today's hiding spot: "Cot cot!", a golden feather.
       if (!st2.st.e.ids.includes('cocotte')) await doDefi('cocotte');
-      const hen = await g.page.evaluate(() => ({ feathers: window.__se.progress().feathers, active: window.__se.scene.cocotte.obj.active, day: window.__se.scene.cocotte.row.day }));
+      const hen = await g.page.evaluate(() => ({ feathers: window.__se.progress().feathers, active: !!window.__se.scene.cocotte?.obj.active, day: window.__se.henRow().day }));
       check(hen.feathers?.includes(hen.day) && !hen.active, 'Cocotte, dans sa cachette du jour, s’envole et laisse une plume dorée', JSON.stringify(hen));
       check(/Cot cot/.test(await said()), '« Cot cot codêêt ! » est dit à voix haute');
       const e = await g.page.evaluate(() => ({ st: window.__se.defis().e, which: window.__se.scene.jumpChest.which, scale: window.__se.scene.jumpChest.mesh.scale.x }));
@@ -1113,7 +1113,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
       const flame = () => g.page.evaluate(() => { const f = window.__se.flame() ?? {}, fl = window.__se.scene.flame; return { ...f, state: { ...fl.state }, out: fl.starsOut(), part: window.__se.releasePart(3) }; });
@@ -1164,7 +1164,8 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(300);
       const j1 = await g.page.evaluate((n) => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(n).join(' | ') }), n0);
       check(/Flammèche — Partie 1 ✓ · Partie 2 : à ton prochain retour !/.test(j1.txt) && /Série : 1 jour/.test(j1.txt), 'journal : « Flammèche — Partie 1 ✓ · Partie 2 : à ton prochain retour ! », série 1 jour', j1.txt);
-      check(/prochain retour/.test(j1.said) && /tas de bois/.test(j1.said) && /tas de bois/.test(j1.txt), 'les parties et l’indice de Cocotte (tas de bois) sont lus', j1.said);
+      const henTip = await g.page.evaluate(() => window.__se.henRow().hint.fr.slice(0, 30));
+      check(/prochain retour/.test(j1.said) && j1.said.includes(henTip) && j1.txt.includes(henTip), 'les parties et l’indice de Cocotte du jour sont lus', j1.said);
       await g.click('#journal-close');
       // Session 2: the game is opened again 31 minutes later.
       await g.page.evaluate((key) => { const p = JSON.parse(localStorage.getItem(key)); p.parts.J3.last -= 31 * 60 * 1000; localStorage.setItem(key, JSON.stringify(p)); }, STORE);
@@ -1196,10 +1197,12 @@ export const SCENARIOS = [
       check(await saidLater(/case 1 : 🕶️ des lunettes de soleil pour ton chien|case 1 : des lunettes de soleil pour ton chien/, 8000), 'case 1 du calendrier : des lunettes de soleil pour le chien (lu)', await said());
       const glasses = await g.page.evaluate(() => { const fl = window.__se.scene.flame, head = window.__se.scene.pet.mesh.userData.parts.head; return { cal: window.__se.flame().cal, onDog: fl.acc.meshes.some((m) => m.parent === head) }; });
       check(glasses.cal.join() === 'glasses' && glasses.onDog, 'le chien porte ses lunettes de soleil', JSON.stringify(glasses));
-      // Cocotte on the woodpile next to the chimney.
-      check(await g.use("i.kind === 'cocotte'") === 'ok', 'on trouve Cocotte');
-      const hen = await g.page.evaluate(() => { const c = window.__se.scene.cocotte; return { feathers: window.__se.progress().feathers, d: Math.hypot(c.base.x + 4.1, c.base.z - 17.4), y: c.base.y - window.__se.scene.groundAt(c.base.x, c.base.z) }; });
-      check(hen.feathers?.includes(3) && hen.d < 0.5 && hen.y > 0.3 && hen.y < 0.8, 'Cocotte, sur le tas de bois, laisse une plume dorée', JSON.stringify(hen));
+      // Cocotte in today's hiding spot (J3's was the woodpile next to the chimney).
+      const woodpile = await g.page.evaluate(async () => { const { COCOTTE } = await import('/cocotte.js'); const r = COCOTTE.find((c) => c.day === 3); return Math.hypot(r.pos.x + 4.1, r.pos.z - 17.4); });
+      check(woodpile < 0.5, 'la cachette de Cocotte du J3 est le tas de bois, à côté de la cheminée', String(woodpile));
+      check(await g.page.evaluate(() => window.__se.findCocotte()) === 'ok', 'on trouve Cocotte');
+      const hen = await g.page.evaluate(() => ({ feathers: window.__se.progress().feathers, day: window.__se.henRow().day }));
+      check(hen.feathers?.includes(hen.day), 'Cocotte laisse une plume dorée', JSON.stringify(hen));
       check(/Cot cot/.test(await said()), '« Cot cot codêêt ! » (lu)');
       await g.page.waitForTimeout(4500);
       await g.click('#news-btn');
@@ -1223,6 +1226,178 @@ export const SCENARIOS = [
       check(await saidLater(/bûche magique réveille Flammèche ! Ta série continue : 3 jours/, 6000), 'la bûche magique la réveille et la série continue (lu)', await said());
       const up = await flame();
       check(!up.asleep && up.days === 3 && up.magic === 0, 'réveillée, série gardée', JSON.stringify({ asleep: up.asleep, days: up.days, magic: up.magic }));
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Album de collection (J4)',
+    quick: true,
+    weight: 4,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
+      const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
+      const nSaid = () => g.page.evaluate(() => window.__spoken.length);
+      const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
+      const alb = () => g.page.evaluate(() => JSON.parse(JSON.stringify(window.__se.album() ?? null)));
+      await g.page.evaluate(() => { window.__se.albumGold = 0; }); // golden stickers only when the scenario asks
+      const isOpen = () => g.page.evaluate(() => !document.querySelector('#collect-modal').hidden);
+      const closeAlbum = () => g.click('#collect-close');
+      const openAlbum = async (page) => { if (!(await isOpen())) { await g.click('#album-btn'); await g.page.waitForTimeout(200); } if (page) { await g.page.evaluate((p) => document.querySelector(`#collect-tabs [data-page="${p}"]`).click(), page); await g.page.waitForTimeout(150); } };
+      const cardClass = (id) => g.page.evaluate((i) => document.querySelector(`#collect-grid [data-id="${i}"]`)?.className ?? '', id);
+      let words = 0;
+      const stick = async (id, page) => {
+        await openAlbum(page);
+        const ok = await g.page.evaluate((i) => { const b = document.querySelector(`#collect-grid [data-id="${i}"]`); if (!b) return false; b.click(); return true; }, id);
+        if (!ok) { check(false, `la vignette ${id} est dans l’album`); return null; }
+        const r = await g.spell(); words++;
+        await g.page.waitForTimeout(350);
+        return r;
+      };
+      await g.click('#continue-btn');
+      // Alaric presents J4, written and spoken, with his riddle.
+      const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
+      const card = await g.page.evaluate(() => ({ title: document.querySelector('#news-title').textContent, riddle: document.querySelector('#news-riddle').innerText, said: window.__spoken.join(' | ') }));
+      check(shown && /album/i.test(card.title) && /Voici ton album/.test(card.said), 'Alaric présente l’album (écrit et lu)', JSON.stringify(card));
+      check(/J’ai des feuilles/.test(card.riddle) && /J’ai des feuilles/.test(card.said), 'la devinette d’Alaric est écrite et lue', card.riddle);
+      await g.page.evaluate(() => document.querySelector('#news-riddle .news-answer').click());
+      await g.page.waitForTimeout(200);
+      check(/Un livre/.test(await g.page.evaluate(() => window.__spoken.slice(-1)[0])), '« La réponse ? » lit « Un livre ! »');
+      // "Montre-moi !": the golden arrow points at the album stand, next to the cottage.
+      await g.click('#news-show');
+      await g.page.waitForTimeout(900);
+      const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.albumStand.obj.worldPos; return { d: q ? Math.hypot(q.x - w.x, q.z - w.z) : 99, home: Math.hypot(w.x, w.z - 14), free: !s._checkCollision(w.x, w.z + 1.4) }; });
+      check(arrow.d < 1 && arrow.home < 8 && arrow.free, '« Montre-moi ! » pointe la flèche vers le pupitre de l’album, à côté de la chaumière', JSON.stringify(arrow));
+      // The wow moment: the pages flip by themselves, fanfare, confetti, every sticker pops in.
+      const t0 = Date.now();
+      check(await g.use("i.kind === 'albumstand'") === 'ok', 'on touche le pupitre de l’album');
+      const flipping = await g.page.evaluate(() => window.__se.scene.albumStand.flipT >= 0);
+      const opened = await g.page.waitForFunction(() => !document.querySelector('#collect-modal').hidden, null, { timeout: 5000 }).then(() => true, () => false);
+      const wow = await g.page.evaluate(() => ({ reveal: document.querySelectorAll('#collect-grid .is-reveal').length, confetti: document.querySelectorAll('.confetti, .confetti-piece, [class*="confetti"]').length }));
+      check(flipping && opened && wow.reveal > 10 && Date.now() - t0 < 30000, 'waouh : les pages tournent toutes seules et les vignettes apparaissent une à une, en moins de 30 s', JSON.stringify({ flipping, opened, ...wow }));
+      check(await saidLater(/Voici ton album ! Il est déjà rempli de \d+ vignette/, 5000), '« Voici ton album ! Il est déjà rempli… » (lu)', await said());
+      // Already filled from the save: the farm, the dog. The animals around are ready to stick.
+      const a0 = await alb();
+      check(a0.stuck['p:farm'] && a0.stuck['a:dog'], 'l’album s’ouvre déjà rempli (la ferme, le chien)', JSON.stringify(a0.stuck));
+      const ready0 = a0.ready.filter((id) => id.startsWith('a:'));
+      check(['a:cow', 'a:pig', 'a:cat', 'a:chicken'].every((id) => ready0.includes(id)), `les animaux déjà croisés attendent d’être collés (${ready0.join(', ')})`);
+      check(/is-ready/.test(await cardClass('a:cow')) && /À coller/.test(await g.page.evaluate(() => document.querySelector('#collect-grid [data-id="a:cow"]').innerText)), 'une vignette à coller dit « ✨ À coller ! »');
+      // A missing sticker: a silhouette "???" with a hint read aloud.
+      let n0 = await nSaid();
+      await g.page.evaluate(() => document.querySelector('#collect-grid [data-id="a:fox"]').click());
+      await g.page.waitForTimeout(200);
+      check(/is-unknown/.test(await cardClass('a:fox')) && /orange/.test(await saidSince(n0)), 'une case manquante est une silhouette « ??? » avec un indice lu', await saidSince(n0));
+      // A stuck sticker makes its noise.
+      n0 = await nSaid();
+      await g.page.evaluate(() => document.querySelector('#collect-grid [data-id="a:dog"]').click());
+      await g.page.waitForTimeout(200);
+      check(/Ouaf ! Chien/.test(await saidSince(n0)), 'chaque vignette fait son cri quand on la touche (« Ouaf ! Chien ! »)', await saidSince(n0));
+      // Part 2 pages are locked for now.
+      n0 = await nSaid();
+      await g.page.evaluate(() => document.querySelector('#collect-tabs [data-page="bosses"]').click());
+      await g.page.waitForTimeout(200);
+      check(/prochain retour/.test(await saidSince(n0)), 'les pages de la partie 2 sont fermées : « à ton prochain retour ! » (lu)');
+      // Session 1: spell the name to stick a sticker. The gag: slurp, the hero licks the sticker!
+      const first = await stick('a:cow', 'animals');
+      check(first?.word === 'vache' && /Slurp… Plop ! 🐄 La vignette « Vache » est collée/.test(first.result), 'on épelle VACHE : la vignette est collée (« Slurp… Plop ! »)', JSON.stringify(first));
+      check(await isOpen() && /is-stuck/.test(await cardClass('a:cow')) && /is-new/.test(await cardClass('a:cow')), 'l’album se rouvre et la nouvelle vignette s’y colle', await cardClass('a:cow'));
+      check(/Slurp… plop/.test(await said()), 'gag : « Slurp… plop ! » est dit à voix haute');
+      for (const id of ['a:pig', 'a:cat', 'a:chicken', 'a:sheep', 'a:lamb']) await stick(id, 'animals');
+      const a1 = await alb();
+      check(a1.goal1 && a1.newStuck >= 6, `objectif : 3 nouvelles vignettes (${a1.newStuck} collées)`, JSON.stringify(a1));
+      await closeAlbum();
+      check(await saidLater(/3 nouvelles vignettes/, 10000), '« Bravo ! 3 nouvelles vignettes ! » (lu)', await said());
+      // Walking past new animals: a new sticker to stick (rabbits and the bee meadow).
+      await g.page.evaluate(() => { const s = window.__se.scene, r = s.fauna.list.find((f) => f.kind === 'rabbit'); s.teleport(r.mesh.position.x + 2, r.mesh.position.z + 2); });
+      const met = await g.page.waitForFunction(() => window.__se.album().ready.includes('a:rabbit'), null, { timeout: 8000 }).then(() => true, () => false);
+      check(met && await saidLater(/Nouvelle vignette ! Ouvre ton album/, 15000), 'en croisant un lapin : « Nouvelle vignette ! » (lu)', await said());
+      const rab = await stick('a:rabbit', 'animals');
+      check(rab?.word === 'lapin', 'on colle le lapin', JSON.stringify(rab));
+      await g.page.waitForFunction(() => window.__se.album().ready.includes('p:meadow'), null, { timeout: 8000 }).catch(() => {});
+      const meadow = await stick('p:meadow', 'places');
+      check(meadow?.word === 'abeille', 'un lieu découvert se colle aussi : la prairie des abeilles (ABEILLE)', JSON.stringify(meadow));
+      check(words >= 7, `au moins 7 mots en session 1 (${words})`);
+      // The journal: the album's two parts and Cocotte's hint, written and read.
+      await closeAlbum();
+      await g.page.waitForTimeout(4200);
+      n0 = await nSaid();
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j1 = await g.page.evaluate((n) => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(n).join(' | ') }), n0);
+      check(/Album — Partie 1 ✓ · Partie 2 : à ton prochain retour !/.test(j1.txt), 'journal : « Album — Partie 1 ✓ · Partie 2 : à ton prochain retour ! »', j1.txt);
+      check(/prochain retour/.test(j1.said) && /clin d’œil/.test(j1.said) && /clin d’œil/.test(j1.txt), 'les parties et l’indice de Cocotte (dans l’album) sont lus', j1.said);
+      await g.click('#journal-close');
+      // Cocotte hides in the album: a sticker that winks.
+      await openAlbum('animals');
+      const henCard = await g.page.evaluate(() => { const b = document.querySelector('#collect-grid .is-hen'); return b ? { wink: !!b.querySelector('.hen-wink') } : null; });
+      check(henCard?.wink, 'Cocotte est cachée dans l’album : une vignette fait un clin d’œil', JSON.stringify(henCard));
+      check(await g.page.evaluate(() => window.__se.scene.cocotte == null), 'aujourd’hui, pas de Cocotte dans le village : elle est dans l’album');
+      await g.page.evaluate(() => document.querySelector('#collect-grid .is-hen').click());
+      await g.page.waitForTimeout(300);
+      const hen = await g.page.evaluate(() => ({ feathers: window.__se.progress().feathers, fly: !!document.querySelector('#collect-grid .is-flyaway') }));
+      check(hen.feathers?.includes(4) && hen.fly, 'on la touche : elle s’envole de la page et laisse une plume dorée', JSON.stringify(hen));
+      check(/Cot cot/.test(await said()), '« Cot cot codêêt ! » (lu)');
+      await closeAlbum();
+      // Session 2: the game is opened again 31 minutes later.
+      await g.page.evaluate((key) => { const p = JSON.parse(localStorage.getItem(key)); p.parts.J4.last -= 31 * 60 * 1000; localStorage.setItem(key, JSON.stringify(p)); }, STORE);
+      await g.page.reload();
+      await g.page.waitForSelector('#loading.is-done', { timeout: 180000 });
+      await g.page.evaluate(() => { window.__se.flashAfter = 1e9; window.__se.noDefis = true; window.__se.albumGold = 0; });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      check(await g.page.evaluate(() => window.__se.releasePart(4)) === 2, 'au retour (30 min plus tard), la partie 2 de l’album est ouverte');
+      check(await saidLater(/nouvelles pages/, 15000), '« Ton album a de nouvelles pages… » (lu)', await said());
+      await openAlbum();
+      const tabs = await g.page.evaluate(() => [...document.querySelectorAll('#collect-tabs .collect-tab')].map((b) => ({ p: b.dataset.page, locked: b.classList.contains('is-locked') })));
+      check(tabs.length === 7 && tabs.every((t) => !t.locked), 'pages boss, objets, Mimots, plumes et découverte ouvertes', JSON.stringify(tabs));
+      await openAlbum('feathers');
+      check(/is-stuck/.test(await cardClass('f:4')), 'la plume dorée de Cocotte est dans la page des plumes');
+      await openAlbum('mimots');
+      check(/is-stuck/.test(await cardClass('m:fontaine')) && /is-unknown/.test(await cardClass('m:mare')), 'page Mimots : le Mimot apprivoisé est collé, les autres sont des silhouettes');
+      await closeAlbum();
+      // The discovery page: six things to find around the village, then spell.
+      words = 0;
+      const where = (id) => g.page.evaluate((i) => {
+        const s = window.__se.scene, p = s.player.position;
+        if (i === 'golem') return { x: s.golem.mesh.position.x, z: s.golem.mesh.position.z };
+        if (i === 'mage') { const m = s.interactables.find((o) => o.kind === 'npc' && o.npcId === 'mage').worldPos; return { x: m.x, z: m.z }; }
+        if (i === 'flame') return { x: -2.6, z: 17.5 };
+        if (i === 'fountain') return { x: 0, z: 0 };
+        const kind = i === 'cat' ? 'cat' : 'chicken';
+        const f = s.fauna.list.filter((a) => a.kind === kind).sort((a, b) => a.mesh.position.distanceTo(p) - b.mesh.position.distanceTo(p))[0];
+        return { x: f.mesh.position.x, z: f.mesh.position.z };
+      }, id);
+      for (const id of ['golem', 'flame', 'fountain', 'mage', 'cat', 'hen']) {
+        const q = await where(id);
+        await g.page.evaluate(([x, z]) => window.__se.scene.teleport(x + 1.6, z + 1.6), [q.x, q.z]);
+        const ok = await g.page.waitForFunction((i) => window.__se.album().ready.includes(`d:${i}`), id, { timeout: 6000 }).then(() => true, () => false);
+        if (!ok) check(false, `découverte : on trouve ${id}`);
+      }
+      check(await saidLater(/Tu as trouvé (Fer, le golem|Flammèche|la fontaine|Alaric le mage|le chat du village|les poules) ! Va coller la vignette/, 25000), '« Tu as trouvé Fer, le golem ! Va coller la vignette… » (lu)', await said());
+      await openAlbum('disco');
+      check(/is-ready/.test(await cardClass('d:mage')), 'les vignettes trouvées attendent dans la page découverte');
+      for (const id of ['golem', 'flame', 'fountain', 'mage', 'cat', 'hen']) await stick(`d:${id}`, 'disco');
+      const a2 = await alb();
+      const cos = await g.page.evaluate(() => window.__se.progress().costumes?.owned ?? []);
+      check(a2.disco && cos.includes('explorer'), 'page découverte complète : le premier costume (Explorateur) !', JSON.stringify({ disco: a2.disco, cos }));
+      await closeAlbum();
+      check(await saidLater(/Page découverte complète ! Tu gagnes un costume : Explorateur/, 25000), '« Page découverte complète ! Tu gagnes un costume » (lu)', await said());
+      // A golden sticker (1 chance in 20 when walking past an animal; certain here).
+      await g.page.evaluate(() => { window.__se.albumGold = 1; const s = window.__se.scene, c = s.fauna.list.find((f) => f.kind === 'cow'); s.teleport(c.mesh.position.x + 1.5, c.mesh.position.z + 1.5); });
+      const goldOk = await g.page.waitForFunction(() => window.__se.album().gold.includes('a:cow'), null, { timeout: 6000 }).then(() => true, () => false);
+      await g.page.evaluate(() => { window.__se.albumGold = 0; });
+      check(goldOk && await saidLater(/Une vignette dorée/, 15000), 'en croisant une vache : « Waouh ! Une vignette dorée ! » (lu)', await said());
+      const gold = await stick('a:cow', 'animals');
+      check(/DORÉE/.test(gold?.result ?? '') && (await alb()).stuck['a:cow'] === 2 && /is-gold/.test(await cardClass('a:cow')), 'la vignette dorée brille dans l’album', JSON.stringify(gold));
+      check(words >= 7, `au moins 7 mots en session 2 (${words})`);
+      await closeAlbum();
+      await g.page.waitForTimeout(4200);
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
+      check(/Album — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /découverte : 6\/6/.test(j2) && /dorées : 1/.test(j2), 'journal : les deux parties faites, découverte 6/6, une dorée', j2);
+      await g.click('#journal-close');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },

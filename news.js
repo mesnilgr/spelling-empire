@@ -93,4 +93,16 @@ export const NEWS = [
       a: { fr: 'Il fait, avec un T !', en: 'Il fait, with a T!' },
     },
   },
+  {
+    id: '1.22.0-album', day: 4, date: '2026-11-23', emoji: '📖', show: 'albumstand',
+    title: { fr: 'Ton album de collection', en: 'Your collection album' },
+    text: {
+      fr: 'Voici ton album ! Il t’attend à côté de ta chaumière. Chaque animal, chaque lieu, chaque boss va s’y coller : épelle son nom pour coller la vignette. Remplis la page découverte pour gagner un costume !',
+      en: 'Here is your album! It is waiting next to your cottage. Every animal, every place, every boss goes in it: spell its name to stick the sticker. Fill the discovery page to win an outfit!',
+    },
+    riddle: {
+      q: { fr: 'J’ai des feuilles, mais je ne suis pas un arbre. Qui suis-je ?', en: 'I have leaves, but I am not a tree. What am I?' },
+      a: { fr: 'Un livre !', en: 'A book!' },
+    },
+  },
 ];

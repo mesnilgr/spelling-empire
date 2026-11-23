@@ -12,11 +12,12 @@ import { BOSSES } from './bosses.js';
 import { PET_NAMES } from './pet.js';
 import { DECOR } from './decor.js';
 import { PLACES, DISCOVER_RADIUS } from './landmarks.js';
-import { ANIMAL_KINDS } from './fauna.js';
+import { ANIMAL_KINDS, HERDS } from './fauna.js';
 import { HORSES } from './horse.js';
 import { NEWS } from './news.js';
 import { DTX, drawDefis, defiById } from './daily.js';
-import { cocotteToday } from './cocotte.js';
+import { cocotteToday, COCOTTE } from './cocotte.js';
+import { ATX, ALBUM_ANIMALS, KIND_TO_CARD, PLACE_WORDS, PLACE_HINTS, BOSS_HINTS, DISCOVERY, ALBUM_GOAL1, GOLD_CHANCE, PAGES1, PAGES2 } from './album.js';
 import { FTX, CALENDAR, FLAME_STEPS, SNEEZE_STARS, HEARTH } from './flame.js';
 import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themeFor, themeWords, themeDay, upcomingThemes } from './programme.js';
 
@@ -679,6 +680,7 @@ function init3DScene() {
   }
   setupJumpChest();
   setupFlame();
+  setupAlbum();
   if (henFound()) scene3D.cocotte?.hide();
   else if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', `🐔 Cocotte`);
   scene3D.onDismount = () => { const h = scene3D.horses.list.find((x) => x.tamed && !x.leftAt); $('#dismount-btn').hidden = true; };
@@ -691,7 +693,7 @@ function init3DScene() {
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -715,7 +717,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame'].includes(obj.kind)) continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -761,6 +763,7 @@ function saveGame() {
     horses: game.horses ?? {},
     golemFlowerDay: game.golemFlowerDay ?? null,
     flame: game.flame ?? null,
+    album: game.album ?? null,
     heartsFrom: game.heartsFrom ?? [],
     savedAt: Date.now(),
   };
@@ -792,6 +795,7 @@ function continueGame() {
     horses: JSON.parse(JSON.stringify(s.horses ?? {})),
     golemFlowerDay: s.golemFlowerDay ?? null,
     flame: s.flame ? JSON.parse(JSON.stringify(s.flame)) : null,
+    album: s.album ? JSON.parse(JSON.stringify(s.album)) : null,
     heartsFrom: [...(s.heartsFrom ?? [])],
   });
   // Lasting spells come back: the bridge, the lit braziers.
@@ -893,6 +897,7 @@ function interactWith(obj) {
   if (obj.kind === 'jumpchest') { jumpChestInteract(); return; }
   if (obj.kind === 'cocotte') { cocotteInteract(); return; }
   if (obj.kind === 'flame') { flameInteract(); return; }
+  if (obj.kind === 'albumstand') { albumStandInteract(); return; }
   if (obj.kind === 'npc' && obj.npcId === 'mage' && storyAt('talkMage')) { playScene('mage1', () => { advanceStory('talkMage'); toast('🔮 ' + t.grimoireTitle + ' !'); }); return; }
   if (obj.kind === 'npc' && (obj.npcId === 'forester' || obj.npcId === 'fisher')) {
     const id = obj.npcId;
@@ -1129,7 +1134,7 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐', quest: true });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden; tickNews(); }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum(); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#collect-modal').hidden; tickNews(); }, 300);
 
 /* ===== FLASH CHALLENGE: never more than 2 minutes of play without a word ===== */
 const FLASH_AFTER = 120; // seconds of play
@@ -1209,7 +1214,7 @@ function tickNews() {
     const seen = newsSeen();
     newsQueue = seen.includes('*') ? [] : NEWS.filter((n) => !seen.includes(n.id) && newsLive(n)).reverse().slice(0, 3);
   }
-  if (!newsQueue.length || !$('#news-modal').hidden || !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#travel-modal').hidden || knocking || bossFight) return;
+  if (!newsQueue.length || !$('#news-modal').hidden || !$('#collect-modal').hidden || !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#travel-modal').hidden || knocking || bossFight) return;
   if (newsShown && performance.now() - newsShown < 1500) return;
   showNews(newsQueue.shift(), true);
 }
@@ -1336,6 +1341,7 @@ function tickParts(dt) {
 function onPartTwo(key) {
   if (key === `d:${today()}`) ensureDefis();
   if (key === 'J3') onFlamePartTwo();
+  if (key === 'J4') onAlbumPartTwo();
 }
 
 /* ===== DAILY CHALLENGES, THE JUMPING CHEST AND COCOTTE (J2) ===== */
@@ -1352,7 +1358,7 @@ function defisCtx() {
     pet: !!game?.pet?.tamed,
     food: ['meat', 'fish', 'brochette'].some((f) => (game?.materials[f] ?? 0) > 0),
     horse: Object.values(game?.horses ?? {}).some((h) => h.tamed),
-    cocotte: !!scene3D?.cocotte && !henFound(),
+    cocotte: (!!scene3D?.cocotte || !!henRow()?.album) && !henFound(),
   };
 }
 function ensureDefis() {
@@ -1404,7 +1410,7 @@ function tickDefis() {
   if (!game || !scene3D || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
   const st = ensureDefis();
   if (!st) return;
-  const busy = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight || (newsQueue?.length ?? 1) > 0;
+  const busy = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#collect-modal').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight || (newsQueue?.length ?? 1) > 0;
   // The welcome chest (once), then the chests won with the challenges, one at a time.
   if (!progress.welcomeChest) { progress.welcomeChest = true; progress.chestQueue = ['welcome', ...(progress.chestQueue ?? [])]; saveProgress(); }
   const jc = scene3D.jumpChest;
@@ -1502,11 +1508,15 @@ function cocotteInteract() {
   const hen = scene3D.cocotte;
   if (!hen || !hen.obj.active) return;
   hen.flyAway();
-  ANIMAL_CRIES.chicken();
-  setTimeout(() => ANIMAL_CRIES.chicken(), 450);
   const p = hen.mesh.position.clone(); p.y += 0.6;
   for (let i = 0; i < 4; i++) setTimeout(() => scene3D.particleBurst(p, i % 2 ? '#ffd34a' : '#fff4c0', 18), i * 160);
-  progress.feathers = [...new Set([...(progress.feathers ?? []), hen.row.day])];
+  henReward(hen.row.day);
+}
+// "Cot cot!": a golden feather (one per day) and 3 stars, wherever she was hiding.
+function henReward(day) {
+  ANIMAL_CRIES.chicken();
+  setTimeout(() => ANIMAL_CRIES.chicken(), 450);
+  progress.feathers = [...new Set([...(progress.feathers ?? []), day])];
   progress.stars += 3; if (game) game.starsEarned += 3;
   const msg = dtx().cocotteSay;
   toast(msg, 4500); speak(msg.replace(/^\S+ /, ''), 0.95);
@@ -1528,7 +1538,7 @@ function henHint() {
   if (!r) return '';
   return henFound() ? dtx().cocotteFound : r.hint[lang] ?? r.hint.fr;
 }
-function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
+function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), albumSpeech(), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
 function renderToday() {
   const box = $('#journal-today');
   if (!box) return;
@@ -1549,6 +1559,7 @@ function renderToday() {
     }
   }
   for (const line of flameLines()) kids.push(el('p', 'journal-flame', line));
+  for (const line of albumLines()) kids.push(el('p', 'journal-album', line));
   if (henRow()) kids.push(el('p', 'journal-hen', `🐔 ${x.cocotteTitle} ${henHint()}`), el('p', 'journal-feathers', x.feathers((progress.feathers ?? []).length)));
   const listen = el('button', 'btn btn-ghost btn-small', '🔊');
   listen.type = 'button';
@@ -1764,7 +1775,7 @@ function tickFlame() {
   applyFlameLook();
   if (releasePart(3) === 2) onFlamePartTwo();
   const p = scene3D.player.position, d = Math.hypot(p.x - HEARTH.x, p.z - HEARTH.z);
-  const busy = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight;
+  const busy = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#collect-modal').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight;
   // The unlit ember wakes up when the hero comes near: "Psst! Spell FEU!"
   if (!f?.lit && !flamePsst && d < 3.6 && !busy) { flamePsst = true; queueFlameMsg(`🔥 ${ftx().psst}`, ftx().psst, 'pop'); }
   // Asleep: she snores when the hero is near.
@@ -1796,6 +1807,314 @@ function flameSpeech() {
   if (!l.length) return '';
   if (!f?.lit) return x.unlit;
   return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${x.size(flameSize(f)).replace('/', ' sur ')}. ${x.streak(f.days)}.`;
+}
+
+/* ===== THE COLLECTION ALBUM (J4) ===== */
+// The album opens already filled with what the child has met (from the save). A new sticker is
+// stuck by spelling its name; missing ones are "???" silhouettes with a hint read aloud. Session 1:
+// animals and places (goal: 3 new stickers). Session 2 (part 2 of J4): bosses, objects, Mimots,
+// Cocotte's feathers and the 6-card discovery page around the village (first outfit). Every sticker
+// makes its noise when touched; golden stickers (1 in 20 when walking past an animal) shine.
+const atx = () => ATX[lang] ?? ATX.fr;
+const CARD_CRY = { bear: 'polarBear' };
+const objectCards = () => CRAFTABLES.filter((c) => !c.repeat);
+const capFirst = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+let albumMsgs = [], albumPage = 'animals', albumP2Said = false, albumMsgAt = 0, albumMeetSaidAt = 0;
+function albumAddReady(a, id) { if (!a.stuck[id] && !a.ready.includes(id)) a.ready.push(id); }
+function createAlbum() {
+  const a = { stuck: {}, ready: [], gold: [], newStuck: 0, goal1: false, disco: false, opened: false };
+  for (const id of game.places ?? []) a.stuck[`p:${id}`] = 1;
+  for (const id of game.bosses ?? []) a.stuck[`b:${id}`] = 1;
+  for (const id of game.crafted ?? []) if (objectCards().some((c) => c.id === id)) a.stuck[`o:${id}`] = 1;
+  for (const id of game.story?.mimots ?? []) a.stuck[`m:${id}`] = 1;
+  if (game.pet?.tamed) a.stuck['a:dog'] = 1;
+  if (Object.values(game.horses ?? {}).some((h) => h.tamed)) a.stuck['a:horse'] = 1;
+  // The animals living around the village and the places already found: met, ready to stick.
+  const spots = [{ x: 0, z: 8, r: 22 }, ...PLACES.filter((p) => game.places?.includes(p.id)).map((p) => ({ x: p.x, z: p.z, r: 16 }))];
+  for (const [kind, x, z] of HERDS) { const id = KIND_TO_CARD[kind]; if (id && spots.some((s) => Math.hypot(s.x - x, s.z - z) < s.r)) albumAddReady(a, `a:${id}`); }
+  return a;
+}
+function albumState() { return game ? (game.album ??= createAlbum()) : null; }
+function albumWord(w) {
+  const word = w[lang] ?? w.fr;
+  if ((progress.age ?? 6) <= 5) return { word: word[0], level: 'story', say: atx().letter(word[0].toUpperCase(), word) };
+  return { word, level: 'story', say: `${word}.` };
+}
+// Every card of a page: { id, emoji, label, say, hint, word (to spell, or null if it sticks by itself), cry }.
+function albumCards(page) {
+  const x = atx();
+  if (page === 'animals') return ALBUM_ANIMALS.map((c) => ({ id: `a:${c.id}`, emoji: c.emoji, label: capFirst(c.word[lang] ?? c.word.fr), say: `${c.sound[lang] ?? c.sound.fr} ${capFirst(c.word[lang] ?? c.word.fr)} !`.replace('… ', ''), hint: c.hint[lang] ?? c.hint.fr, word: c.word, cry: () => albumCry(c.id) }));
+  if (page === 'places') return PLACES.map((p) => ({ id: `p:${p.id}`, emoji: p.emoji, label: capFirst(PLACE_WORDS[p.id][lang] ?? PLACE_WORDS[p.id].fr), say: capFirst(p.name[lang] ?? p.name.fr), hint: PLACE_HINTS[p.id][lang] ?? PLACE_HINTS[p.id].fr, word: PLACE_WORDS[p.id], cry: () => sfxPop() }));
+  if (page === 'bosses') return BOSSES.map((b) => ({ id: `b:${b.id}`, emoji: b.emoji, label: capFirst(b.name[lang] ?? b.name.fr), say: capFirst(b.name[lang] ?? b.name.fr), hint: BOSS_HINTS[b.id][lang] ?? BOSS_HINTS[b.id].fr, word: null, cry: () => sfxRoar() }));
+  if (page === 'objects') return objectCards().map((c) => ({ id: `o:${c.id}`, emoji: c.emoji, label: itemName(c), say: itemName(c), hint: c.parts.map((m) => MATERIAL_EMOJI[m] ?? '').join(' + '), word: null, cry: () => sfxCraft() }));
+  if (page === 'mimots') return MIMOTS.map((m, i) => ({ id: `m:${m.id}`, emoji: '🐣', label: `Mimot ${i + 1}`, say: `Mimot ${i + 1} !`, hint: lang === 'en' ? 'A Mimot is hiding somewhere…' : 'Un Mimot se cache quelque part…', word: null, cry: () => { playTone(880, 0.08, 'triangle', 0.1); playTone(1175, 0.12, 'triangle', 0.1, 0.08); } }));
+  if (page === 'feathers') return COCOTTE.filter((r) => r.day <= latestDay()).map((r) => ({ id: `f:${r.day}`, emoji: '🪶', label: x.feather(r.day), say: x.feather(r.day), hint: r.hint[lang] ?? r.hint.fr, word: null, cry: () => ANIMAL_CRIES.chicken() }));
+  if (page === 'disco') return DISCOVERY.map((d) => ({ id: `d:${d.id}`, emoji: d.emoji, label: capFirst(d.word[lang] ?? d.word.fr), say: capFirst(d.name[lang] ?? d.name.fr), hint: d.hint[lang] ?? d.hint.fr, word: d.word, cry: () => sfxPop() }));
+  return [];
+}
+const albumCard = (id) => albumCards(albumPageOf(id)).find((c) => c.id === id);
+function albumPageOf(id) { return { a: 'animals', p: 'places', b: 'bosses', o: 'objects', m: 'mimots', f: 'feathers', d: 'disco' }[id[0]]; }
+function cardState(a, id) {
+  if (id.startsWith('f:')) return (progress.feathers ?? []).includes(Number(id.slice(2))) ? 'stuck' : 'unknown';
+  if (a.gold.includes(id)) return 'goldReady';
+  if (a.stuck[id] === 2) return 'gold';
+  if (a.stuck[id]) return 'stuck';
+  if (a.ready.includes(id)) return 'ready';
+  return 'unknown';
+}
+function albumCry(id) {
+  if (id === 'dog') return sfxBark();
+  const cry = ANIMAL_CRIES[CARD_CRY[id] ?? id];
+  if (cry) return cry();
+  if (id === 'dolphin') return [0, 0.12, 0.24].forEach((d) => playTone(1600, 0.08, 'sine', 0.07, d, 2200));
+  if (id === 'squid') return playTone(300, 0.25, 'sine', 0.1, 0, 120);
+  playTone(1200, 0.1, 'triangle', 0.08);
+}
+function sfxLick() { playNoise({ type: 'bandpass', freq: 900, q: 1.5, volume: 0.12, duration: 0.35 }); playTone(300, 0.3, 'sine', 0.05, 0, 700); playTone(660, 0.07, 'triangle', 0.12, 0.45); playTone(990, 0.12, 'triangle', 0.12, 0.5); }
+function sfxPage() { for (let i = 0; i < 5; i++) playNoise({ type: 'highpass', freq: 2400, q: 0.6, volume: 0.06, duration: 0.12, delay: i * 0.45 }); }
+const albumPartTwo = () => releasePart(4) === 2;
+const albumPages = () => [...PAGES1, ...PAGES2];
+const albumCount = (a) => Object.keys(a.stuck).length + (progress.feathers ?? []).length;
+// Big news (goal reached, outfit won) jumps the queue; a "go and stick it" message is dropped once the sticker is stuck.
+function queueAlbumMsg(text, say = text.replace(/^\S+ /, ''), sfx = null, card = null) { const m = { text, say, sfx, card }; if (sfx === 'victory') albumMsgs.unshift(m); else albumMsgs.push(m); }
+// Something new met: its sticker is ready to stick (announced, but not too often).
+function albumMeet(id, quiet = false) {
+  const a = albumState();
+  if (!a || a.stuck[id] || a.ready.includes(id)) return;
+  a.ready.push(id);
+  saveGame();
+  if (quiet) return;
+  const c = albumCard(id);
+  if (id.startsWith('d:')) { const d = DISCOVERY.find((k) => `d:${k.id}` === id); queueAlbumMsg(atx().discoNear(c.emoji), atx().discoNearSay(d.name[lang] ?? d.name.fr), 'pop', id); return; }
+  if (performance.now() - albumMeetSaidAt < 20000) return;
+  albumMeetSaidAt = performance.now();
+  queueAlbumMsg(atx().newCard(c.emoji), atx().newCardSay, 'pop', id);
+}
+function albumGold(id) {
+  const a = albumState();
+  if (!a || a.stuck[id] === 2 || a.gold.includes(id)) return;
+  a.gold.push(id);
+  saveGame();
+  queueAlbumMsg(atx().goldFound(albumCard(id).emoji), atx().goldFoundSay, 'craft');
+}
+function discoPos(d) {
+  if (typeof d.at === 'object') return d.at;
+  if (d.at === 'golem') return scene3D.golem?.mesh.position;
+  if (d.at === 'mage') return scene3D.interactables.find((i) => i.kind === 'npc' && i.npcId === 'mage')?.worldPos;
+  const p = scene3D.player.position;
+  return (scene3D.fauna?.list ?? []).filter((f) => f.kind === d.at).sort((u, v) => u.mesh.position.distanceTo(p) - v.mesh.position.distanceTo(p))[0]?.mesh.position;
+}
+function setupAlbum() {
+  const st = scene3D?.albumStand;
+  if (st) scene3D.setSpotMaterial(st.obj, 'talk', atx().standLabel);
+}
+function albumStandInteract() {
+  const st = scene3D?.albumStand;
+  st?.flip(5); sfxPage();
+  setTimeout(() => { if (game && $('#spell-modal').hidden) openCollect(); }, 700);
+}
+function openCollect(page = null, fresh = null) {
+  const a = albumState();
+  if (!a) return;
+  const first = !a.opened;
+  if (page) albumPage = page;
+  else if (first) albumPage = 'animals';
+  if (!albumPartTwo() && PAGES2.includes(albumPage)) albumPage = 'animals';
+  renderCollect({ reveal: first, fresh });
+  $('#collect-modal').hidden = false;
+  if (first) {
+    // The wow moment: pages flip, fanfare, confetti, and every sticker pops in with a little sound.
+    a.opened = true;
+    scene3D?.albumStand?.flip(4);
+    sfxVictory(); launchConfetti();
+    const n = albumCount(a), k = a.ready.length;
+    const cards = document.querySelectorAll('#collect-grid .collect-item');
+    cards.forEach((c, i) => { if (i < 14) setTimeout(() => playTone(600 + i * 40, 0.06, 'triangle', 0.06), 250 + i * 70); });
+    speak(atx().welcome(n, k), 0.95);
+    saveGame();
+  } else if (!fresh) {
+    const cs = albumCards(albumPage), have = cs.filter((c) => ['stuck', 'gold'].includes(cardState(a, c.id))).length;
+    speak(atx().pageSay(atx().pageNames[albumPage], have, cs.length), 0.95);
+  }
+}
+function closeCollect() { $('#collect-modal').hidden = true; stopSpeaking(); }
+function renderCollect({ reveal = false, fresh = null } = {}) {
+  const a = albumState(), x = atx(), two = albumPartTwo();
+  $('#collect-title').textContent = `📖 ${x.title}`;
+  $('#collect-lede').textContent = x.lede(albumCount(a), Object.values(a.stuck).filter((v) => v === 2).length);
+  $('#collect-words').textContent = x.words;
+  $('#collect-close').textContent = x.close;
+  const tabs = albumPages().map((pg) => {
+    const locked = PAGES2.includes(pg) && !two;
+    const cs = albumCards(pg), have = cs.filter((c) => ['stuck', 'gold'].includes(cardState(a, c.id))).length;
+    const waiting = cs.some((c) => ['ready', 'goldReady'].includes(cardState(a, c.id)));
+    const b = el('button', `collect-tab${pg === albumPage ? ' is-on' : ''}${locked ? ' is-locked' : ''}${waiting ? ' has-new' : ''}`, `${locked ? '🔒 ' : ''}${x.tabs[pg]}${locked ? '' : ` ${have}/${cs.length}`}`);
+    b.type = 'button'; b.dataset.page = pg;
+    b.addEventListener('click', () => {
+      if (locked) { toast(x.locked, 3000); speak(x.lockedSay, 0.95); return; }
+      albumPage = pg; renderCollect();
+      const cs2 = albumCards(pg), h2 = cs2.filter((c) => ['stuck', 'gold'].includes(cardState(a, c.id))).length;
+      speak(x.pageSay(x.pageNames[pg], h2, cs2.length), 0.95);
+    });
+    return b;
+  });
+  $('#collect-tabs').replaceChildren(...tabs);
+  const items = albumCards(albumPage).map((c, i) => {
+    const s = cardState(a, c.id);
+    const shown = s === 'stuck' || s === 'gold' || (s === 'goldReady' && a.stuck[c.id]);
+    const b = el('button', `collect-item is-${s}${shown ? ' is-shown' : ''}${reveal ? ' is-reveal' : ''}${fresh === c.id ? ' is-new' : ''}`);
+    b.type = 'button'; b.dataset.id = c.id;
+    b.style.setProperty('--i', i);
+    const tag = s === 'ready' ? x.toStick : s === 'goldReady' ? x.goldToStick : shown ? c.label : x.unknown;
+    b.append(el('span', 'collect-emoji', c.emoji), el('span', 'collect-label', tag));
+    b.addEventListener('click', () => albumCardClick(c, b));
+    return b;
+  });
+  // Cocotte hides on today's page: a sticker that winks.
+  const hen = henRow();
+  if (hen?.album === albumPage && !henFound()) {
+    const b = el('button', `collect-item is-hen${reveal ? ' is-reveal' : ''}`);
+    b.type = 'button'; b.dataset.id = 'hen';
+    b.style.setProperty('--i', items.length);
+    b.append(el('span', 'collect-emoji', '🐔'), el('span', 'hen-wink', x.henWink), el('span', 'collect-label', x.henCard));
+    b.addEventListener('click', () => albumHenFound(b));
+    items.splice(Math.min(items.length, 9), 0, b);
+  }
+  $('#collect-grid').replaceChildren(...items);
+}
+function albumCardClick(c, btn) {
+  const a = albumState(), s = cardState(a, c.id), x = atx();
+  btn.classList.remove('is-bounce'); void btn.offsetWidth; btn.classList.add('is-bounce');
+  if (s === 'ready' || s === 'goldReady') {
+    const gold = s === 'goldReady';
+    closeCollect();
+    spellContext = { type: 'album', cardId: c.id, gold, word: albumWord(c.word ?? { fr: c.label.toLowerCase(), en: c.label.toLowerCase() }), tries: 0 };
+    openSpellModal(`${c.emoji} ${gold ? x.goldTitle : x.stickTitle}`, gold ? x.goldInstr : x.stickInstr(c.emoji), c.emoji);
+    return;
+  }
+  if (s === 'stuck' || s === 'gold') { c.cry(); speak(c.say, 1); return; }
+  toast(`❓ ${c.hint}`, 3500); speak(c.hint, 0.95);
+}
+// Spelled: slurp (the hero licks the sticker!), pop, stuck. Back to the album, the new sticker pops in.
+function albumStick(id) {
+  const a = albumState(), x = atx(), c = albumCard(id);
+  const gold = a.gold.includes(id);
+  const isNew = !a.stuck[id];
+  a.stuck[id] = gold ? 2 : 1;
+  a.ready = a.ready.filter((k) => k !== id);
+  a.gold = a.gold.filter((k) => k !== id);
+  if (isNew) a.newStuck += 1;
+  let extra = null;
+  if (!a.goal1 && a.newStuck >= ALBUM_GOAL1) {
+    a.goal1 = true;
+    progress.stars += 10; game.starsEarned += 10;
+    extra = () => queueAlbumMsg(x.goal1, undefined, 'victory');
+  }
+  if (!a.disco && DISCOVERY.every((d) => a.stuck[`d:${d.id}`])) {
+    a.disco = true;
+    const cos = COSTUMES.find((k) => k.id === 'explorer' && !costumeState().owned.includes(k.id)) ?? COSTUMES.filter((k) => k.id !== 'hero' && !costumeState().owned.includes(k.id)).sort((u, v) => u.price - v.price)[0];
+    if (cos) { unlockCostume(cos.id); a.costume = cos.id; extra = () => queueAlbumMsg(`🎉 ${x.discoDone(`${cos.emoji} ${cos.name[lang]}`)}`.replace('🎉 🎉', '🎉'), x.discoDoneSay(cos.name[lang]), 'victory'); }
+    else { game.materials.diamond = (game.materials.diamond ?? 0) + 3; extra = () => queueAlbumMsg(x.discoDiamonds, undefined, 'victory'); }
+  }
+  saveGame(); saveProgress();
+  const w = c.label;
+  return {
+    text: gold ? x.goldStuck(c.emoji, w) : x.stuck(c.emoji, w), say: gold ? x.goldStuckSay(w) : x.stuckSay(w),
+    after: () => {
+      sfxLick();
+      openCollect(albumPageOf(id), id);
+      setTimeout(() => c.cry(), 600);
+      if (gold) launchConfetti();
+      extra?.();
+    },
+  };
+}
+function albumHenFound(btn) {
+  const r = henRow();
+  if (!r || henFound()) return;
+  btn.classList.add('is-flyaway');
+  henReward(r.day);
+  setTimeout(() => { if (!$('#collect-modal').hidden) renderCollect(); }, 1600);
+}
+// For the tests: find today's Cocotte, wherever she hides.
+function findCocotte() {
+  const r = henRow();
+  if (!r || henFound()) return 'none';
+  if (r.album) {
+    openCollect(r.album);
+    const b = document.querySelector('#collect-grid .is-hen');
+    if (!b) return 'missing';
+    b.click();
+    closeCollect();
+    return 'ok';
+  }
+  const o = scene3D.cocotte?.obj;
+  if (!o) return 'missing';
+  if (!o.active) return 'inactive';
+  scene3D.teleport(o.worldPos.x + 0.9, o.worldPos.z + 0.9);
+  scene3D.onInteractObject(o);
+  return 'ok';
+}
+function onAlbumPartTwo() {
+  const a = game?.album;
+  if (!a || a.disco || albumP2Said) return;
+  albumP2Said = true;
+  queueAlbumMsg(atx().partTwo, undefined, 'pop');
+}
+const collectOpen = () => !$('#collect-modal').hidden;
+function tickAlbum() {
+  if (!game || !scene3D?.albumStand || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
+  if (game.story?.intro) partState('J4');
+  const a = albumState();
+  // Bosses beaten, objects crafted and Mimots tamed stick by themselves (they were won with words).
+  for (const id of game.bosses ?? []) a.stuck[`b:${id}`] ??= 1;
+  for (const id of game.crafted ?? []) if (objectCards().some((c) => c.id === id)) a.stuck[`o:${id}`] ??= 1;
+  for (const id of game.story?.mimots ?? []) a.stuck[`m:${id}`] ??= 1;
+  for (const id of game.places ?? []) albumMeet(`p:${id}`);
+  if (game.pet?.tamed) albumMeet('a:dog');
+  if (Object.values(game.horses ?? {}).some((h) => h.tamed)) albumMeet('a:horse');
+  // Animals met on the way (and, now and then, a golden sticker).
+  const p = scene3D.player.position, now = performance.now();
+  for (const an of scene3D.fauna?.list ?? []) {
+    if (!an.mesh.visible) continue;
+    const id = KIND_TO_CARD[an.kind];
+    if (!id) continue;
+    const d = Math.hypot(an.mesh.position.x - p.x, an.mesh.position.z - p.z);
+    if (d < 7) albumMeet(`a:${id}`);
+    if (d < 4.5 && (an.goldT ?? 0) < now) { an.goldT = now + 60000; if (Math.random() < (window.__se?.albumGold ?? GOLD_CHANCE)) albumGold(`a:${id}`); }
+  }
+  if (albumPartTwo()) {
+    onAlbumPartTwo();
+    for (const d of DISCOVERY) { const q = discoPos(d); if (q && Math.hypot(q.x - p.x, q.z - p.z) < 4.5) albumMeet(`d:${d.id}`); }
+  }
+  const busy = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#travel-modal').hidden || collectOpen() || knocking || bossFight;
+  while (albumMsgs[0]?.card && a.stuck[albumMsgs[0].card]) albumMsgs.shift();
+  if (albumMsgs.length && !busy && now - Math.max(defiMsgAt, albumMsgAt) > 3800) {
+    albumMsgAt = now; defiMsgAt = now;
+    const m = albumMsgs.shift();
+    toast(m.text, 4500);
+    speak(m.say, 0.95);
+    if (m.sfx === 'victory') { sfxVictory(); launchConfetti(); } else if (m.sfx === 'craft') sfxCraft(); else if (m.sfx === 'pop') sfxPop();
+  }
+}
+// The journal: the album's two parts and counts, written and read.
+function albumLines() {
+  const a = game?.album, x = atx(), dx = dtx();
+  if (!game || !scene3D?.albumStand) return [];
+  if (!a?.opened) return [`📖 ${x.noAlbumYet}`];
+  const two = albumPartTwo();
+  const p1 = a.goal1 ? dx.partDone : `: ${dx.partPlay}`;
+  const p2 = !two ? `: ${dx.partLater}` : a.disco ? dx.partDone : `: ${dx.partOpen}`;
+  const disco = two ? DISCOVERY.filter((d) => a.stuck[`d:${d.id}`]).length : null;
+  const lines = [`📖 ${x.name} — ${dx.part(p1, p2)}`, x.journalCount(albumCount(a), Object.values(a.stuck).filter((v) => v === 2).length, disco)];
+  if (!a.goal1) lines.push(x.journalGoal(a.newStuck));
+  return lines;
+}
+function albumSpeech() {
+  const l = albumLines(), dx = dtx();
+  if (!l.length) return '';
+  if (!game.album?.opened) return l[0].replace(/^\S+ /, '');
+  return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${l.slice(1).join('. ').replace(/·/g, '.').replace('/', ' sur ')}.`;
 }
 
 /* ===== HORSES ===== */
@@ -2673,6 +2992,12 @@ function handleSpellSuccess() {
     spellResultEl.hidden = false;
     speak(r.say, 0.95);
     spellContext.after = r.after;
+  } else if (type === 'album') {
+    const r = albumStick(spellContext.cardId);
+    spellResultEl.replaceChildren(el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
+    spellResultEl.hidden = false;
+    speak(r.say, 0.95);
+    spellContext.after = r.after;
   } else if (type === 'jumpchest') {
     const { got, say } = openJumpChest();
     spellResultEl.replaceChildren(
@@ -3147,7 +3472,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');
@@ -3906,7 +4231,10 @@ function renderAlbum() {
 // Navigation for the new pages; they return to wherever you came from.
 let returnScreen = 'menu';
 function openPage(name) { returnScreen = document.body.dataset.screen === 'game' ? 'game' : 'menu'; showScreen(name); }
-$('#album-btn')?.addEventListener('click', () => openPage('album'));
+$('#album-btn')?.addEventListener('click', () => { if (document.body.dataset.screen === 'game' && game && scene3D?.albumStand) openCollect(); else openPage('album'); });
+$('#collect-close')?.addEventListener('click', closeCollect);
+$('#collect-say')?.addEventListener('click', () => { const a = albumState(); if (!a) return; const cs = albumCards(albumPage), h = cs.filter((c) => ['stuck', 'gold'].includes(cardState(a, c.id))).length; speak(atx().pageSay(atx().pageNames[albumPage], h, cs.length), 0.95); });
+$('#collect-words')?.addEventListener('click', () => { closeCollect(); openPage('album'); });
 $('#wardrobe-btn')?.addEventListener('click', () => openPage('wardrobe'));
 function openJournal() { renderJournal(); renderToday(); $('#journal-modal').hidden = false; const say = todaySpeech(); if (say) speak(say, 0.95); }
 $('#news-btn')?.addEventListener('click', openJournal);

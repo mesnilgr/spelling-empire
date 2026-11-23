@@ -13,6 +13,7 @@ import { IronGolem } from './golem.js';
 import { JumpChest } from './daily.js';
 import { Cocotte, cocotteToday } from './cocotte.js';
 import { Flammeche } from './flame.js';
+import { AlbumStand } from './album.js';
 import { NEWS } from './news.js';
 import { buildSign, setSignText, buildMimot, buildPage } from './story3d.js';
 import { CIRCLES, BRIDGE, BRAZIERS, buildCircle, buildBridge, buildMagicTree, buildFlowerBed, buildBrazier, buildLightOrb } from './magic.js';
@@ -230,8 +231,10 @@ export class GameScene {
     this.jumpChest = new JumpChest(this);
     // Flammèche (J3): the hearth at the foot of the cottage chimney, and the woodpile next to it.
     this.flame = new Flammeche(this);
-    const hen = cocotteToday(Math.max(...NEWS.map((n) => n.day)));
-    if (hen) this.cocotte = new Cocotte(this, hen);
+    // The collection album (J4): a lectern with the big open book, next to the cottage.
+    this.albumStand = new AlbumStand(this);
+    const hen = cocotteToday(Math.max(...NEWS.filter((n) => !n.from).map((n) => n.day)));
+    if (hen && !hen.album) this.cocotte = new Cocotte(this, hen);
   }
 
   _insideAnyHouse(x, z, margin = 0.6) {
@@ -2448,7 +2451,7 @@ export class GameScene {
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
     this._tickRegions();
-    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); } this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
+    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); } this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

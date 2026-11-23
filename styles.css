@@ -1749,3 +1749,44 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .journal-today .journal-feathers { margin: 0 0 6px; color: #8a6a1a; }
 .journal-card { max-height: 92vh; overflow-y: auto; }
 .journal-card .journal-list { max-height: 42vh; }
+
+/* The collection album (J4). */
+.collect-card { width: min(760px, 100%); max-height: 94vh; overflow-y: auto; background: linear-gradient(#fff8e6, #fbeccb); border: 4px solid #b8322a; }
+.collect-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.collect-head h2 { margin: 0; }
+.collect-lede { font-weight: 800; color: #8a5a1a; }
+.collect-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.collect-tab { font: inherit; font-weight: 800; font-size: 0.95rem; padding: 7px 11px; border-radius: 999px; border: 2px solid #d8b878; background: #fff3d6; color: #6a4a1a; cursor: pointer; position: relative; }
+.collect-tab.is-on { background: #b8322a; border-color: #8a221a; color: #fff; }
+.collect-tab.is-locked { opacity: 0.6; }
+.collect-tab.has-new::after { content: '✨'; position: absolute; top: -9px; right: -6px; font-size: 0.9rem; animation: collect-twinkle 1s infinite alternate; }
+.collect-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; min-height: 120px; }
+.collect-item { font: inherit; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 104px; padding: 8px 4px; border-radius: 12px; border: 3px dashed #d8c8a0; background: rgba(255, 255, 255, 0.55); cursor: pointer; }
+.collect-emoji { font-size: 2.6rem; line-height: 1; }
+.collect-label { font-weight: 800; font-size: 0.92rem; color: #5a3a1a; text-align: center; }
+.collect-item.is-unknown .collect-emoji { filter: brightness(0) opacity(0.3); }
+.collect-item.is-unknown .collect-label { color: #a89878; letter-spacing: 2px; }
+.collect-item.is-ready, .collect-item.is-goldReady { border-style: solid; border-color: #4a9ad8; background: #e8f4ff; animation: collect-wiggle 1.4s infinite; }
+.collect-item.is-ready .collect-emoji, .collect-item.is-goldReady:not(.is-shown) .collect-emoji { filter: brightness(0) opacity(0.45); }
+.collect-item.is-ready .collect-label, .collect-item.is-goldReady .collect-label { color: #1a6aa8; }
+.collect-item.is-goldReady { border-color: #e8b020; background: #fff6c8; }
+.collect-item.is-stuck, .collect-item.is-gold { border-style: solid; border-color: #c8a060; background: #fff; box-shadow: 0 3px 0 #e0c890; }
+.collect-item.is-gold { border-color: #e8b020; background: radial-gradient(circle at 30% 25%, #fffbe0, #ffe27a); box-shadow: 0 0 14px rgba(255, 200, 40, 0.9); overflow: hidden; }
+.collect-item.is-gold::after { content: ''; position: absolute; inset: -40%; background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.85) 50%, transparent 60%); animation: collect-shine 2.2s infinite; pointer-events: none; }
+.collect-item.is-reveal { animation: collect-pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) both; animation-delay: calc(var(--i) * 70ms + 200ms); }
+.collect-item.is-new { animation: collect-stick 0.8s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.collect-item.is-bounce { animation: collect-bounce 0.45s ease; }
+.collect-item.is-hen { border: 3px solid #f2c84b; background: #fffbe8; }
+.collect-item.is-hen .hen-wink { position: absolute; top: 6px; right: 8px; font-size: 1.3rem; animation: collect-wink 2.4s infinite; }
+.collect-item.is-flyaway { animation: collect-fly 1.4s ease-in forwards; pointer-events: none; }
+.collect-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.journal-today .journal-album { margin: 4px 0; font-weight: 700; }
+@keyframes collect-pop { from { transform: scale(0) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes collect-stick { 0% { transform: scale(2.2) rotate(10deg); opacity: 0; } 60% { transform: scale(0.9); opacity: 1; } 100% { transform: none; } }
+@keyframes collect-bounce { 30% { transform: scale(1.15) rotate(-4deg); } 60% { transform: scale(0.95) rotate(3deg); } }
+@keyframes collect-wiggle { 0%, 80%, 100% { transform: none; } 85% { transform: rotate(-4deg); } 90% { transform: rotate(4deg); } 95% { transform: rotate(-2deg); } }
+@keyframes collect-wink { 0%, 70%, 100% { transform: scale(0); } 76%, 94% { transform: scale(1); } }
+@keyframes collect-fly { 30% { transform: translateY(10px) rotate(-10deg); } 100% { transform: translateY(-420px) rotate(720deg) scale(0.4); opacity: 0; } }
+@keyframes collect-shine { from { transform: translateX(-60%); } to { transform: translateX(60%); } }
+@keyframes collect-twinkle { from { transform: scale(0.8); } to { transform: scale(1.2); } }
+@media (max-width: 600px) { .collect-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); } .collect-emoji { font-size: 2.1rem; } }

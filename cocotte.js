@@ -3,6 +3,8 @@
 // gives the day's hint, written and read aloud.
 // Add ONE row per release: { day, pos: {x, y?, z}, hint: {fr, en}, pose }. Only the row of the latest
 // release is used (y = height above the ground when absent; pose: 'sit' | 'perch' | 'peek').
+// `album: page` = she hides inside the collection album instead (a sticker that winks on that page),
+// and there is no 3D hen that day.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -19,6 +21,13 @@ export const COCOTTE = [
     hint: {
       fr: 'Cocotte a froid : elle s’est cachée sur le tas de bois, à côté de la cheminée de Flammèche !',
       en: 'Cocotte is cold: she is hiding on the woodpile, next to Flammèche’s chimney!',
+    },
+  },
+  {
+    day: 4, pos: { x: 0.4, y: 1.4, z: 21.2 }, pose: 'sit', album: 'animals',
+    hint: {
+      fr: 'Cocotte s’est glissée dans ton album 📖 : sur la page des animaux, une vignette te fait un clin d’œil !',
+      en: 'Cocotte slipped into your album 📖: on the animals page, a sticker winks at you!',
     },
   },
 ];

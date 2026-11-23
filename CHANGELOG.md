@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.22.0 — J4 : L'album de collection 📖
+
+- 📖 **L'album de collection** : un pupitre en bois avec un grand livre ouvert attend à côté de la chaumière (et le bouton 📖 l'ouvre aussi pendant la partie). À la première ouverture, les pages tournent toutes seules, petite fanfare, confettis, et les vignettes apparaissent une à une. L'album est **déjà rempli** de ce que l'enfant a déjà vu (lieux découverts, chien, cheval, boss battus, objets fabriqués, Mimots, plumes de Cocotte).
+- ✍️ **Pour coller une nouvelle vignette, on épelle son nom** (VACHE, COCHON, LAPIN…, la première lettre à 5 ans). En collant, le héros lèche la vignette : « Slurp… Plop ! ». Les animaux déjà croisés près du village attendent avec « ✨ À coller ! » ; chaque nouvel animal croisé ou lieu découvert en ajoute une (annoncée à voix haute). Les cases manquantes sont des silhouettes « ??? » : les toucher fait lire un indice (« Il est orange et il se cache dans la forêt. »).
+- 🐾 **Partie 1** : les pages **animaux** (22 vignettes) et **lieux** (13) ; objectif : 3 nouvelles vignettes (+10 ★). Chaque vignette fait son cri quand on la touche (« Meuh ! Vache ! »).
+- 🧭 **Partie 2** (au retour suivant, au moins 30 minutes plus tard, ou après 15 minutes de jeu) : les pages **boss**, **objets fabriqués**, **Mimots** et **plumes de Cocotte**, et une **page découverte** de 6 cases autour du village (Fer, Flammèche, la fontaine, Alaric, le chat, les poules) : on va les voir, puis on épelle leur nom. Page complète = le premier costume, **l'Explorateur** 🧭 (ou 3 diamants si on a déjà tous les costumes).
+- ✨ **Vignettes dorées** : une chance sur 20 en croisant un animal. Elles brillent dans l'album (à montrer !).
+- 📜 Le journal montre les deux parties de l'album, le nombre de vignettes, les dorées et la page découverte, écrit et lu.
+- 🐔 **Cocotte** s'est glissée dans l'album : sur la page des animaux, une vignette fait un clin d'œil. La toucher : elle s'envole de la page et laisse sa plume dorée.
+- ❓ Devinette d'Alaric : « J'ai des feuilles, mais je ne suis pas un arbre. Qui suis-je ? »
+- 🧪 Les tests suivent maintenant la cachette de Cocotte du jour, où qu'elle soit, et les cartes datées du programme de la semaine.
+
 ## v1.21.2 — Un programme qui s'ouvre petit à petit
 
 - 🪜 **Chaque thème du programme s'ouvre par étapes**, pour ne pas mettre l'enfant en difficulté : être le jeudi 26, avoir en plus le vendredi, aller en plus le samedi. Un thème choisi à la main dans l'espace parents s'ouvre aussi petit à petit, à partir du jour où il est choisi. L'espace parents affiche ce qui est déjà ouvert (« 6 mots sur 18 pour l'instant »).
