@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.22.1 — Les articles et les couleurs, petit à petit
+
+- 🔤 **Articles (du 24 novembre au 6 décembre)** : une image et le nom écrit en gris après les cases (🏠 … maison), l'enfant écrit l'article qu'il entend. Le / la d'abord, puis un / une à partir du 27 novembre, les / des à partir du 30, et l' à partir du 3 décembre (l'arbre, l'école). Pas de « une lune » ni « une neige ».
+- 🎨 **Couleurs (du 1er au 13 décembre)** : le début de la phrase est écrit en gris, l'enfant écrit la couleur. **Blanc et blanche d'abord** (« Le mouton est blanc. », « La lune est blanche. », « La maison est blanche. »), puis noir / noire et vert / verte, bleu / bleue et gris / grise, et enfin rouge, jaune, rose.
+- 🧵 Le programme tourne maintenant sur **trois fils en parallèle** (verbes, articles, couleurs) ; environ un mot sur deux vient du programme, tous fils confondus. L'espace parents affiche chaque fil en cours et ce qui est déjà ouvert. Alaric présente les articles le 24 novembre et les couleurs le 1er décembre.
+- 💬 « La lune est blanche. » et « Le mouton est blanc. » rejoignent aussi les mini-phrases.
+- 🧙 Les cartes d'Alaric sur le programme ne s'affichent que si le programme suit le calendrier (pas s'il est désactivé, et seulement pour le thème choisi à la main).
+- 📖 Album : « Nouvelle vignette ! » n'était jamais annoncé pendant les 20 premières secondes de jeu ; c'est corrigé. Et Alaric dit maintenant « touche-les et épelle leur nom pour les coller » (au lieu de « touche-las »).
+
 ## v1.22.0 — J4 : L'album de collection 📖
 
 - 📖 **L'album de collection** : un pupitre en bois avec un grand livre ouvert attend à côté de la chaumière (et le bouton 📖 l'ouvre aussi pendant la partie). À la première ouverture, les pages tournent toutes seules, petite fanfare, confettis, et les vignettes apparaissent une à une. L'album est **déjà rempli** de ce que l'enfant a déjà vu (lieux découverts, chien, cheval, boss battus, objets fabriqués, Mimots, plumes de Cocotte).

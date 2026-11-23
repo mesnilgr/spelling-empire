@@ -1311,7 +1311,7 @@ export const SCENARIOS = [
       // Walking past new animals: a new sticker to stick (rabbits and the bee meadow).
       await g.page.evaluate(() => { const s = window.__se.scene, r = s.fauna.list.find((f) => f.kind === 'rabbit'); s.teleport(r.mesh.position.x + 2, r.mesh.position.z + 2); });
       const met = await g.page.waitForFunction(() => window.__se.album().ready.includes('a:rabbit'), null, { timeout: 8000 }).then(() => true, () => false);
-      check(met && await saidLater(/Nouvelle vignette ! Ouvre ton album/, 15000), 'en croisant un lapin : « Nouvelle vignette ! » (lu)', await said());
+      check(met && await saidLater(/Nouvelle vignette ! Ouvre ton album/, 15000), 'en croisant un lapin : « Nouvelle vignette ! » (lu)', `${met} ${JSON.stringify(await g.page.evaluate(() => window.__se.albumQueue()))}`);
       const rab = await stick('a:rabbit', 'animals');
       check(rab?.word === 'lapin', 'on colle le lapin', JSON.stringify(rab));
       await g.page.waitForFunction(() => window.__se.album().ready.includes('p:meadow'), null, { timeout: 8000 }).catch(() => {});
@@ -1618,9 +1618,19 @@ export const SCENARIOS = [
       await g.page.evaluate(() => { window.__se = Object.assign(window.__se ?? {}, { programmeAlways: true }); });
       await g.click('#continue-btn');
       await g.page.waitForTimeout(1200);
+      // Opens a word on a resource; retries on another one when the machine is busy (closing any result left open).
+      const openWord = async () => {
+        const tries = [];
+        for (let k = 0; k < 6; k++) {
+          await g.page.evaluate(() => { const b = document.querySelector('#spell-continue-btn'); if (b && !b.hidden && !document.querySelector('#spell-modal').hidden) b.click(); });
+          tries.push(await g.use("i.kind === 'node' && i.active && !i.requires && i.nodeType !== 'chest'"));
+          if (await g.page.waitForFunction(() => !document.querySelector('#spell-modal').hidden && !!window.__se.spell(), null, { timeout: 4000 }).then(() => true, () => false)) return;
+        }
+        const state = await g.page.evaluate(() => [...document.querySelectorAll('.modal-overlay:not([hidden]), #dialog:not([hidden])')].map((e) => e.id).join() + ' spell=' + !!window.__se.spell() + ' modal=' + !document.querySelector('#spell-modal').hidden);
+        throw new Error(`aucun mot ne s’ouvre (${tries.join()} ; ${state})`);
+      };
       // Pronouns: a picture of who it is, the pronoun heard in a little sentence.
-      await g.use("i.kind === 'node' && i.active");
-      await g.page.waitForSelector('#spell-modal:not([hidden])', { timeout: 8000 });
+      await openWord();
       const w1 = await g.page.evaluate(() => window.__se.spell().word);
       check(['je', 'tu', 'il', 'elle', 'nous', 'vous'].includes(w1.word), 'un mot du thème : un pronom', w1.word);
       const ctx = await g.page.$eval('#spell-context', (e) => (e.hidden ? '' : e.textContent));
@@ -1634,8 +1644,7 @@ export const SCENARIOS = [
       // Être, avoir, aller: the pronoun is already written, the child writes the verb.
       await g.page.evaluate(() => { window.__se.progress().programme = 'etre-avoir-aller'; });
       await g.page.waitForTimeout(400);
-      await g.use("i.kind === 'node' && i.active");
-      await g.page.waitForSelector('#spell-modal:not([hidden])', { timeout: 8000 });
+      await openWord();
       const w2 = await g.page.evaluate(() => window.__se.spell().word);
       check(!!w2.prefix && !!w2.verb, 'un mot du thème : pronom + verbe', w2.id);
       check(w2.verb === 'être', 'le thème s’ouvre petit à petit : le premier jour, seulement être', w2.verb);
@@ -1651,19 +1660,38 @@ export const SCENARIOS = [
       check((await g.page.evaluate(() => window.__spoken.at(-1))).includes(w2.say), 'on entend le pronom et le verbe ensemble', w2.say);
       const r2 = await g.spell();
       check(r2.result.includes(w2.sentence), 'réussi : la phrase s’affiche', r2.result);
+      // Articles: the noun in grey after the boxes, the child writes le or la (first days).
+      await g.page.evaluate(() => { const p = window.__se.progress(); p.programme = 'articles'; delete p.programmeSince; });
+      await g.page.waitForTimeout(400);
+      await openWord();
+      const w3 = await g.page.evaluate(() => window.__se.spell().word);
+      const v3 = await g.page.evaluate(() => ({ suffix: document.querySelector('#spell-tiles .tile-suffix')?.textContent, ctx: document.querySelector('#spell-context').textContent, keyL: document.querySelector('#spell-keyboard .key[data-letter="l"]').textContent }));
+      check(['le', 'la'].includes(w3.word) && v3.suffix === w3.suffix, 'articles : le ou la, avec le nom écrit en gris après les cases', `${w3.word} ${v3.suffix}`);
+      check(v3.ctx === w3.pic && v3.keyL === 'L', 'une image (sans la réponse) et une majuscule pour commencer', v3.ctx);
+      const r3 = await g.spell();
+      check(r3.result.includes(w3.sentence), 'réussi : la phrase s’affiche', r3.result);
+      // Colours: blanc / blanche first, the start of the sentence in grey.
+      await g.page.evaluate(() => { window.__se.progress().programme = 'couleurs'; });
+      await g.page.waitForTimeout(400);
+      await openWord();
+      const w4 = await g.page.evaluate(() => window.__se.spell().word);
+      const p4 = await g.page.evaluate(() => document.querySelector('#spell-tiles .tile-prefix')?.textContent);
+      check(['blanc', 'blanche'].includes(w4.word) && p4 === w4.prefix[0].toUpperCase() + w4.prefix.slice(1), 'couleurs : blanc ou blanche d’abord, le début de la phrase en gris', `${p4} … ${w4.word}`);
+      const r4 = await g.spell();
+      check(r4.result.includes(w4.sentence), 'réussi : « … est blanc / blanche. »', r4.result);
       // Bosses, portals and Mimots keep their usual words.
       const other = await g.page.evaluate(() => [0, 1, 2, 3, 4, 5].map(() => window.__se.pickWord(window.__se.levelAt(1), { programme: false })?.level));
       check(other.every((l) => l !== 'programme'), 'les boss, portails et Mimots gardent leurs mots habituels', other.join());
       // A dated card (the theme's presentation) waits for its day.
-      const live = await g.page.evaluate(() => [window.__se.newsLive({ from: '2000-01-01' }), window.__se.newsLive({ from: '2999-01-01' }), window.__se.newsLive({ only: 'en' })]);
-      check(live.join() === 'true,false,false', 'la carte d’Alaric du thème attend son jour (et reste en français)', live.join());
+      const live = await g.page.evaluate(() => [window.__se.newsLive({ from: '2000-01-01' }), window.__se.newsLive({ from: '2999-01-01' }), window.__se.newsLive({ only: 'en' }), window.__se.newsLive({ programme: 'couleurs' }), window.__se.newsLive({ programme: 'articles' })]);
+      check(live.join() === 'true,false,false,true,false', 'la carte d’Alaric du thème attend son jour, reste en français, et ne parle que du thème qui tourne', live.join());
       // Parents' corner.
       await g.click('#quit-btn');
       await g.page.waitForTimeout(300);
       await g.click('#parents-btn');
       await g.page.waitForTimeout(300);
       const dash = await g.page.evaluate(() => ({ value: document.querySelector('#dash-programme').value, n: document.querySelectorAll('#dash-programme option').length, now: document.querySelector('#dash-prog-now').textContent, list: document.querySelectorAll('#dash-prog-list li').length }));
-      check(dash.value === 'etre-avoir-aller' && dash.n === 7 && dash.now.includes('Être, avoir, aller') && dash.now.includes('6 mots sur 18'), 'l’espace parents montre le thème choisi et ce qui est déjà ouvert', JSON.stringify(dash));
+      check(dash.value === 'couleurs' && dash.n === 9 && dash.now.includes('Les couleurs') && dash.now.includes('5 mots sur 17'), 'l’espace parents montre le thème choisi et ce qui est déjà ouvert', JSON.stringify(dash));
       await g.page.selectOption('#dash-programme', 'off');
       await g.page.waitForTimeout(200);
       p = await g.page.evaluate(() => window.__se.progress());

@@ -86,7 +86,7 @@ export const ATX = {
     tabs: { animals: '🐾 Animaux', places: '🗺️ Lieux', bosses: '⚔️ Boss', objects: '🔨 Objets', mimots: '🐣 Mimots', feathers: '🪶 Plumes', disco: '🧭 Découverte' },
     pageNames: { animals: 'animaux', places: 'lieux', bosses: 'boss', objects: 'objets', mimots: 'Mimots', feathers: 'plumes', disco: 'découverte' },
     words: '📝 Mots', close: 'Fermer',
-    welcome: (n, k) => `Voici ton album ! Il est déjà rempli de ${n} vignette${n > 1 ? 's' : ''}.${k ? ` Et ${k} nouvelle${k > 1 ? 's' : ''} vignette${k > 1 ? 's' : ''} t’attend${k > 1 ? 'ent' : ''} : touche-la${k > 1 ? 's' : ''} et épelle son nom pour la coller !` : ''}`,
+    welcome: (n, k) => `Voici ton album ! Il est déjà rempli de ${n} vignette${n > 1 ? 's' : ''}.${k ? ` Et ${k} nouvelle${k > 1 ? 's' : ''} vignette${k > 1 ? 's' : ''} t’attend${k > 1 ? 'ent' : ''} : touche-${k > 1 ? 'les' : 'la'} et épelle ${k > 1 ? 'leur' : 'son'} nom pour ${k > 1 ? 'les' : 'la'} coller !` : ''}`,
     toStick: '✨ À coller !', goldToStick: '✨ Dorée !', unknown: '???',
     stickTitle: 'Une vignette à coller !', stickInstr: (name) => `Épelle son nom pour coller la vignette ${name} !`,
     goldTitle: 'Une vignette dorée !', goldInstr: 'Épelle son nom pour coller la vignette dorée !',

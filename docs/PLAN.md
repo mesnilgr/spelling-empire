@@ -66,6 +66,19 @@ parents l'ont choisi), et l'espace parents affiche ce qui est déjà ouvert.
   arriver, tomber (vendredi). Pas de -ger, -cer, -yer, -eler, -eter ni e → è.
 - 14–20 déc. : faire, dire, venir (les verbes irréguliers du CE1) : je, tu, il, elle d'abord, nous et vous
   à partir du jeudi.
+
+Trois **fils** avancent en parallèle (champ `strand`) ; dans un même fil, les thèmes se suivent :
+
+- **Verbes** : les thèmes ci-dessus.
+- **Articles (24 nov. – 6 déc.)** : le nom est écrit en gris après les cases (`suffix`), l'enfant écrit
+  l'article : le / la d'abord, puis un / une (27 nov.), les / des (30 nov.), l' (3 déc.). Pas de « une neige »
+  ni « une lune ». Exemple : 🏠 « la maison », « une maison », « les maisons ».
+- **Couleurs (1er – 13 déc.)** : le début de la phrase en gris, l'enfant écrit la couleur ; **blanc / blanche
+  d'abord** (priorité du parent : avec « la », la couleur prend souvent un e), puis noir / noire et
+  vert / verte (3 déc.), bleu / bleue et gris / grise (5 déc.), rouge, jaune, rose (7 déc.). Exemples :
+  « La lune est blanche. », « Le mouton est blanc. », « La maison est blanche. »
+
+Environ un mot sur deux vient du programme, tous fils confondus.
 - Ensuite, à décider avec le parent : pouvoir, vouloir, voir, prendre ; puis, en CE2, les verbes à piège dans
   l'ordre de fréquence (appeler, jeter, commencer, lever, manger) ; ils et elles.
 
@@ -275,7 +288,8 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
 - [ ] **J14 · jeu. 3 déc. · v1.32.0 — Laine et couleurs.**
   - Session 1 : recette des ciseaux ; **tondre les moutons** (laine de leur couleur) ; la laine repousse en 10 min.
   - Session 2 : **teindre** : donner une fleur à un mouton lui donne sa couleur, en épelant la couleur (ROUGE,
-    BLEU, JAUNE…) ; mission « troupeau arc-en-ciel » de 5 couleurs ; tondre à nouveau pour avoir de la laine
+    BLEU, JAUNE…), avec les phrases du fil « couleurs » du programme quand il tourne (« Le mouton est blanc. »,
+    « La brebis est blanche. ») ; mission « troupeau arc-en-ciel » de 5 couleurs ; tondre à nouveau pour avoir de la laine
     colorée.
   - Plus fun : un mouton tondu est tout maigre et grelotte drôlement en attendant sa laine ; secret : un mouton
     nommé « Arc-en-ciel » change de couleur sans arrêt.

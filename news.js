@@ -46,7 +46,7 @@ export const NEWS = [
   },
   // Programme de la semaine (programme.js): dated cards, shown from their day on, in French only.
   {
-    id: 'prog-pronoms', day: 4, date: '2026-11-23', from: '2026-11-23', only: 'fr', emoji: '🙋', show: null,
+    id: 'prog-pronoms', programme: 'pronoms', day: 4, date: '2026-11-23', from: '2026-11-23', only: 'fr', emoji: '🙋', show: null,
     title: { fr: 'Le programme de la semaine : les pronoms', en: 'This week: pronouns' },
     text: {
       fr: 'Cette semaine, on apprend les petits mots qui disent qui fait l’action : je, tu, il, elle, nous, vous. Regarde bien l’image : elle te montre qui parle !',
@@ -58,7 +58,7 @@ export const NEWS = [
     },
   },
   {
-    id: 'prog-etre-avoir-aller', day: 7, date: '2026-11-26', from: '2026-11-26', only: 'fr', emoji: '🏃', show: null,
+    id: 'prog-etre-avoir-aller', programme: 'etre-avoir-aller', day: 7, date: '2026-11-26', from: '2026-11-26', only: 'fr', emoji: '🏃', show: null,
     title: { fr: 'Le programme de la semaine : être, avoir, aller', en: 'This week: to be, to have, to go' },
     text: {
       fr: 'Nouveau défi : les verbes être, avoir et aller ! Le petit mot est déjà écrit, à toi d’écrire le verbe : nous… sommes, tu… as, il… va.',
@@ -70,7 +70,7 @@ export const NEWS = [
     },
   },
   {
-    id: 'prog-premier-groupe', day: 18, date: '2026-12-07', from: '2026-12-07', only: 'fr', emoji: '🎵', show: null,
+    id: 'prog-premier-groupe', programme: 'premier-groupe', day: 18, date: '2026-12-07', from: '2026-12-07', only: 'fr', emoji: '🎵', show: null,
     title: { fr: 'Le programme de la semaine : les verbes en -er', en: 'This week: -er verbs' },
     text: {
       fr: 'Cette semaine, les verbes qui finissent par -er : je joue, tu joues, nous jouons ! Attention aux lettres qu’on n’entend pas à la fin. Chaque jour, de nouveaux verbes arrivent.',
@@ -82,7 +82,7 @@ export const NEWS = [
     },
   },
   {
-    id: 'prog-faire-dire-venir', day: 25, date: '2026-12-14', from: '2026-12-14', only: 'fr', emoji: '🛠️', show: null,
+    id: 'prog-faire-dire-venir', programme: 'faire-dire-venir', day: 25, date: '2026-12-14', from: '2026-12-14', only: 'fr', emoji: '🛠️', show: null,
     title: { fr: 'Le programme de la semaine : faire, dire, venir', en: 'This week: faire, dire, venir' },
     text: {
       fr: 'Cette semaine, trois verbes qu’on dit tout le temps : faire, dire et venir. Je fais, tu dis, il vient : écoute bien, la dernière lettre ne s’entend pas !',
@@ -103,6 +103,30 @@ export const NEWS = [
     riddle: {
       q: { fr: 'J’ai des feuilles, mais je ne suis pas un arbre. Qui suis-je ?', en: 'I have leaves, but I am not a tree. What am I?' },
       a: { fr: 'Un livre !', en: 'A book!' },
+    },
+  },
+  {
+    id: 'prog-articles', programme: 'articles', day: 5, date: '2026-11-24', from: '2026-11-24', only: 'fr', emoji: '🔤', show: null,
+    title: { fr: 'Le programme : les articles', en: 'Programme: articles' },
+    text: {
+      fr: 'Nouveau : les petits mots qui vont devant les noms ! La maison, le chat… Regarde l’image et écoute bien : le ou la ?',
+      en: 'New: the little words that go before nouns.',
+    },
+    riddle: {
+      q: { fr: 'Le chat, la maison… Et pour la lune, on dit le ou la ?', en: 'Le chat, la maison… and for the moon?' },
+      a: { fr: 'La lune !', en: 'La lune!' },
+    },
+  },
+  {
+    id: 'prog-couleurs', programme: 'couleurs', day: 12, date: '2026-12-01', from: '2026-12-01', only: 'fr', emoji: '🎨', show: null,
+    title: { fr: 'Le programme : les couleurs', en: 'Programme: colours' },
+    text: {
+      fr: 'Cette semaine, les couleurs ! Le mouton est blanc, la lune est blanche : avec « la », la couleur prend souvent un e à la fin.',
+      en: 'This week: colours, and how they change with « la ».',
+    },
+    riddle: {
+      q: { fr: 'Le mouton est blanc. Et la neige ?', en: 'The sheep is « blanc ». And the snow?' },
+      a: { fr: 'La neige est blanche !', en: 'La neige est blanche!' },
     },
   },
 ];

@@ -19,7 +19,7 @@ import { DTX, drawDefis, defiById } from './daily.js';
 import { cocotteToday, COCOTTE } from './cocotte.js';
 import { ATX, ALBUM_ANIMALS, KIND_TO_CARD, PLACE_WORDS, PLACE_HINTS, BOSS_HINTS, DISCOVERY, ALBUM_GOAL1, GOLD_CHANCE, PAGES1, PAGES2 } from './album.js';
 import { FTX, CALENDAR, FLAME_STEPS, SNEEZE_STARS, HEARTH } from './flame.js';
-import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themeFor, themeWords, themeDay, upcomingThemes } from './programme.js';
+import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themesFor, themeWords, themeDay, upcomingThemes } from './programme.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
 const MAX_TRIES = 3;
@@ -322,8 +322,10 @@ function renderProgrammeCard() {
     if (sel.value !== 'auto' && sel.value !== 'off') progress.programmeSince = todayKey(); else delete progress.programmeSince;
     saveProgress(); renderProgrammeCard();
   };
-  const th = programmeTheme();
-  $('#dash-prog-now').textContent = lang !== 'fr' ? t.progFrOnly : th ? `${t.progNow(`${th.emoji} ${th.name}`, th.blurb)} ${t.progOpen(programmeItems(th).length, themeWords(th).length)}` : t.progNone;
+  const ths = programmeThemes();
+  $('#dash-prog-now').textContent = lang !== 'fr' ? t.progFrOnly : ths.length
+    ? t.progNow(ths.map((th) => `${th.emoji} ${th.name} (${th.blurb}) : ${t.progOpen(programmeItems(th).length, themeWords(th).length)}`).join(' · '))
+    : t.progNone;
   const day = (d) => d.split('-').reverse().slice(0, 2).join('/');
   $('#dash-prog-list').replaceChildren(...upcomingThemes(todayKey()).map((p) => el('li', '', `${day(p.from)} → ${day(p.to)} : ${p.emoji} ${p.name} (${p.blurb})${p.needs === 'sentences' && !SENTENCES_READY ? ` — ${t.progSoon}` : ''}`)));
 }
@@ -347,7 +349,8 @@ let wordQueues = {};
 let lastPicked = '';
 // Programme de la semaine (programme.js): the theme running today, from the calendar or the
 // parents' choice. About one word in two comes from it (not for bosses, portals or Mimots).
-function programmeTheme() { return lang === 'fr' ? themeFor(todayKey(), progress.programme ?? 'auto') : null; }
+// Several strands can run on the same day (the verbs, the articles, the colours).
+function programmeThemes() { return lang === 'fr' ? themesFor(todayKey(), progress.programme ?? 'auto') : []; }
 // The theme opens progressively: its day counts from its start on the calendar, or from the day the
 // parents picked it by hand.
 function programmeDay(theme) {
@@ -356,10 +359,10 @@ function programmeDay(theme) {
 }
 function programmeItems(theme) { return themeWords(theme, { day: programmeDay(theme) }); }
 function programmeWord(stats, opts) {
-  const theme = programmeTheme();
-  if (!theme) return null;
+  const themes = programmeThemes();
+  if (!themes.length) return null;
   if (!window.__se?.programmeAlways && Math.random() >= PROGRAMME_SHARE) return null;
-  const items = programmeItems(theme);
+  const items = themes.flatMap((th) => programmeItems(th));
   if (!items.length) return null;
   return chooseWord(items, stats, (w) => `${lang}:${w.id}`, { ...opts, newPerDay: 99 })?.w ?? items[Math.floor(Math.random() * items.length)];
 }
@@ -693,7 +696,7 @@ function init3DScene() {
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -983,7 +986,7 @@ function openSpellModal(title, instruction, emoji) {
     ctxEl.hidden = false;
   } else if (word.pic) {
     // Pronouns: a picture of who it is.
-    ctxEl.replaceChildren(el('span', 'prog-pic', word.pic), el('span', 'prog-who', word.who));
+    ctxEl.replaceChildren(el('span', 'prog-pic', word.pic), ...(word.who ? [el('span', 'prog-who', word.who)] : []));
     ctxEl.hidden = false;
   } else if (word.verb) {
     ctxEl.replaceChildren(el('span', 'prog-verb', t.progVerb(word.verb)));
@@ -1219,7 +1222,13 @@ function tickNews() {
   showNews(newsQueue.shift(), true);
 }
 // A card with a "from" date (the programme of the week) waits for that day; French-only cards stay in French.
-function newsLive(n) { return (!n.from || n.from <= todayKey()) && (!n.only || n.only === lang); }
+// A programme card shows only while the programme follows the calendar (or for the theme picked by hand).
+function newsLive(n) {
+  if (n.from && n.from > todayKey()) return false;
+  if (n.only && n.only !== lang) return false;
+  if (n.programme) { const set = progress.programme ?? 'auto'; if (set === 'off' || (set !== 'auto' && set !== n.programme)) return false; }
+  return true;
+}
 function newsTitle(n) { return n.title[lang] ?? n.title.fr; }
 function newsText(n) { return n.text[lang] ?? n.text.fr; }
 // Alaric's riddle at the end of the card: the question is read with the card, "The answer?" reads the answer.
@@ -1819,7 +1828,8 @@ const atx = () => ATX[lang] ?? ATX.fr;
 const CARD_CRY = { bear: 'polarBear' };
 const objectCards = () => CRAFTABLES.filter((c) => !c.repeat);
 const capFirst = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
-let albumMsgs = [], albumPage = 'animals', albumP2Said = false, albumMsgAt = 0, albumMeetSaidAt = 0;
+// albumMeetSaidAt starts at -Infinity: performance.now() counts from page load, so 0 would silence the first 20 s.
+let albumMsgs = [], albumPage = 'animals', albumP2Said = false, albumMsgAt = 0, albumMeetSaidAt = -Infinity;
 function albumAddReady(a, id) { if (!a.stuck[id] && !a.ready.includes(id)) a.ready.push(id); }
 function createAlbum() {
   const a = { stuck: {}, ready: [], gold: [], newStuck: 0, goal1: false, disco: false, opened: false };
@@ -2764,8 +2774,9 @@ function renderSpellTiles() {
     if (i === spellInput.value.length && !isLocked) tile.classList.add('is-next');
     return tile;
   });
-  const prefix = spellContext?.word?.prefix;
+  const prefix = spellContext?.word?.prefix, suffix = spellContext?.word?.suffix;
   if (prefix) tiles.unshift(el('div', `tile-prefix${prefix.endsWith('’') ? ' is-elided' : ''}`, showPrefix(prefix)));
+  if (suffix) tiles.push(el('div', `tile-suffix${suffix.startsWith('’') ? ' is-elided' : ''}`, suffix));
   spellTilesEl.replaceChildren(...tiles);
   refreshKeyCase();
   // "Check" only works once every letter is filled in (no quick empty guesses).
@@ -2788,9 +2799,11 @@ function scoreGuess(guess, target) {
 }
 
 function scoredTiles(guess, target) {
-  const prefix = spellContext?.word?.prefix;
+  const prefix = spellContext?.word?.prefix, suffix = spellContext?.word?.suffix;
   const tiles = scoredTilesOnly(guess, target);
-  return prefix ? [el('div', `tile-prefix${prefix.endsWith('’') ? ' is-elided' : ''}`, showPrefix(prefix)), ...tiles] : tiles;
+  if (prefix) tiles.unshift(el('div', `tile-prefix${prefix.endsWith('’') ? ' is-elided' : ''}`, showPrefix(prefix)));
+  if (suffix) tiles.push(el('div', `tile-suffix${suffix.startsWith('’') ? ' is-elided' : ''}`, suffix));
+  return tiles;
 }
 function scoredTilesOnly(guess, target) {
   return scoreGuess(guess, target).map(({ letter, state }, i) => el('div', `tile tile-${state}`, showLetter(letter, i)));
@@ -3139,7 +3152,7 @@ function handleSpellFailure(target) {
   } else {
     spellContext.copyMode = true;
     spellRevealEl.hidden = false;
-    revealTiles.replaceChildren(...(spellContext.word.prefix ? [el('div', 'tile-prefix', showPrefix(spellContext.word.prefix))] : []), ...[...target].map((l, i) => el('div', 'tile tile-correct', showLetter(l, i))));
+    revealTiles.replaceChildren(...(spellContext.word.prefix ? [el('div', 'tile-prefix', showPrefix(spellContext.word.prefix))] : []), ...[...target].map((l, i) => el('div', 'tile tile-correct', showLetter(l, i))), ...(spellContext.word.suffix ? [el('div', 'tile-suffix', spellContext.word.suffix)] : []));
     spellResultEl.replaceChildren(
       el('p', 'spell-fail', t.wordWas(target)),
       el('p', 'spell-fail-detail', t.copyIt),

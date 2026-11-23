@@ -1,6 +1,6 @@
 import { LANGUAGES, LEVELS, WORDS, UI, buildSentence, AGE_LADDER, AGE_START, AGES, frComplexity } from './language-engine.js';
 import { SRS, ensureCard, grade, gradeFromAttempt, chooseWord } from './srs.js';
-import { PROGRAMME, PROGRAMME_WORDS, MINI_PHRASES, SENTENCES_READY, themeFor, themeWords, themeDay, upcomingThemes } from './programme.js';
+import { PROGRAMME, PROGRAMME_WORDS, MINI_PHRASES, SENTENCES_READY, themeFor, themesFor, themeWords, themeDay, upcomingThemes } from './programme.js';
 
 let pass = 0;
 let fail = 0;
@@ -300,8 +300,14 @@ assert(frMedium.includes('cinéma') && buildSentence('cinéma', 'fr').startsWith
   assert(at('2026-12-14') === 'faire-dire-venir' && at('2026-12-20') === 'faire-dire-venir' && at('2026-12-21') === null, 'programme: then faire, dire, venir (14–20 Dec), then nothing');
   assert(at('2026-11-24', 'off') === null && at('2026-12-20', 'pronoms') === 'pronoms' && at('2026-11-24', 'auto') === 'pronoms', 'programme: parents can turn it off or pick a theme');
   if (!SENTENCES_READY) assert(themeWords(themeFor('2026-12-01')) === PROGRAMME_WORDS['etre-avoir-aller'], 'programme: until the sentence layout exists, the mini-sentence week serves être / avoir / aller');
-  assert(PROGRAMME.every((p, i) => p.from <= p.to && (i === 0 || PROGRAMME[i - 1].to < p.from)), 'programme: themes in order, no overlap');
-  assert(upcomingThemes('2026-11-27').map((p) => p.id).join() === 'etre-avoir-aller,mini-phrases,premier-groupe,faire-dire-venir', 'programme: upcoming themes for the parents');
+  for (const strand of new Set(PROGRAMME.map((p) => p.strand))) {
+    const th = PROGRAMME.filter((p) => p.strand === strand);
+    assert(th.every((p, i) => p.from <= p.to && (i === 0 || th[i - 1].to < p.from)), `programme/${strand}: themes in order, no overlap within the strand`);
+  }
+  assert(PROGRAMME.every((p) => ['verbes', 'articles', 'couleurs'].includes(p.strand)), 'programme: every theme is on a strand');
+  assert(themesFor('2026-11-24').map((p) => p.id).join() === 'pronoms,articles' && themesFor('2026-12-02').map((p) => p.id).join() === 'mini-phrases,articles,couleurs' && themesFor('2026-12-08').map((p) => p.id).join() === 'premier-groupe,couleurs', 'programme: strands run side by side (verbs + articles, then + colours)');
+  assert(themesFor('2026-11-24', 'couleurs').map((p) => p.id).join() === 'couleurs' && themesFor('2026-11-24', 'off').length === 0, 'programme: a theme picked by hand runs alone');
+  assert(upcomingThemes('2026-11-27').map((p) => p.id).join() === 'articles,etre-avoir-aller,mini-phrases,couleurs,premier-groupe,faire-dire-venir', 'programme: upcoming themes for the parents, by date');
   // Progressive: nothing all at once.
   const T = (id) => PROGRAMME.find((p) => p.id === id);
   const n = (id, day) => themeWords(T(id), { day }).length;
@@ -309,6 +315,18 @@ assert(frMedium.includes('cinéma') && buildSentence('cinéma', 'fr').startsWith
   assert(n('premier-groupe', 0) === 24 && n('premier-groupe', 2) === 42 && n('premier-groupe', 4) === 60, 'programme: -er verbs open 4, then 7, then 10');
   assert(n('faire-dire-venir', 0) === 12 && n('faire-dire-venir', 2) === 12 && n('faire-dire-venir', 3) === 18 && themeWords(T('faire-dire-venir'), { day: 0 }).every((w) => !['nous', 'vous'].includes(w.prefix)), 'programme: faire, dire, venir with je, tu, il, elle first, nous and vous from day 4');
   assert(themeDay(T('premier-groupe'), '2026-12-09') === 2 && themeDay(T('premier-groupe'), '2026-12-01') === 0 && themeDay(T('pronoms'), '2026-12-09', '2026-12-08') === 1, 'programme: day of a theme, from its start or from when the parents picked it');
+  // Articles: le / la, then un / une, les / des, l’ (the noun in grey after the boxes).
+  assert(n('articles', 0) === 12 && themeWords(T('articles'), { day: 0 }).every((w) => ['le', 'la'].includes(w.word) && w.suffix && w.pic), 'programme: articles start with le / la, a picture and the noun in grey');
+  assert(n('articles', 3) === 21 && n('articles', 6) === 35 && n('articles', 9) === 39, 'programme: then un / une (day 4), les / des (day 7), l’ (day 10)');
+  const art = Object.fromEntries(PROGRAMME_WORDS.articles.map((w) => [w.id, w]));
+  assert(art['la maison']?.word === 'la' && art['la maison'].suffix === 'maison' && art['une maison']?.word === 'une' && art['les maisons']?.word === 'les' && art['l’arbre']?.word === 'l' && art['l’arbre'].suffix === '’arbre', 'programme: la maison, une maison, les maisons, l’arbre');
+  assert(!art['une neige'] && !art['une lune'] && !art['un soleil'], 'programme: no « un » / « une » with the moon, the sun or snow');
+  // Colours: blanc / blanche first.
+  assert(themeWords(T('couleurs'), { day: 0 }).every((w) => ['blanc', 'blanche'].includes(w.word)) && n('couleurs', 0) === 5, 'programme: colours start with blanc and blanche (the parent’s priority)');
+  const col = Object.fromEntries(PROGRAMME_WORDS.couleurs.map((w) => [w.id, w]));
+  assert(col['La lune est blanche.']?.prefix === 'la lune est' && col['La lune est blanche.'].word === 'blanche' && col['Le mouton est blanc.']?.word === 'blanc' && col['La maison est blanche.'], 'programme: « La lune est blanche. », « Le mouton est blanc. », « La maison est blanche. »');
+  assert(n('couleurs', 2) === 9 && n('couleurs', 4) === 13 && n('couleurs', 6) === 17, 'programme: then noir / vert, bleu / gris, rouge / jaune / rose');
+  assert(MINI_PHRASES.some((p) => p.text === 'La lune est blanche.'), 'programme: « La lune est blanche. » is also a mini-sentence');
   assert(MINI_PHRASES.filter((p) => p.day === 0).every((p) => p.text.replace(/[.?!]/g, '').trim().split(/\s+/).length === 3), 'programme: mini-sentences start with three words');
   const keys = new Set([...LANGUAGES.fr.keyRows.join('')]);
   for (const [id, items] of Object.entries(PROGRAMME_WORDS)) {

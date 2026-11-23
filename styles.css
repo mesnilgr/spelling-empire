@@ -1669,6 +1669,8 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .spell-context .prog-who, .spell-context .prog-verb { vertical-align: middle; }
 .tile-prefix { align-self: center; font-size: 1.75rem; font-weight: 800; color: #8a8fa3; margin-right: 10px; }
 .tile-prefix.is-elided { margin-right: 2px; }
+.tile-suffix { align-self: center; font-size: 1.75rem; font-weight: 800; color: #8a8fa3; margin-left: 10px; }
+.tile-suffix.is-elided { margin-left: 2px; }
 .dash-prog-list { margin: 6px 0; padding-left: 1.2em; }
 .dash-prog-list li { margin: 2px 0; }
 .tile.tile-space { background: transparent; border-color: transparent; box-shadow: none; width: 14px; min-width: 14px; }

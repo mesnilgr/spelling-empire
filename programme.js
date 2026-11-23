@@ -5,6 +5,8 @@
 // a child never meets everything at once: être first, then avoir, then aller; four -er verbs, then
 // seven, then ten; faire / dire / venir with je, tu, il, elle before nous and vous.
 // Parents follow the calendar ('auto'), pick a theme, or turn it off in the parents' corner.
+// Themes run on strands ("strand"): the verbs, the articles, the colours. Themes of different strands
+// may overlap (the articles run alongside the verbs); within a strand they follow one another.
 // French only: in English the programme is off.
 
 // Mini-sentences ("Je vais au cinéma.") need the sentence layout of the "Mini-phrases défi"
@@ -15,27 +17,37 @@ export const PROGRAMME_SHARE = 0.5;
 
 export const PROGRAMME = [
   {
-    id: 'pronoms', from: '2026-11-23', to: '2026-11-25', emoji: '🙋',
+    id: 'pronoms', strand: 'verbes', from: '2026-11-23', to: '2026-11-25', emoji: '🙋',
     name: 'Les pronoms', blurb: 'je, tu, il, elle, nous, vous',
     intro: 'Cette semaine, on apprend les petits mots qui disent qui fait l’action : je, tu, il, elle, nous, vous. Regarde bien l’image : elle te montre qui parle !',
   },
   {
-    id: 'etre-avoir-aller', from: '2026-11-26', to: '2026-11-29', emoji: '🏃',
+    id: 'etre-avoir-aller', strand: 'verbes', from: '2026-11-26', to: '2026-11-29', emoji: '🏃',
     name: 'Être, avoir, aller', blurb: 'je suis, j’ai, je vais…',
     intro: 'Nouveau défi : les verbes être, avoir et aller ! Le petit mot est déjà écrit, à toi d’écrire le verbe : nous… sommes, tu… as, il… va.',
   },
   {
-    id: 'mini-phrases', from: '2026-11-30', to: '2026-12-06', emoji: '💬', needs: 'sentences', fallback: 'etre-avoir-aller',
+    id: 'mini-phrases', strand: 'verbes', from: '2026-11-30', to: '2026-12-06', emoji: '💬', needs: 'sentences', fallback: 'etre-avoir-aller',
     name: 'Mini-phrases', blurb: 'Je vais au cinéma. Tu es énervé ?',
     intro: 'Cette semaine, tu écris de vraies petites phrases, avec une majuscule au début et un point à la fin !',
   },
   {
-    id: 'premier-groupe', from: '2026-12-07', to: '2026-12-13', emoji: '🎵',
+    id: 'premier-groupe', strand: 'verbes', from: '2026-12-07', to: '2026-12-13', emoji: '🎵',
     name: 'Les verbes en -er', blurb: 'je joue, tu donnes, nous parlons…',
     intro: 'Cette semaine, les verbes qui finissent par -er : je joue, tu joues, nous jouons ! Attention aux lettres qu’on n’entend pas à la fin.',
   },
   {
-    id: 'faire-dire-venir', from: '2026-12-14', to: '2026-12-20', emoji: '🛠️',
+    id: 'articles', strand: 'articles', from: '2026-11-24', to: '2026-12-06', emoji: '🔤',
+    name: 'Les articles', blurb: 'le, la, un, une, les, des, l’',
+    intro: 'Nouveau : les petits mots qui vont devant les noms ! La maison, le chat… Regarde l’image et écoute bien : le ou la ?',
+  },
+  {
+    id: 'couleurs', strand: 'couleurs', from: '2026-12-01', to: '2026-12-13', emoji: '🎨',
+    name: 'Les couleurs', blurb: 'blanc, blanche, noir, noire, vert, verte…',
+    intro: 'Cette semaine, les couleurs ! Le mouton est blanc, la lune est blanche : avec la, la couleur prend souvent un e à la fin.',
+  },
+  {
+    id: 'faire-dire-venir', strand: 'verbes', from: '2026-12-14', to: '2026-12-20', emoji: '🛠️',
     name: 'Faire, dire, venir', blurb: 'je fais, tu dis, il vient…',
     intro: 'Cette semaine, trois verbes qu’on dit tout le temps : faire, dire et venir. Je fais, tu dis, il vient : écoute bien la dernière lettre, on ne l’entend pas !',
   },
@@ -116,6 +128,40 @@ const FAIRE_DIRE_VENIR = [
   V('venir', 'vous', 'venez', 'Vous venez avec nous ?', 3),
 ];
 
+// Articles: the noun is written in grey after the boxes, the child writes the article (word = the
+// article, suffix = the noun). le / la first, then un / une (day 3), les / des (day 6), l’ (day 9).
+const NOUNS = [
+  // [noun, masculine?, picture, singular end, plural end (null: no plural here), countable (un / une)?]
+  ['chat', true, '🐱', 'dort', 'dorment', true], ['chien', true, '🐶', 'aboie', 'aboient', true], ['soleil', true, '☀️', 'brille', null, false],
+  ['livre', true, '📖', 'est ouvert', 'sont ouverts', true], ['cheval', true, '🐴', 'galope', null, true], ['gâteau', true, '🎂', 'est bon', null, true],
+  ['maison', false, '🏠', 'est grande', 'sont grandes', true], ['lune', false, '🌙', 'brille', null, false], ['pomme', false, '🍎', 'est rouge', 'sont rouges', true],
+  ['poule', false, '🐔', 'picore', 'picorent', true], ['fleur', false, '🌸', 'pousse', 'poussent', true], ['neige', false, '❄️', 'tombe', null, false],
+];
+const A = (art, noun, pic, end, day) => {
+  const elided = art === 'l';
+  const suffix = elided ? `’${noun}` : noun;
+  const said = `${art}${elided ? '’' : ' '}${noun}`;
+  return P(said, art, { suffix, pic, who: '', say: said, sentence: `${cap(said)} ${end}.`, day });
+};
+const ARTICLES = [
+  ...NOUNS.map(([n, m, pic, end]) => A(m ? 'le' : 'la', n, pic, end, 0)),
+  ...NOUNS.filter((x) => x[5]).map(([n, m, pic, end]) => A(m ? 'un' : 'une', n, pic, end, 3)),
+  ...NOUNS.filter((x) => x[4]).flatMap(([n, , pic, , pl]) => [A('les', `${n}s`, `${pic}${pic}`, pl, 6), A('des', `${n}s`, `${pic}${pic}`, pl, 6)]),
+  A('l', 'arbre', '🌳', 'est grand', 9), A('l', 'école', '🏫', 'est fermée', 9), A('l', 'oiseau', '🐦', 'chante', 9), A('l', 'étoile', '⭐', 'brille', 9),
+];
+
+// Colours: the start of the sentence in grey (prefix), the child writes the colour. blanc / blanche
+// first (the parent's priority: with « la », the colour often takes an e), then noir / noire and
+// vert / verte (day 2), bleu / bleue and gris / grise (day 4), rouge, jaune, rose (day 6).
+const C = (start, colour, pic, day) => P(`${cap(start)} ${colour}.`, colour, { prefix: start, pic, who: '', colour: true, say: `${cap(start)} ${colour}.`, sentence: `${cap(start)} ${colour}.`, day });
+const COULEURS = [
+  C('le mouton est', 'blanc', '🐑', 0), C('le lait est', 'blanc', '🥛', 0),
+  C('la lune est', 'blanche', '🌕', 0), C('la neige est', 'blanche', '❄️', 0), C('la maison est', 'blanche', '🏠', 0),
+  C('le chat est', 'noir', '🐈‍⬛', 2), C('la nuit est', 'noire', '🌃', 2), C('le sapin est', 'vert', '🌲', 2), C('la pomme est', 'verte', '🍏', 2),
+  C('le ciel est', 'bleu', '🌤️', 4), C('la mer est', 'bleue', '🌊', 4), C('le loup est', 'gris', '🐺', 4), C('la souris est', 'grise', '🐭', 4),
+  C('la fraise est', 'rouge', '🍓', 6), C('le soleil est', 'jaune', '☀️', 6), C('la banane est', 'jaune', '🍌', 6), C('le cochon est', 'rose', '🐷', 6),
+];
+
 // The sentences of the mini-sentence week (served once SENTENCES_READY is true): three words
 // for the first two days, then four or five.
 export const MINI_PHRASES = [
@@ -125,6 +171,7 @@ export const MINI_PHRASES = [
   { text: 'Il est dans la forêt.', day: 2 }, { text: 'Elle a un chat.', day: 2 }, { text: 'Vous allez à la mine ?', day: 2 },
   { text: 'Je suis content.', day: 2 }, { text: 'Tu as un chien ?', day: 2 }, { text: 'Nous allons au château.', day: 2 },
   { text: 'Elle va à la plage.', day: 2 }, { text: 'Vous êtes mes amis.', day: 2 }, { text: 'Il a une épée.', day: 2 },
+  { text: 'La lune est blanche.', day: 2 }, { text: 'Le mouton est blanc.', day: 2 },
 ];
 
 export const PROGRAMME_WORDS = {
@@ -132,15 +179,21 @@ export const PROGRAMME_WORDS = {
   'etre-avoir-aller': ETRE_AVOIR_ALLER,
   'premier-groupe': PREMIER_GROUPE,
   'faire-dire-venir': FAIRE_DIRE_VENIR,
+  articles: ARTICLES,
+  couleurs: COULEURS,
   'mini-phrases': [],
 };
 
 // Which theme runs on a given day ('YYYY-MM-DD'): the calendar ('auto'), a theme the parents
 // picked, or none ('off').
 export function themeFor(dateISO, setting = 'auto') {
-  if (setting === 'off') return null;
-  if (setting && setting !== 'auto') return PROGRAMME.find((p) => p.id === setting) ?? null;
-  return PROGRAMME.find((p) => p.from <= dateISO && dateISO <= p.to) ?? null;
+  return themesFor(dateISO, setting)[0] ?? null;
+}
+// All the themes running on a day: one per strand on the calendar, or the one the parents picked.
+export function themesFor(dateISO, setting = 'auto') {
+  if (setting === 'off') return [];
+  if (setting && setting !== 'auto') return PROGRAMME.filter((p) => p.id === setting);
+  return PROGRAMME.filter((p) => p.from <= dateISO && dateISO <= p.to);
 }
 
 // The words a theme serves on a given day of the theme (0 = its first day): items open by stages.
@@ -160,5 +213,5 @@ export function themeDay(theme, dateISO, since) {
 
 // The next themes on the calendar after a day (for the parents' corner).
 export function upcomingThemes(dateISO) {
-  return PROGRAMME.filter((p) => p.to >= dateISO);
+  return PROGRAMME.filter((p) => p.to >= dateISO).sort((a, b) => a.from.localeCompare(b.from));
 }
