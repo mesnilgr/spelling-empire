@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.23.0 — J5 : Les pouvoirs des mots ⚡
+
+- ⚡ **La pierre des pouvoirs** attend au bout du chemin, devant la chaumière. Quand on la touche la première fois, elle se réveille : elle monte en tournant, ses runes s'allument en arc-en-ciel, des étincelles montent une à une vers **cinq nuages** au-dessus du village (petite note à chaque nuage), une étoile apparaît sur chacun, fanfare et confettis. Alaric dit : « Les mots ont des pouvoirs ! »
+- 🦘 **Un mot difficile = un pouvoir de 20 secondes** (un mot du niveau au-dessus ; la première lettre et les aides habituelles restent là, et même un mot recopié donne le pouvoir). Un compte à rebours s'affiche en haut (🦘 18 s), avec trois petits bips à la fin ; il s'arrête pendant qu'on épelle. **Un mot difficile réussi du premier coup n'importe où** donne aussi un pouvoir en bonus.
+- ☁️ **Partie 1 : saute jusqu'aux nuages.** Le super saut fait monter trois fois plus haut. Chaque nuage fait « Boing ! » quand on atterrit dessus et demande un mot : l'étoile du nuage (+2 ★) et le pouvoir rechargé. Le chien saute sur les nuages avec le héros. Les cinq nuages = 10 ★ et **un petit nuage qui flotte au-dessus de la tête du héros** (à montrer !).
+- 💨 **Vitesse** (en bonus) : on court presque deux fois plus vite, et **les lettres du mot réussi forment une traînée de couleurs** derrière le héros.
+- 🦖 **Partie 2** (au retour suivant, au moins 30 minutes plus tard, ou après 15 minutes de jeu) : la pierre a deux nouveaux pouvoirs. **Géant** : le héros devient très grand, le chien aussi, chaque pas fait « Boum ! » et **les animaux autour rebondissent** en criant (objectif : 5 animaux, +5 ★). **Planer** : on monte sur le plus haut nuage et on plane doucement à travers **cinq anneaux dorés**, au-dessus de la chaumière et de la fontaine (les anneaux attirent un peu le héros pour l'aider). À l'atterrissage, **un mot par anneau** le garde (il devient vert). Les cinq anneaux = **la cape du Héros des nuages** 🦸, portée tout de suite.
+- 😂 Gag : une grosse chute sans pouvoir fait « Pouf ! » et le héros s'écrase comme une crêpe avant de se relever.
+- 🎯 Nouveau défi du matin possible (une fois la pierre réveillée) : « Gagne un pouvoir avec un mot difficile ».
+- 📜 Le journal montre les deux parties des pouvoirs, les nuages, les animaux rebondis et les anneaux, écrit et lu.
+- 🐔 **Cocotte** voulait voir le village d'en haut : elle est assise sur le plus haut des nuages, au-dessus de la chaumière. Depuis le sol, on l'entend dire qu'il faut le super saut.
+- ❓ Devinette d'Alaric : « Qu'est-ce qui monte et ne redescend jamais ? »
+- Version réduite du plan, avec le pouvoir géant en plus : le pouvoir « tout petit » et la pièce secrète de la taverne ne sont pas encore là.
+
 ## v1.22.1 — Les articles et les couleurs, petit à petit
 
 - 🔤 **Articles (du 24 novembre au 6 décembre)** : une image et le nom écrit en gris après les cases (🏠 … maison), l'enfant écrit l'article qu'il entend. Le / la d'abord, puis un / une à partir du 27 novembre, les / des à partir du 30, et l' à partir du 3 décembre (l'arbre, l'école). Pas de « une lune » ni « une neige ».

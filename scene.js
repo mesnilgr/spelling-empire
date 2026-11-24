@@ -29,6 +29,7 @@ import { BLOCKS, blockMat, texBox } from './textures.js';
 import { mergeStatic, LightPool, QualityManager } from './perf.js';
 import { Terrain, STEP_UP } from './terrain.js';
 import { buildMaterialIcon, buildChest, buildMushroomPatch } from './icons.js';
+import { WordPowers } from './powers.js';
 
 // Each building has its own blocks, roof and trim so the village has variety.
 const HOUSE_STYLES = {
@@ -233,6 +234,9 @@ export class GameScene {
     this.flame = new Flammeche(this);
     // The collection album (J4): a lectern with the big open book, next to the cottage.
     this.albumStand = new AlbumStand(this);
+    // Word powers (J5): the power stone on the path south of the cottage, and the five clouds above.
+    (this.walkways ??= []);
+    this.powers = new WordPowers(this);
     const hen = cocotteToday(Math.max(...NEWS.filter((n) => !n.from).map((n) => n.day)));
     if (hen && !hen.album) this.cocotte = new Cocotte(this, hen);
   }
@@ -897,11 +901,11 @@ export class GameScene {
       if (!this.sun.target.parent) this.scene.add(this.sun.target);
     }
   }
-  teleport(x, z, ry = 0) {
+  teleport(x, z, ry = 0, up = undefined) {
     if (this.horses?.riding) { this.horses.dismount(); this.onDismount?.(); }
     this.autoWalk = null;
     this.playerVY = 0;
-    this.player.position.set(x, this.groundAt(x, z), z);
+    this.player.position.set(x, this.groundAt(x, z, up), z);
     this.player.rotation.y = ry;
     for (const c of this.companions) c.mesh.position.set(x + c.offset.x, this.groundAt(x, z), z + c.offset.z);
     this.particleBurst(new THREE.Vector3(x, 1, z), '#b08aff', 24);
@@ -1937,13 +1941,15 @@ export class GameScene {
       }
     }
     if (len > 0) {
-      const speed = PLAYER_SPEED * (this.speedBoostUntil > this.clock.elapsedTime ? 1.6 : 1) * (this.horses?.riding ? RIDE.speed : 1);
+      const pw = this.power, speed = PLAYER_SPEED * (this.speedBoostUntil > this.clock.elapsedTime ? 1.6 : 1) * (this.horses?.riding ? RIDE.speed : 1) * (pw === 'speed' ? 1.8 : pw === 'giant' ? 1.5 : pw === 'glide' && !this.onGround ? 1.5 : 1);
       const p = this.player.position;
       const nx = p.x + mx * speed * dt;
       const nz = p.z + mz * speed * dt;
       const before = p.clone();
-      if (!this._blocked(nx, p.z, p.y)) p.x = nx;
-      if (!this._blocked(p.x, nz, p.y)) p.z = nz;
+      // Already inside an obstacle (landed there from the sky): free to walk out.
+      const stuck = this._checkCollision(p.x, p.z);
+      if (!this._blocked(nx, p.z, p.y, stuck)) p.x = nx;
+      if (!this._blocked(p.x, nz, p.y, stuck)) p.z = nz;
       // Near a magic bridge, gently pull the hero onto its axis (easy to cross with the joystick).
       for (const w of this.walkways ?? []) {
         if (w.circle || w.box || w.axis === 'z' || p.x < w.x0 - 1.4 || p.x > w.x1 + 1.4 || Math.abs(p.z - w.z) > 1.4) continue;
@@ -1974,9 +1980,12 @@ export class GameScene {
     {
       const p = this.player.position;
       this.playerVY = (this.playerVY ?? 0) - 24 * dt;
+      if (this.power === 'glide' && this.playerVY < -2.4) this.playerVY = -2.4; // gliding (J5)
       p.y += this.playerVY * dt;
-      const ground = this.groundAt(p.x, p.z);
+      // The clouds (J5) carry the hero only from above (groundAt with the hero's height).
+      const ground = this.groundAt(p.x, p.z, p.y);
       if (p.y <= ground) {
+        if (this.playerVY < -13) this.onBigLanding?.(this.playerVY);
         p.y = ground;
         this.playerVY = 0;
         this.onGround = true;
@@ -2022,23 +2031,26 @@ export class GameScene {
   }
 
   // Player-only blocking: obstacles plus terrain steps too high to walk up.
-  _blocked(x, z, y) {
+  _blocked(x, z, y, stuck = false) {
     if (Math.hypot(x, z) > WORLD_RADIUS) return true; // edge of the world
     if (this.marshMist && x > MIST_X - 1.2 && x < MIST_X + 6) return true; // the mist (Wind spell)
-    if (this._checkCollision(x, z)) return true;
+    // High up in the sky (clouds, gliding), trees and walls are far below.
+    const high = y !== undefined && y - this.terrain.heightAt(x, z) > 4;
+    if (!stuck && !high && this._checkCollision(x, z)) return true;
     if (this.horses?.riding && this._insideAnyHouse(x, z, 0.4)) return true; // no horses indoors
     return this.groundAt(x, z) - y > STEP_UP;
   }
 
   // Bridges built by magic: walkable strips over the water, with their own height.
-  _walkwayAt(x, z) {
+  _walkwayAt(x, z, y) {
     for (const w of this.walkways ?? []) {
+      if (w.cloud && (y === undefined || y < w.h - 0.7)) continue;
       if (w.box ? x > w.x0 && x < w.x1 && z > w.z0 && z < w.z1 : w.circle ? Math.hypot(x - w.x, z - w.z) < w.r : w.axis === 'z' ? Math.abs(x - w.x) < w.hw && z > Math.min(w.z0, w.z1) && z < Math.max(w.z0, w.z1) : x > w.x0 && x < w.x1 && Math.abs(z - w.z) < w.hw) return w;
     }
     return null;
   }
-  groundAt(x, z) {
-    const w = this._walkwayAt(x, z);
+  groundAt(x, z, y) {
+    const w = this._walkwayAt(x, z, y);
     const t = this.terrain.heightAt(x, z);
     return w ? Math.max(t, w.y(x, z)) : t;
   }
@@ -2056,7 +2068,7 @@ export class GameScene {
   jump() {
     // A little forgiveness: a jump still works just after walking off an edge.
     if (!this.onGround && this.clock.elapsedTime - (this.lastGroundAt ?? -9) > 0.18) return false;
-    this.playerVY = this.horses?.riding ? RIDE.jump : 8.2;
+    this.playerVY = this.horses?.riding ? RIDE.jump : this.power === 'jump' || this.power === 'glide' ? 15 : this.power === 'giant' ? 10.5 : 8.2;
     this.onGround = false;
     this.onJump?.();
     return true;
@@ -2451,7 +2463,7 @@ export class GameScene {
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
     this._tickRegions();
-    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); } this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
+    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); } this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

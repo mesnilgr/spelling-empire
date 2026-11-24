@@ -197,6 +197,8 @@ export class FaunaManager {
       // Hoppers hop; others waddle; grazing animals dip their heads now and then.
       if (moving && a.def.hop) m.position.y = g + Math.abs(Math.sin(a.t * 10)) * 0.18;
       else m.position.y = g + (moving ? Math.abs(Math.sin(a.t * 8)) * 0.04 : 0);
+      // A giant's step (J5): boing, the animal bounces up.
+      if (a.bounceT > 0) { a.bounceT -= dt; const k = 1 - Math.max(0, a.bounceT) / 0.7; m.position.y += Math.sin(k * Math.PI) * 1.4; m.rotation.x = Math.sin(k * Math.PI * 2) * 0.4; continue; }
       m.rotation.z = moving && !a.def.hop ? Math.sin(a.t * 8) * 0.06 : 0;
       m.rotation.x = !moving && (a.kind.startsWith('sheep') || a.kind === 'cow' || a.kind === 'goat' || a.kind === 'llama' || a.kind === 'lamb') && Math.sin(a.t * 0.7) > 0.6 ? 0.18 : 0;
     }

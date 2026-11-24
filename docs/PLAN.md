@@ -146,7 +146,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Voici ton album ! Chaque animal, chaque lieu, chaque boss va s'y coller : épelle son nom pour coller la vignette. Remplis une page entière pour gagner un costume ! »
   - Devinette : « J'ai des feuilles, mais je ne suis pas un arbre. Qui suis-je ? » — « Un livre ! »
 
-- [ ] **J5 · mar. 24 nov. · v1.23.0 — Pouvoirs des mots.**
+- [x] **J5 · mar. 24 nov. · v1.23.0 — Pouvoirs des mots.** (réduite, avec géant en plus : vitesse, super saut et 5 nuages en partie 1 ; géant et planer à travers 5 anneaux en partie 2 ; « tout petit » et la pièce secrète de la taverne pas encore faits. La pierre des pouvoirs est au bout du chemin, devant la chaumière, les nuages montent jusqu'au-dessus de la chaumière)
   - Session 1 : un mot difficile (niveau au-dessus de l'âge ou mot « en cours ») réussi du premier coup donne un
     pouvoir de 20 s : **vitesse** ou **super saut** (icône + compte à rebours). Parcours « Saute jusqu'aux
     nuages » : 5 nuages au-dessus du village, avec des étoiles, atteignables seulement en super saut.

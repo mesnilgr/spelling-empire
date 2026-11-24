@@ -19,6 +19,7 @@ import { DTX, drawDefis, defiById } from './daily.js';
 import { cocotteToday, COCOTTE } from './cocotte.js';
 import { ATX, ALBUM_ANIMALS, KIND_TO_CARD, PLACE_WORDS, PLACE_HINTS, BOSS_HINTS, DISCOVERY, ALBUM_GOAL1, GOLD_CHANCE, PAGES1, PAGES2 } from './album.js';
 import { FTX, CALENDAR, FLAME_STEPS, SNEEZE_STARS, HEARTH } from './flame.js';
+import { PTX, CLOUDS, RINGS, POWER_TIME, GLIDE_TIME, ANIMALS_GOAL, POWER_KINDS } from './powers.js';
 import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themesFor, themeWords, themeDay, upcomingThemes } from './programme.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
@@ -696,7 +697,7 @@ function init3DScene() {
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -720,7 +721,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand'].includes(obj.kind)) continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand', 'powerstone'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -766,6 +767,7 @@ function saveGame() {
     horses: game.horses ?? {},
     golemFlowerDay: game.golemFlowerDay ?? null,
     flame: game.flame ?? null,
+    powers: game.powers ?? null,
     album: game.album ?? null,
     heartsFrom: game.heartsFrom ?? [],
     savedAt: Date.now(),
@@ -798,6 +800,7 @@ function continueGame() {
     horses: JSON.parse(JSON.stringify(s.horses ?? {})),
     golemFlowerDay: s.golemFlowerDay ?? null,
     flame: s.flame ? JSON.parse(JSON.stringify(s.flame)) : null,
+    powers: s.powers ? JSON.parse(JSON.stringify(s.powers)) : null,
     album: s.album ? JSON.parse(JSON.stringify(s.album)) : null,
     heartsFrom: [...(s.heartsFrom ?? [])],
   });
@@ -901,6 +904,7 @@ function interactWith(obj) {
   if (obj.kind === 'cocotte') { cocotteInteract(); return; }
   if (obj.kind === 'flame') { flameInteract(); return; }
   if (obj.kind === 'albumstand') { albumStandInteract(); return; }
+  if (obj.kind === 'powerstone') { powerStoneInteract(); return; }
   if (obj.kind === 'npc' && obj.npcId === 'mage' && storyAt('talkMage')) { playScene('mage1', () => { advanceStory('talkMage'); toast('🔮 ' + t.grimoireTitle + ' !'); }); return; }
   if (obj.kind === 'npc' && (obj.npcId === 'forester' || obj.npcId === 'fisher')) {
     const id = obj.npcId;
@@ -1137,7 +1141,7 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐', quest: true });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum(); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#collect-modal').hidden; tickNews(); }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum(); tickPowers(0.3); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#collect-modal').hidden; tickNews(); }, 300);
 
 /* ===== FLASH CHALLENGE: never more than 2 minutes of play without a word ===== */
 const FLASH_AFTER = 120; // seconds of play
@@ -1351,13 +1355,14 @@ function onPartTwo(key) {
   if (key === `d:${today()}`) ensureDefis();
   if (key === 'J3') onFlamePartTwo();
   if (key === 'J4') onAlbumPartTwo();
+  if (key === 'J5') onPowersPartTwo();
 }
 
 /* ===== DAILY CHALLENGES, THE JUMPING CHEST AND COCOTTE (J2) ===== */
 const dtx = () => DTX[lang] ?? DTX.fr;
 const defiText = (d) => d.text[lang] ?? d.text.fr;
 const latestDay = () => Math.max(...NEWS.filter((n) => !n.from).map((n) => n.day));
-const henRow = () => cocotteToday(latestDay());
+const henRow = () => cocotteToday(window.__se?.henDay ?? latestDay()); // henDay: tests of an older release's hiding spot
 const henFound = () => { const r = henRow(); return !r || (progress.feathers ?? []).includes(r.day); };
 let defiMsgs = [], defiMsgAt = 0, defisAnnounced = {};
 // Challenges start once the story has begun (after the introduction).
@@ -1368,6 +1373,7 @@ function defisCtx() {
     food: ['meat', 'fish', 'brochette'].some((f) => (game?.materials[f] ?? 0) > 0),
     horse: Object.values(game?.horses ?? {}).some((h) => h.tamed),
     cocotte: (!!scene3D?.cocotte || !!henRow()?.album) && !henFound(),
+    powers: !!game?.powers?.awake,
   };
 }
 function ensureDefis() {
@@ -1516,6 +1522,8 @@ function openJumpChest() {
 function cocotteInteract() {
   const hen = scene3D.cocotte;
   if (!hen || !hen.obj.active) return;
+  // On the highest cloud (J5): she can only be reached from up there.
+  if (hen.row.cloud && scene3D.player.position.y < hen.base.y - 1.5) { const m = ptx().henHigh; toast(`🐔 ${m}`, 4000); speak(m, 0.95); return; }
   hen.flyAway();
   const p = hen.mesh.position.clone(); p.y += 0.6;
   for (let i = 0; i < 4; i++) setTimeout(() => scene3D.particleBurst(p, i % 2 ? '#ffd34a' : '#fff4c0', 18), i * 160);
@@ -1547,7 +1555,7 @@ function henHint() {
   if (!r) return '';
   return henFound() ? dtx().cocotteFound : r.hint[lang] ?? r.hint.fr;
 }
-function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), albumSpeech(), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
+function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), albumSpeech(), powersSpeech(), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
 function renderToday() {
   const box = $('#journal-today');
   if (!box) return;
@@ -1569,6 +1577,7 @@ function renderToday() {
   }
   for (const line of flameLines()) kids.push(el('p', 'journal-flame', line));
   for (const line of albumLines()) kids.push(el('p', 'journal-album', line));
+  for (const line of powersLines()) kids.push(el('p', 'journal-powers', line));
   if (henRow()) kids.push(el('p', 'journal-hen', `🐔 ${x.cocotteTitle} ${henHint()}`), el('p', 'journal-feathers', x.feathers((progress.feathers ?? []).length)));
   const listen = el('button', 'btn btn-ghost btn-small', '🔊');
   listen.type = 'button';
@@ -2061,7 +2070,7 @@ function findCocotte() {
   const o = scene3D.cocotte?.obj;
   if (!o) return 'missing';
   if (!o.active) return 'inactive';
-  scene3D.teleport(o.worldPos.x + 0.9, o.worldPos.z + 0.9);
+  scene3D.teleport(o.worldPos.x + 0.9, o.worldPos.z + 0.9, 0, r.cloud ? o.worldPos.y : undefined);
   scene3D.onInteractObject(o);
   return 'ok';
 }
@@ -2125,6 +2134,242 @@ function albumSpeech() {
   if (!l.length) return '';
   if (!game.album?.opened) return l[0].replace(/^\S+ /, '');
   return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${l.slice(1).join('. ').replace(/·/g, '.').replace('/', ' sur ')}.`;
+}
+
+/* ===== WORD POWERS (J5) ===== */
+// The power stone wakes up (wow: sparkles fly up to the five clouds) and gives a power for a hard
+// word: super jump in session 1 (and speed as a bonus), giant then glide in session 2. A hard word
+// spelled right the first time anywhere also gives a power. Session 1: land on each of the five
+// clouds and spell its word (a star, the power recharged); all five = a little cloud that follows
+// the hero. Session 2 (part 2 of J5): as a giant, make 5 animals bounce; then glide from the highest
+// cloud through the five rings (a word on landing keeps them): the Cloud Hero cape.
+const ptx = () => PTX[lang] ?? PTX.fr;
+function powersState() { return game ? (game.powers ??= { awake: false, clouds: [], rings: [], animals: 0, bounced: [], petCloud: false, cape: false, uses: 0 }) : null; }
+const powersPartTwo = () => releasePart(5) === 2;
+const powersDone1 = (w = game?.powers) => (w?.clouds?.length ?? 0) >= CLOUDS.length;
+const powersDone2 = (w = game?.powers) => !!w?.cape && (w?.animals ?? 0) >= ANIMALS_GOAL;
+let powerMsgs = [], powersP2Said = false, powerLastCloud = -1, powerLastSec = -1, powerRingsPending = [], powerAnimalSaidAt = 0;
+function queuePowerMsg(text, say = text.replace(/^\S+ /, ''), sfx = null) { powerMsgs.push({ text, say, sfx }); }
+function sfxPowerUp() { playTone(330, 0.12, 'triangle', 0.1, 0, 660); playTone(495, 0.12, 'triangle', 0.1, 0.1, 990); playTone(660, 0.25, 'triangle', 0.1, 0.2, 1320); }
+function sfxBoing() { playTone(180, 0.35, 'sine', 0.14, 0, 520); playTone(260, 0.2, 'triangle', 0.05, 0.05, 700); }
+function sfxPouf() { playNoise({ type: 'lowpass', freq: 500, q: 0.8, volume: 0.2, duration: 0.3 }); playTone(120, 0.25, 'sine', 0.1, 0, 60); }
+function sfxStomp() { playNoise({ type: 'lowpass', freq: 160, q: 1.5, volume: 0.25, duration: 0.25 }); playTone(60, 0.3, 'sine', 0.16, 0, 40); }
+function sfxRing() { playTone(880, 0.1, 'triangle', 0.12); playTone(1175, 0.1, 'triangle', 0.12, 0.08); playTone(1568, 0.18, 'triangle', 0.12, 0.16); }
+function powerName(kind) { return ptx().names[kind] ?? kind; }
+// A hard word: above the child's age level, or a word that was tricky before.
+function isHardWord(w, wasDifficult) {
+  if (!w) return false;
+  const ladder = AGE_LADDER[lang] ?? AGE_LADDER.fr, a = AGE_START[lang]?.[progress.age ?? 6] ?? 0;
+  return ladder.indexOf(w.level) > a || !!wasDifficult;
+}
+function floatAbove(text, color = '#ffe08a', dy = 2.2) {
+  const p = scene3D?.player.position;
+  if (!p) return;
+  const s = scene3D.worldToScreen(p.clone().setY(p.y + dy * scene3D.player.scale.y));
+  if (s) showFloatingText(s.x, s.y, text, color);
+}
+function applyPowersLook() {
+  const pw = scene3D?.powers, w = game?.powers;
+  if (!pw) return;
+  pw.setState({ awake: !!w?.awake, cloudsGot: w?.clouds ?? [], ringsOn: powersPartTwo() && !!w?.awake, ringsGot: w?.rings ?? [], petCloud: !!w?.petCloud });
+  const want = ptx().label;
+  if (pw.obj.labelText !== want) { pw.obj.labelText = want; scene3D.setSpotMaterial(pw.obj, 'talk', want); }
+}
+// The power the stone gives now.
+function stonePower() {
+  const w = powersState();
+  if (!powersPartTwo()) return 'jump';
+  if (w.animals < ANIMALS_GOAL) return 'giant';
+  if (w.rings.length < RINGS.length) return 'glide';
+  return ['jump', 'giant', 'glide', 'speed'][w.uses % 4];
+}
+function setupPowers() {
+  const pw = scene3D?.powers;
+  if (!pw || pw.wired) return;
+  pw.wired = true;
+  pw.onCloudPop = (i) => { playTone(520 + i * 130, 0.12, 'triangle', 0.12); playTone(780 + i * 190, 0.16, 'triangle', 0.08, 0.06); };
+  pw.onStomp = (hit) => {
+    sfxStomp();
+    floatAbove(ptx().stomp, '#ffd6a0', 2.6);
+    if (!hit.length) return;
+    const w = powersState(), list = scene3D.fauna.list;
+    for (const a of hit.slice(0, 2)) ANIMAL_CRIES[a.kind]?.();
+    let fresh = 0;
+    for (const a of hit) { const id = list.indexOf(a); if (!w.bounced.includes(id)) { w.bounced.push(id); fresh++; } }
+    if (!fresh || w.animals >= ANIMALS_GOAL) return;
+    w.animals = Math.min(ANIMALS_GOAL, w.bounced.length);
+    if (w.animals >= ANIMALS_GOAL) { queuePowerMsg(ptx().animalsDone, undefined, 'victory'); progress.stars += 5; game.starsEarned += 5; updateGameUI(); }
+    else if (performance.now() - powerAnimalSaidAt > 2500) { powerAnimalSaidAt = performance.now(); toast(ptx().animal(w.animals), 2500); speak(ptx().animal(w.animals).replace(/^\S+ /, ''), 1); }
+    saveGame();
+  };
+  pw.onRing = (i) => {
+    sfxRing();
+    if (!powerRingsPending.includes(i) && !game.powers?.rings.includes(i)) powerRingsPending.push(i);
+    const n = new Set([...(game.powers?.rings ?? []), ...powerRingsPending]).size;
+    floatAbove(ptx().ring(n).replace(/^\S+ /, '⭕ '), '#ffe08a');
+    speak(ptx().ring(n).replace(/^\S+ /, ''), 1.05);
+  };
+  scene3D.onBigLanding = () => { pw.squash = 1; pw.poufs = (pw.poufs ?? 0) + 1; sfxPouf(); floatAbove(ptx().pouf, '#ffffff', 1.8); scene3D.particleBurst(scene3D.player.position.clone().setY(scene3D.player.position.y + 0.2), '#e8e8e8', 14); };
+}
+function givePower(kind, word, { bonus = false } = {}) {
+  const pw = scene3D?.powers;
+  if (!pw) return '';
+  const w = powersState();
+  w.uses++;
+  pw.give(kind, word?.word ?? '', kind === 'glide' ? GLIDE_TIME : POWER_TIME);
+  powerLastSec = -1;
+  sfxPowerUp();
+  defiEvent('power');
+  const x = ptx(), dog = game.pet?.tamed;
+  const text = bonus ? x.hardBonus(powerName(kind)) : x.got[kind];
+  const say = `${bonus ? x.hardBonus(powerName(kind)).replace(/^\S+ /, '') + ' ' : ''}${x.gotSay[kind]}${dog && kind === 'giant' ? ` ${x.dogToo}` : ''}`;
+  updatePowerHud();
+  saveGame();
+  return { text: `${text}${dog && kind === 'giant' ? ` ${x.dogToo}` : ''}`, say };
+}
+function powerStoneInteract() {
+  const w = powersState(), x = ptx(), pw = scene3D.powers;
+  setupPowers();
+  if (!w.awake) {
+    // Wow: the stone wakes up, sparkles fly to the five clouds, the stars appear.
+    w.awake = true;
+    pw.wake();
+    applyPowersLook();
+    setTimeout(() => { sfxVictory(); launchConfetti(); }, 2600);
+    toast(`⚡ ${x.wake}`, 6000);
+    speak(x.wake, 0.95);
+    saveGame();
+    setTimeout(() => { if ($('#spell-modal').hidden && !spellContext) openStoneWord(); }, 5500);
+    return;
+  }
+  openStoneWord();
+}
+function openStoneWord() {
+  const kind = stonePower();
+  const lvl = (progress.age ?? 6) <= 5 ? levelAt(0) : levelAt(1);
+  spellContext = { type: 'powers', mode: 'stone', power: kind, word: pickWord(lvl, { programme: false }), tries: 0 };
+  openSpellModal(`⚡ ${ptx().stone}`, ptx().stoneInstr(powerName(kind)), POWER_KINDS[kind].emoji);
+}
+function openPowerWord(mode, extra = {}) {
+  const x = ptx();
+  spellContext = { type: 'powers', mode, word: pickWord(levelAt(0)), tries: 0, ...extra };
+  openSpellModal(mode === 'cloud' ? `☁️ ${x.name}` : `⭕ ${x.name}`, mode === 'cloud' ? x.cloudInstr : x.landInstr(extra.rings[0] + 1), mode === 'cloud' ? '☁️' : '⭕');
+}
+// After a word of the powers: the result shown in the spelling window.
+function powersSpelled(ctx, copied) {
+  const w = powersState(), x = ptx(), pw = scene3D.powers;
+  if (ctx.mode === 'stone') return givePower(ctx.power, ctx.word);
+  if (ctx.mode === 'cloud') {
+    const k = ctx.cloud;
+    if (!w.clouds.includes(k)) w.clouds.push(k);
+    progress.stars += 2; game.starsEarned += 2;
+    pw.refill();
+    const c = CLOUDS[k];
+    for (const col of ['#ffd34a', '#ffffff']) scene3D.particleBurst({ x: c.x, y: c.h + 0.8, z: c.z }, col, 22);
+    sfxStar();
+    applyPowersLook();
+    let after = null;
+    if (powersDone1(w) && !w.petCloud) {
+      w.petCloud = true;
+      progress.stars += 10; game.starsEarned += 10;
+      after = () => { applyPowersLook(); queuePowerMsg(x.cloudsDone, x.cloudsDoneSay, 'victory'); if (powersPartTwo()) onPowersPartTwo(true); };
+    }
+    saveGame(); updateGameUI();
+    return { text: x.cloudStar(k + 1), say: x.cloudStarSay(k + 1), after };
+  }
+  // A landing after the rings: one word per ring passed keeps it.
+  const got = [...new Set([...w.rings, ...(ctx.rings ?? [])])];
+  w.rings = got;
+  progress.stars += 2; game.starsEarned += 2;
+  applyPowersLook();
+  const queue = (ctx.queue ?? []).filter((i) => !got.includes(i));
+  let after = queue.length ? () => openPowerWord('land', { rings: [queue[0]], queue: queue.slice(1) }) : null, text = x.ringsKept(got.length), say = text.replace(/^\S+ /, '');
+  if (got.length >= RINGS.length && !w.cape) {
+    w.cape = true;
+    unlockCostume('cloudhero');
+    costumeState().current = 'cloudhero'; applyCostume(); saveProgress();
+    text = x.ringsDone; say = x.ringsDoneSay;
+    after = () => { sfxVictory(); launchConfetti(); };
+  }
+  saveGame(); updateGameUI();
+  return { text, say, after };
+}
+// A hard word right the first time (anywhere): a power as a bonus.
+function powersHardWord(word, wasDifficult, type) {
+  const w = game?.powers;
+  if (!w?.awake || !scene3D?.powers || type === 'powers' || bossFight || scene3D.powers.power) return;
+  if (!isHardWord(word, wasDifficult)) return;
+  const kinds = powersPartTwo() ? ['speed', 'jump', 'giant', 'glide'] : ['speed', 'jump'];
+  const kind = kinds[(w.uses + 1) % kinds.length];
+  const r = givePower(kind, word, { bonus: true });
+  if (r) setTimeout(() => queuePowerMsg(r.text, r.say, 'pop'), 400);
+}
+function onPowersPartTwo(force = false) {
+  const w = game?.powers;
+  if (!w?.awake || powersP2Said || (powersDone2(w) && !force)) return;
+  powersP2Said = true;
+  applyPowersLook();
+  queuePowerMsg(ptx().partTwo, undefined, 'pop');
+}
+function updatePowerHud() {
+  const hud = $('#power-hud'), pw = scene3D?.powers?.power;
+  if (!hud) return;
+  hud.hidden = !pw || document.body.dataset.screen !== 'game';
+  if (!pw) return;
+  const label = `${POWER_KINDS[pw.kind].emoji} ${Math.max(0, Math.ceil(pw.left))} s`;
+  if (hud.textContent !== label) hud.textContent = label;
+  hud.classList.toggle('is-low', pw.left < 5);
+}
+function tickPowers(dt) {
+  if (!game || !scene3D?.powers || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
+  if (game.story?.intro) partState('J5');
+  setupPowers();
+  const pw = scene3D.powers, w = powersState(), x = ptx();
+  applyPowersLook();
+  if (powersPartTwo()) onPowersPartTwo();
+  const busy = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#collect-modal').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight;
+  // The power's clock (paused while a word is spelled); the glide waits for the landing.
+  const cur = pw.power;
+  if (cur && !busy) {
+    cur.left -= dt;
+    const sec = Math.ceil(cur.left);
+    if (sec <= 3 && sec > 0 && sec !== powerLastSec) { powerLastSec = sec; playTone(660, 0.06, 'square', 0.05); }
+    if (cur.left <= 0 && (cur.kind !== 'glide' || scene3D.onGround)) { pw.stop(); queuePowerMsg(x.over(powerName(cur.kind))); }
+  }
+  updatePowerHud();
+  // Landing on a cloud: boing! A new cloud asks for its word.
+  const k = pw.onCloud();
+  if (k >= 0 && k !== powerLastCloud) { sfxBoing(); pw.squash = 0.8; floatAbove(x.boing, '#ffffff', 1.9); }
+  powerLastCloud = k;
+  if (k >= 0 && w.awake && !w.clouds.includes(k) && !busy && !spellContext) openPowerWord('cloud', { cloud: k });
+  // Back on the ground after flying through rings: a word keeps them.
+  if (scene3D.onGround && k < 0 && !busy && !spellContext && powerRingsPending.length) {
+    const rings = powerRingsPending; powerRingsPending = [];
+    pw.ringsThisFlight.clear();
+    openPowerWord('land', { rings: [rings[0]], queue: rings.slice(1) });
+  } else if (scene3D.onGround) pw.ringsThisFlight.clear();
+  if (powerMsgs.length && !busy && performance.now() - defiMsgAt > 3800) {
+    defiMsgAt = performance.now();
+    const m = powerMsgs.shift();
+    toast(m.text, 4500);
+    speak(m.say, 0.95);
+    if (m.sfx === 'victory') { sfxVictory(); launchConfetti(); } else if (m.sfx === 'craft') sfxCraft(); else if (m.sfx === 'pop') sfxPop();
+  }
+}
+// The journal: the two parts of the powers and the counts, written and read.
+function powersLines() {
+  const w = game?.powers, x = ptx(), dx = dtx();
+  if (!game || !scene3D?.powers || !w?.awake) return scene3D?.powers && game ? [`⚡ ${x.name} : ${x.notYet}`] : [];
+  const two = powersPartTwo();
+  const p1 = powersDone1(w) ? dx.partDone : `: ${dx.partPlay}`;
+  const p2 = !two ? `: ${dx.partLater}` : powersDone2(w) ? dx.partDone : `: ${dx.partOpen}`;
+  return [`⚡ ${x.name} — ${dx.part(p1, p2)}`, x.lines(w.clouds.length, w.rings.length, w.animals)];
+}
+function powersSpeech() {
+  const l = powersLines(), dx = dtx();
+  if (!l.length) return '';
+  if (l.length === 1) return l[0].replace(/^\S+ /, '');
+  return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${l[1].replace(/·/g, '.').replace(/(\d)\/(\d)/g, '$1 sur $2')}.`;
 }
 
 /* ===== HORSES ===== */
@@ -2850,6 +3095,7 @@ function handleSpellSuccess() {
   const firstTry = tries === 1 && !copied && !spellContext.hwMissed;
   const wordStr = word.word;
   const cardKey = word.id ?? word.word;
+  const wasDifficult = !!progress.difficult[cardKey];
 
   if (copied) {
     streak = 0;
@@ -2882,6 +3128,7 @@ function handleSpellSuccess() {
     if (firstTry) flameFirstTry();
     if (firstTry && type !== 'flame') flameLog(1);
     if (scene3D?.horses?.riding) defiEvent('horseWord');
+    if (firstTry) powersHardWord(word, wasDifficult, type);
   }
   if (type === 'mine') {
     defiEvent('mine');
@@ -3001,6 +3248,12 @@ function handleSpellSuccess() {
     spellContext.after = () => { if (!game.pet?.tamed) { game.pet = { tamed: true, name: (PET_NAMES[lang] ?? PET_NAMES.fr)[0], fedDay: null }; scene3D.pet.tame(); scene3D.pet.obj.labelText = null; applyExtras(); saveGame(); } };
   } else if (type === 'flame') {
     const r = flameSpelled(spellContext.mode);
+    spellResultEl.replaceChildren(el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
+    spellResultEl.hidden = false;
+    speak(r.say, 0.95);
+    spellContext.after = r.after;
+  } else if (type === 'powers') {
+    const r = powersSpelled(spellContext, copied);
     spellResultEl.replaceChildren(el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
     spellResultEl.hidden = false;
     speak(r.say, 0.95);
@@ -3485,7 +3738,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : obj.kind === 'powerstone' ? '⚡' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');

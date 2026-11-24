@@ -923,7 +923,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 2,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms'], save: save(story(2, 0)) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs'], save: save(story(2, 0)) }, { quality: 0 });
       await g.click('#continue-btn');
       // Alaric presents the release, written and spoken; the newest note comes first.
       const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
@@ -939,7 +939,7 @@ export const SCENARIOS = [
       await g.click('#news-btn');
       await g.page.waitForTimeout(300);
       const journal = await g.page.evaluate(() => [...document.querySelectorAll('#journal-list .journal-item h3')].map((e) => e.textContent));
-      check(journal.length >= 3 && /album/i.test(journal[0]) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
+      check(journal.length >= 3 && /pouvoirs/i.test(journal[0]) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
       await g.click('#journal-close');
       // Iron walks round the square, says hello and offers a flower once a day.
       const walk = await g.page.evaluate(() => { const gl = window.__se.scene.golem, a = gl.mesh.position.clone(); gl.pause = 0; for (let k = 0; k < 150; k++) gl.update(1 / 30, k / 30); return { points: gl.points.length, moved: a.distanceTo(gl.mesh.position) }; });
@@ -972,7 +972,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms'], save: save(story(2, 0)) }, { quality: 0, defis: true });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs'], save: save(story(2, 0)) }, { quality: 0, defis: true });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       let words = 0;
       const spellOne = async () => { const r = await g.spell(); words++; return r; };
@@ -1113,7 +1113,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
       const flame = () => g.page.evaluate(() => { const f = window.__se.flame() ?? {}, fl = window.__se.scene.flame; return { ...f, state: { ...fl.state }, out: fl.starsOut(), part: window.__se.releasePart(3) }; });
@@ -1235,13 +1235,13 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms', '1.23.0-pouvoirs'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
       const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
       const alb = () => g.page.evaluate(() => JSON.parse(JSON.stringify(window.__se.album() ?? null)));
-      await g.page.evaluate(() => { window.__se.albumGold = 0; }); // golden stickers only when the scenario asks
+      await g.page.evaluate(() => { window.__se.albumGold = 0; window.__se.henDay = 4; }); // golden stickers only when the scenario asks; J4's Cocotte (in the album)
       const isOpen = () => g.page.evaluate(() => !document.querySelector('#collect-modal').hidden);
       const closeAlbum = () => g.click('#collect-close');
       const openAlbum = async (page) => { if (!(await isOpen())) { await g.click('#album-btn'); await g.page.waitForTimeout(200); } if (page) { await g.page.evaluate((p) => document.querySelector(`#collect-tabs [data-page="${p}"]`).click(), page); await g.page.waitForTimeout(150); } };
@@ -1332,7 +1332,7 @@ export const SCENARIOS = [
       await openAlbum('animals');
       const henCard = await g.page.evaluate(() => { const b = document.querySelector('#collect-grid .is-hen'); return b ? { wink: !!b.querySelector('.hen-wink') } : null; });
       check(henCard?.wink, 'Cocotte est cachée dans l’album : une vignette fait un clin d’œil', JSON.stringify(henCard));
-      check(await g.page.evaluate(() => window.__se.scene.cocotte == null), 'aujourd’hui, pas de Cocotte dans le village : elle est dans l’album');
+      check(await g.page.evaluate(() => !!window.__se.henRow().album), 'ce jour-là, Cocotte est dans l’album (pas dans le village)');
       await g.page.evaluate(() => document.querySelector('#collect-grid .is-hen').click());
       await g.page.waitForTimeout(300);
       const hen = await g.page.evaluate(() => ({ feathers: window.__se.progress().feathers, fly: !!document.querySelector('#collect-grid .is-flyaway') }));
@@ -1397,6 +1397,197 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(300);
       const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
       check(/Album — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /découverte : 6\/6/.test(j2) && /dorées : 1/.test(j2), 'journal : les deux parties faites, découverte 6/6, une dorée', j2);
+      await g.click('#journal-close');
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Pouvoirs des mots (J5)',
+    quick: true,
+    weight: 4,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
+      const nSaid = () => g.page.evaluate(() => window.__spoken.length);
+      const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
+      const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
+      const pw = () => g.page.evaluate(() => JSON.parse(JSON.stringify(window.__se.powers() ?? null)));
+      const now = () => g.page.evaluate(() => window.__se.powerNow()?.kind ?? null);
+      const spellOpen = (timeout = 6000) => g.page.waitForFunction(() => !document.querySelector('#spell-modal').hidden && !!window.__se.spell(), null, { timeout }).then(() => true, () => false);
+      const onCloud = (k) => g.page.evaluate((i) => { const s = window.__se.scene, c = s.powers.constructor && window.__se.scene.walkways.find((w) => w.cloud && w.cloudIndex === i); s.teleport(c.x + 0.3, c.z + 0.3, 0, c.h); return s.player.position.y; }, k);
+      let words = 0;
+      await g.click('#continue-btn');
+      // Alaric presents J5, written and spoken, with his riddle.
+      const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
+      const card = await g.page.evaluate(() => ({ title: document.querySelector('#news-title').textContent, riddle: document.querySelector('#news-riddle').innerText, said: window.__spoken.join(' | ') }));
+      check(shown && /pouvoirs/i.test(card.title) && /Les mots ont des pouvoirs/.test(card.said), 'Alaric présente les pouvoirs des mots (écrit et lu)', JSON.stringify(card));
+      check(/monte et ne redescend jamais/.test(card.riddle) && /monte et ne redescend jamais/.test(card.said), 'la devinette d’Alaric est écrite et lue', card.riddle);
+      await g.page.evaluate(() => document.querySelector('#news-riddle .news-answer').click());
+      await g.page.waitForTimeout(200);
+      check(/Ton âge/.test(await g.page.evaluate(() => window.__spoken.slice(-1)[0])), '« La réponse ? » lit « Ton âge ! »');
+      await g.click('#news-show');
+      await g.page.waitForTimeout(900);
+      const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.powers.obj.worldPos; return { d: q ? Math.hypot(q.x - w.x, q.z - w.z) : 99, home: Math.hypot(w.x, w.z - 14), free: !s._checkCollision(w.x, w.z + 1.4) }; });
+      check(arrow.d < 1 && arrow.home < 20 && arrow.free, '« Montre-moi ! » pointe la flèche vers la pierre des pouvoirs, au bout du chemin devant la chaumière', JSON.stringify(arrow));
+      // Without a power, a normal jump does not reach the first cloud.
+      const jump = (x, z) => g.page.evaluate(async ([px, pz]) => { const s = window.__se.scene; s.teleport(px, pz); await new Promise((r) => setTimeout(r, 150)); const y0 = s.player.position.y; s.jump(); let m = y0; for (let i = 0; i < 30; i++) { await new Promise((r) => setTimeout(r, 50)); m = Math.max(m, s.player.position.y); } return { up: +(m - y0).toFixed(2), y: +s.player.position.y.toFixed(2), cloud: s.powers.onCloud() }; }, [x, z]);
+      const j0 = await jump(1, 28);
+      check(j0.up < 2 && j0.cloud === -1, 'sans pouvoir, un saut normal ne va pas jusqu’au premier nuage', JSON.stringify(j0));
+      // The wow: the stone wakes up, sparkles fly to the five clouds, the stars appear; then a hard word.
+      const t0 = Date.now();
+      check(await g.use("i.kind === 'powerstone'") === 'ok', 'on touche la pierre des pouvoirs');
+      const wow = await g.page.evaluate(() => { const p = window.__se.scene.powers; return { waking: p.wakeT >= 0, stars: p.stars.visible }; });
+      check(wow.waking && wow.stars && await saidLater(/Les mots ont des pouvoirs ! Regarde les nuages/, 3000), 'waouh : la pierre se réveille, des étincelles montent aux cinq nuages, les étoiles apparaissent (lu)', JSON.stringify(wow));
+      check(await spellOpen(9000), 'puis la pierre demande un mot difficile');
+      const lvl = await g.page.evaluate(() => ({ w: window.__se.spell().word.level, hard: window.__se.levelAt(1) }));
+      check(lvl.w === lvl.hard || lvl.w === 'programme' || !!lvl.w, `un mot du niveau au-dessus (${lvl.w})`, JSON.stringify(lvl));
+      const s1 = await g.spell(); words++;
+      check(/super saut/.test(s1.result) && await now() === 'jump' && Date.now() - t0 < 30000, 'mot réussi : pouvoir super saut, moins de 30 s après « Montre-moi ! »', s1.result);
+      check(/Pouvoir super saut/.test(await said()), '« Pouvoir super saut ! » (lu)');
+      const hud = await g.page.evaluate(() => ({ hidden: document.querySelector('#power-hud').hidden, txt: document.querySelector('#power-hud').textContent }));
+      check(!hud.hidden && /🦘 \d+ s/.test(hud.txt), 'le compte à rebours du pouvoir s’affiche', JSON.stringify(hud));
+      // Super jump from under the first cloud: up onto it. Boing! A word on the cloud.
+      const j1 = await jump(1, 28);
+      check(j1.up > 2 && j1.cloud === 0 && Math.abs(j1.y - 3.0) < 0.05, 'en super saut, on monte sur le premier nuage', JSON.stringify(j1));
+      check(await spellOpen(), 'sur le nuage, un mot s’ouvre');
+      const c1 = await g.spell(); words++;
+      check(/L’étoile du nuage 1/.test(c1.result), '« L’étoile du nuage 1 ! Ton pouvoir est rechargé » ', c1.result);
+      // The letters of the word trail behind the hero while running.
+      const trail = await g.page.evaluate(async () => { const s = window.__se.scene; s.teleport(3, 20); s.keys.arrowup = true; await new Promise((r) => setTimeout(r, 700)); s.keys.arrowup = false; const p = s.powers; return { word: p.trailWord, shown: p.trail.filter((t) => t.sprite.visible).length }; });
+      check(trail.word.length > 0 && trail.shown > 0, `les lettres du mot forment une traînée derrière le héros (${trail.word})`, JSON.stringify(trail));
+      // The dog comes up onto the cloud too.
+      await onCloud(1);
+      check(await spellOpen(), 'nuage 2 : un mot');
+      await g.spell(); words++;
+      const dog = await g.page.evaluate(() => { const s = window.__se.scene; s.pet.update(0.1, 0); return +s.pet.mesh.position.y.toFixed(2); });
+      check(Math.abs(dog - 5.8) < 0.1, 'le chien saute sur le nuage avec le héros', String(dog));
+      for (const k of [2, 3, 4]) {
+        await g.page.evaluate(() => { window.__se.powerNow() && (window.__se.powerNow().left = 20); });
+        await onCloud(k);
+        if (!(await spellOpen())) { check(false, `nuage ${k + 1} : un mot`); continue; }
+        await g.spell(); words++;
+      }
+      const a1 = await pw();
+      check(a1.clouds.length === 5 && a1.petCloud, 'les cinq nuages : un petit nuage suit le héros', JSON.stringify(a1));
+      check(await saidLater(/Tu es monté sur les cinq nuages/, 12000), '« Bravo ! Tu es monté sur les cinq nuages ! » (lu)', await said());
+      check(await g.page.evaluate(() => !!window.__se.scene.powers.petCloud), 'le petit nuage flotte au-dessus de la tête (à montrer)');
+      // The journal gives Cocotte's hint, written and read.
+      await g.page.waitForTimeout(4000);
+      let n0 = await nSaid();
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const jh = await g.page.evaluate((n) => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(n).join(' | ') }), n0);
+      check(/plus haut des nuages/.test(jh.txt) && /plus haut des nuages/.test(jh.said), 'journal : l’indice de Cocotte (« sur le plus haut des nuages ») est écrit et lu', jh.said);
+      await g.click('#journal-close');
+      // Cocotte is on the highest cloud: from the ground, too high; from up there, a feather.
+      check(await g.page.evaluate(() => window.__se.henRow().day === 5 && window.__se.henRow().cloud === true), 'Cocotte est cachée sur le plus haut nuage');
+      n0 = await nSaid();
+      await g.page.evaluate(() => { const s = window.__se.scene, o = s.cocotte.obj; s.teleport(o.worldPos.x + 0.9, o.worldPos.z + 0.9); s.onInteractObject(o); });
+      await g.page.waitForTimeout(300);
+      check(/tout là-haut/.test(await saidSince(n0)) && !(await g.page.evaluate(() => window.__se.progress().feathers ?? [])).includes(5), 'depuis le sol : « Cocotte est tout là-haut… il te faut le super saut » (lu)', await saidSince(n0));
+      check(await g.page.evaluate(() => window.__se.findCocotte()) === 'ok', 'depuis le nuage, on touche Cocotte');
+      await g.page.waitForTimeout(300);
+      check((await g.page.evaluate(() => window.__se.progress().feathers)).includes(5) && /Cot cot/.test(await said()), 'Cocotte s’envole : une plume dorée (« Cot cot ! »)');
+      // The gag: falling from the sky without a power: Pouf! (squashed like a pancake).
+      await g.page.evaluate(() => { const p = window.__se.powerNow(); if (p) p.left = 0.1; });
+      check(await saidLater(/Fini, le pouvoir super saut/, 8000), 'quand le temps est fini : « Fini, le pouvoir super saut… » (lu)', await said());
+      const pouf = await g.page.evaluate(async () => { const s = window.__se.scene; s.teleport(8, 20); s.player.position.y = 12; s.playerVY = 0; await new Promise((r) => setTimeout(r, 1500)); return s.powers.poufs ?? 0; });
+      check(pouf >= 1, 'gag : une grosse chute fait « Pouf ! » et le héros s’écrase comme une crêpe', String(pouf));
+      // Back to the stone for another power (a 7th word).
+      await g.use("i.kind === 'powerstone'");
+      if (await spellOpen()) { await g.spell(); words++; }
+      check(await now() === 'jump', 'la pierre redonne un pouvoir');
+      // A hard word right the first time, anywhere: a power as a bonus.
+      await g.page.evaluate(() => window.__se.scene.powers.stop());
+      await g.use("i.kind === 'node' && i.active && !i.requires && i.nodeType !== 'chest'");
+      if (await spellOpen()) {
+        await g.page.evaluate(() => { const c = window.__se.spell(); c.word = window.__se.pickWord(window.__se.levelAt(2), { programme: false }); });
+        await g.spell(); words++;
+      }
+      check(['speed', 'jump'].includes(await now()) && await saidLater(/Mot difficile réussi du premier coup/, 10000), 'un mot difficile réussi du premier coup ailleurs donne aussi un pouvoir (lu)', await said());
+      check(words >= 7, `au moins 7 mots en session 1 (${words})`);
+      // The journal: the two parts and Cocotte's hint, written and read.
+      await g.page.waitForTimeout(4000);
+      n0 = await nSaid();
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j1t = await g.page.evaluate((n) => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(n).join(' | ') }), n0);
+      check(/Pouvoirs des mots — Partie 1 ✓ · Partie 2 : à ton prochain retour !/.test(j1t.txt) && /Nuages : 5\/5/.test(j1t.txt), 'journal : « Pouvoirs des mots — Partie 1 ✓ · Partie 2 : à ton prochain retour ! »', j1t.txt);
+      check(/Partie 2 : à ton prochain retour/.test(j1t.said) && /Tu as trouvé Cocotte/.test(j1t.said), 'les parties sont lues (et Cocotte est trouvée)', j1t.said);
+      await g.click('#journal-close');
+      // Session 2: the game is opened again 31 minutes later.
+      // (the game is paused first, so that it does not save "just played" over the changed time)
+      await g.page.evaluate(() => { document.body.dataset.screen = 'paused'; });
+      await g.page.waitForTimeout(400);
+      await g.page.evaluate((key) => { const pr = window.__se.progress(); pr.parts.J5.last -= 31 * 60 * 1000; const p = JSON.parse(localStorage.getItem(key)); p.parts.J5.last = pr.parts.J5.last; localStorage.setItem(key, JSON.stringify(p)); }, STORE);
+      await g.page.reload();
+      await g.page.waitForSelector('#loading.is-done', { timeout: 180000 });
+      await g.page.evaluate(() => { window.__se.flashAfter = 1e9; window.__se.noDefis = true; });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      check(await g.page.evaluate(() => window.__se.releasePart(5)) === 2, 'au retour (30 min plus tard), la partie 2 des pouvoirs est ouverte');
+      check(await saidLater(/deux nouveaux pouvoirs : géant et planer/, 15000), '« La pierre des pouvoirs a deux nouveaux pouvoirs : géant et planer ! » (lu)', await said());
+      check(await g.page.evaluate(() => window.__se.scene.powers.rings.visible && !!window.__se.scene.powers.petCloud), 'les cinq anneaux dorés sont apparus ; le petit nuage est toujours là');
+      words = 0;
+      // Giant: every step makes the animals bounce (and the dog is a giant too).
+      await g.use("i.kind === 'powerstone'");
+      check(await spellOpen(), 'la pierre demande un mot difficile');
+      const s2 = await g.spell(); words++;
+      check(/géant/.test(s2.result) && await now() === 'giant' && /Et ton chien aussi/.test(s2.result), 'pouvoir géant ! (et le chien aussi)', s2.result);
+      await g.page.waitForTimeout(1500);
+      const big = await g.page.evaluate(() => { const s = window.__se.scene; return { hero: +s.player.scale.x.toFixed(2), dog: +(s.pet.mesh.scale.x / (s.pet.baseScale ?? 1)).toFixed(2) }; });
+      check(big.hero > 2 && big.dog > 1.7, 'le héros et le chien deviennent géants', JSON.stringify(big));
+      const stomp = await g.page.evaluate(async () => {
+        const s = window.__se.scene, seen = new Set();
+        for (const a of s.fauna.list.filter((f) => !f.def.swim && Math.hypot(f.mesh.position.x, f.mesh.position.z - 14) < 40)) {
+          if (seen.size >= 6) break;
+          s.teleport(a.mesh.position.x + 2, a.mesh.position.z + 2);
+          s.keys.arrowleft = true; await new Promise((r) => setTimeout(r, 700)); s.keys.arrowleft = false;
+          if (a.bounceT > 0 || window.__se.powers().bounced.includes(s.fauna.list.indexOf(a))) seen.add(a);
+          if (window.__se.powers().animals >= 5) break;
+          window.__se.powerNow() && (window.__se.powerNow().left = 20);
+        }
+        return window.__se.powers().animals;
+      });
+      check(stomp >= 5, `en géant, chaque pas fait rebondir les animaux (${stomp}/5)`);
+      check(await saidLater(/Cinq animaux ont rebondi/, 15000), '« Cinq animaux ont rebondi ! Quel géant ! » (lu)', await said());
+      // Glide: from the highest cloud, through the five rings; a word per ring on landing.
+      await g.page.evaluate(() => window.__se.scene.powers.stop());
+      await g.use("i.kind === 'powerstone'");
+      check(await spellOpen(), 'la pierre redonne un mot difficile');
+      const s3 = await g.spell(); words++;
+      check(/planer/.test(s3.result) && await now() === 'glide', 'puis : pouvoir planer !', s3.result);
+      await onCloud(4);
+      const glide = await g.page.evaluate(async () => { const s = window.__se.scene; s.jump(); await new Promise((r) => setTimeout(r, 1300)); return { vy: s.playerVY, y: s.player.position.y }; });
+      check(glide.vy >= -2.5 && glide.y > 11.5, 'on saute du plus haut nuage et on plane doucement', JSON.stringify(glide));
+      const fly = (list) => g.page.evaluate(async (rs) => {
+        const s = window.__se.scene;
+        for (const r of rs) { s.player.position.set(r.x, r.y - 0.8, r.z); s.playerVY = -1; await new Promise((q) => setTimeout(q, 120)); }
+      }, list);
+      const RINGS = await g.page.evaluate(async () => (await import('/powers.js')).RINGS);
+      await fly(RINGS.slice(0, 2));
+      check(await saidLater(/Anneau 2 sur 5/, 5000), 'à travers les anneaux : « Anneau 1 sur 5 ! Anneau 2 sur 5 ! » (lu)', await said());
+      // Landing: one word per ring.
+      await g.page.evaluate(() => { const s = window.__se.scene; s.player.position.set(8, 1.6, 20); s.playerVY = -1; });
+      for (let k = 0; k < 2; k++) { if (await spellOpen(8000)) { await g.spell(); words++; } else check(false, `un mot pour garder l’anneau ${k + 1}`); }
+      check((await pw()).rings.length === 2, 'à l’atterrissage, un mot par anneau : deux anneaux gardés', JSON.stringify(await pw()));
+      // Second flight: the three last rings, then the cape.
+      await onCloud(4);
+      await g.page.evaluate(async () => { const s = window.__se.scene; window.__se.powerNow() && (window.__se.powerNow().left = 30); s.jump(); await new Promise((r) => setTimeout(r, 600)); });
+      await fly(RINGS.slice(2));
+      await g.page.evaluate(() => { const s = window.__se.scene; s.player.position.set(21, 1.2, -4); s.playerVY = -1; });
+      for (let k = 0; k < 3; k++) { if (await spellOpen(8000)) { await g.spell(); words++; } else check(false, `un mot pour garder l’anneau ${k + 3}`); }
+      const a2 = await pw();
+      const cos = await g.page.evaluate(() => window.__se.progress().costumes ?? {});
+      check(a2.rings.length === 5 && a2.cape && cos.owned?.includes('cloudhero') && cos.current === 'cloudhero', 'les cinq anneaux : la cape du Héros des nuages (portée tout de suite)', JSON.stringify({ rings: a2.rings, cos }));
+      check(/cape du Héros des nuages/.test(await said()), '« Tu gagnes la cape du Héros des nuages ! » (lu)');
+      check(words >= 7, `au moins 7 mots en session 2 (${words})`);
+      await g.page.waitForTimeout(4200);
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
+      check(/Pouvoirs des mots — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /Anneaux : 5\/5/.test(j2) && /Animaux rebondis : 5\/5/.test(j2), 'journal : les deux parties faites, 5 anneaux, 5 animaux', j2);
       await g.click('#journal-close');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();

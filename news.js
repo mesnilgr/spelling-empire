@@ -106,6 +106,18 @@ export const NEWS = [
     },
   },
   {
+    id: '1.23.0-pouvoirs', day: 5, date: '2026-11-24', emoji: '⚡', show: 'powerstone',
+    title: { fr: 'Les pouvoirs des mots', en: 'Word powers' },
+    text: {
+      fr: 'Les mots ont des pouvoirs ! Touche la pierre des pouvoirs, au bout du chemin, devant ta chaumière. Réussis un mot difficile et tu pourras courir comme le vent, sauter jusqu’aux nuages… et plus tard devenir géant et planer !',
+      en: 'Words have powers! Touch the power stone, at the end of the path, in front of your cottage. Get a hard word right and you can run like the wind, jump up to the clouds… and later become a giant and glide!',
+    },
+    riddle: {
+      q: { fr: 'Qu’est-ce qui monte et ne redescend jamais ?', en: 'What goes up and never comes down?' },
+      a: { fr: 'Ton âge !', en: 'Your age!' },
+    },
+  },
+  {
     id: 'prog-articles', programme: 'articles', day: 5, date: '2026-11-24', from: '2026-11-24', only: 'fr', emoji: '🔤', show: null,
     title: { fr: 'Le programme : les articles', en: 'Programme: articles' },
     text: {

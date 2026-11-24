@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { buildChest } from './icons.js';
 
 // Each challenge: id, goal (how many times the event), the event that counts, the text, and when it
-// can be drawn (`can(ctx)`, ctx = { pet, food, horse, cocotte }). `word: true` = the word challenge
+// can be drawn (`can(ctx)`, ctx = { pet, food, horse, cocotte, powers }). `word: true` = the word challenge
 // that every set contains (at least 7 words per session together with the chest and flash words).
 export const DEFIS = {
   morning: [
@@ -17,6 +17,7 @@ export const DEFIS = {
     { id: 'mage', goal: 1, ev: 'mage', emoji: '🧙', text: { fr: 'Va faire coucou à Alaric', en: 'Go and wave hello to Alaric' } },
     { id: 'feed', goal: 1, ev: 'feed', emoji: '🍖', text: { fr: 'Nourris ton chien', en: 'Feed your dog' }, can: (c) => c.pet && c.food },
     { id: 'pat', goal: 1, ev: 'pat', emoji: '🐶', text: { fr: 'Fais un câlin à ton chien', en: 'Give your dog a cuddle' }, can: (c) => c.pet },
+    { id: 'power', goal: 1, ev: 'power', emoji: '⚡', text: { fr: 'Gagne un pouvoir avec un mot difficile', en: 'Win a power with a hard word' }, can: (c) => c.powers },
   ],
   evening: [
     { id: 'words7', word: true, goal: 7, ev: 'word', emoji: '📝', text: { fr: 'Épelle 7 mots', en: 'Spell 7 words' } },

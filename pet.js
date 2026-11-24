@@ -107,7 +107,8 @@ export class PetManager {
         this.s.screenShake?.(0.3);
       }
     }
-    this.mesh.scale.setScalar([1, 1.25, 1.5, 1.8, 1.9][stage] ?? 1);
+    this.baseScale = [1, 1.25, 1.5, 1.8, 1.9][stage] ?? 1;
+    this.mesh.scale.setScalar(this.baseScale);
     this.obj.iconY = 1.2 * this.mesh.scale.x;
   }
   setArmor(on) {
@@ -140,7 +141,9 @@ export class PetManager {
   catchUp() {
     const p = this.s.player.position, a = this.s.player.rotation.y;
     this.hop = null;
-    const w = this.s._walkwayAt?.(p.x, p.z);
+    const w = this.s._walkwayAt?.(p.x, p.z, p.y);
+    // On a cloud (J5): the dog jumps up too.
+    if (w?.cloud) { const a2 = Math.atan2(p.x - w.x, p.z - w.z); const r = Math.min(w.r - 0.5, Math.hypot(p.x - w.x, p.z - w.z) + 0.6); this.mesh.position.set(w.x + Math.sin(a2 + 0.6) * r, w.h, w.z + Math.cos(a2 + 0.6) * r); return; }
     if (w?.box) { this.mesh.position.set(Math.min(w.x1 - 0.35, Math.max(w.x0 + 0.35, p.x - 0.6)), w.y(), Math.min(w.z1 - 0.35, Math.max(w.z0 + 0.35, p.z + 0.6))); return; }
     for (const [dx, dz] of [[-Math.sin(a) * 1.4, -Math.cos(a) * 1.4], [1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2], [0, 0]]) {
       const x = p.x + dx, z = p.z + dz;
@@ -226,7 +229,7 @@ export class PetManager {
         if (!s._checkCollision(nx, nz) && !s.inLava?.(nx, nz)) { m.position.x = nx; m.position.z = nz; }
         else if (!s._checkCollision(nx, m.position.z)) m.position.x = nx;
         else if (!s._checkCollision(m.position.x, nz)) m.position.z = nz;
-        m.position.y = s.groundAt(m.position.x, m.position.z);
+        m.position.y = s.groundAt(m.position.x, m.position.z, m.position.y);
         m.rotation.y = Math.atan2(dx, dz);
         moving = true;
       }

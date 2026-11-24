@@ -30,6 +30,14 @@ export const COCOTTE = [
       en: 'Cocotte slipped into your album 📖: on the animals page, a sticker winks at you!',
     },
   },
+  {
+    // `cloud`: on the highest cloud of the word powers (only reachable with the super jump).
+    day: 5, pos: { x: 1.5, y: 14.2, z: 13.2 }, ry: 0.5, pose: 'sit', cloud: true,
+    hint: {
+      fr: 'Cocotte voulait voir le village d’en haut : elle est assise sur le plus haut des nuages, au-dessus de ta chaumière ! Il te faut le super saut.',
+      en: 'Cocotte wanted to see the village from above: she is sitting on the highest cloud, above your cottage! You need the super jump.',
+    },
+  },
 ];
 
 // The row for the current release (the highest day not after `maxDay`).
@@ -82,7 +90,7 @@ export class Cocotte {
     this.mesh.position.copy(this.base);
     this.mesh.rotation.y = row.ry ?? 0;
     scene3D.scene.add(this.mesh);
-    this.obj = scene3D._addInteractable({ kind: 'cocotte', day: row.day, worldPos: this.base.clone(), iconY: 1.3, reach: 3.4, hitRadius: 0.9 });
+    this.obj = scene3D._addInteractable({ kind: 'cocotte', day: row.day, worldPos: this.base.clone(), iconY: 1.3, reach: row.cloud ? 6 : 3.4, hitRadius: 0.9 });
     this.t = Math.random() * 5;
     this.flyT = -1;
   }
