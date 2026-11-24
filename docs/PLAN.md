@@ -46,6 +46,18 @@ Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
   `news.js`) ; bouton « La réponse ? » qui l'affiche et la lit. Ajouté en J2.
 - **Le journal 📜** garde les cartes, les deux parties du jour et l'indice de Cocotte.
 
+## Retours du parent (à intégrer dans les releases indiquées)
+
+- **24 nov., après J5 (pouvoirs des mots)** : « La release était super. » Ce qui a le plus plu : **sauter de nuage
+  en nuage** en gagnant des étoiles, et **planer à travers les anneaux**. Idées du parent, réparties ci-dessous :
+  - **Deltaplane** pour le pouvoir planer → petit plus de J6 ;
+  - **Pouvoir voler** (monter et descendre librement) → session 2 de J9 (course en vol à travers des anneaux) ;
+  - **Super force : battre les zombies à mains nues** → session 2 de J16 (la nuit, avec le loup et le chien).
+  - Toujours ouverts du plan J5 : le pouvoir « tout petit » et la pièce secrète de la taverne (à placer si une
+    release a de la marge).
+  - Leçon pour la suite : les **parcours en hauteur avec étoiles et anneaux** marchent très bien ; en remettre
+    quand une release s'y prête (jamais sans mots : un mot par nuage, un mot par anneau).
+
 ## Programme de la semaine (contenu choisi par le parent, en parallèle des releases)
 
 `programme.js` (v1.21.1) sert les thèmes aux dates prévues : environ un mot sur deux (pas pour les boss, les
@@ -169,6 +181,10 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
     boutons, même les faux, qui lâchent des confettis) ; le golem de mousse éternue des feuilles ; Fer et le
     petit golem se saluent.
   - Cocotte : sur la tête du golem de mousse.
+  - **Petit plus (retour du parent du 24 nov.) : le deltaplane.** Avec le pouvoir planer (J5), le héros tient un
+    **deltaplane coloré** (aile triangulaire au-dessus de lui, un seul mesh fusionné) qui penche dans les virages ;
+    il se replie en sautant sur un nuage ou en atterrissant. Le petit golem de cuivre peut monter dessus avec le
+    héros (« Bong ! » à l'atterrissage). Gardé même en version réduite.
   - Réduite : boss qui marchent + golem de cuivre qui suit + 1 bouton secret par session.
   - S'appuie sur : J1 (Fer), boss, fabrication.
   - Texte lu : « Les golems des boss se réveillent un peu : ils marchent dans leur repaire ! Et tu peux fabriquer ton propre petit golem de cuivre. Il est un peu maladroit… mais il connaît des coffres secrets ! »
@@ -210,11 +226,14 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
     ne bouge pendant le mot) ; médailles bronze / argent / or selon le temps ; un **fantôme** transparent rejoue
     ton meilleur parcours.
   - Session 2 : **course à cheval** à travers des anneaux ; panneau des records (3 meilleurs temps par parcours) ;
-    défi « bats le fantôme d'Alaric » (temps fixé).
+    défi « bats le fantôme d'Alaric » (temps fixé). **Retour du parent (24 nov.) : le pouvoir voler** — nouveau
+    pouvoir de la pierre (J5) : on monte et on descend librement (bouton sauter = monter) pendant 20 s ; une
+    **course en vol chronométrée** à travers 8 anneaux autour du village (un mot par anneau gardé à l'atterrissage,
+    comme en J5), avec médaille et record.
   - Plus fun : Alaric commente comme à la télé (« Et c'est le saut ! Incroyable ! ») ; Fer tient le drapeau
     d'arrivée et applaudit.
   - Cocotte : perchée sur le panneau des records.
-  - Réduite : lave + wagonnet en session 1, cheval en session 2, sans fantôme.
+  - Réduite : lave + wagonnet en session 1, cheval **ou vol** en session 2, sans fantôme (garder le vol en priorité).
   - S'appuie sur : J8, parcours de lave, chevaux.
   - Texte lu : « Attention, prêts, partez ! Le parcours de lave, le wagonnet et la course à cheval ont un chrono. Bats ton record… et ton fantôme ! »
   - Devinette : « Qu'est-ce qui a des aiguilles mais ne coud jamais ? » — « Une montre ! »
@@ -321,11 +340,14 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
     en l'épelant (3 noms au choix) ; il ronronne quand on le caresse.
   - Session 2 : des loups dans la forêt ; on les apprivoise avec un os + un mot ; on choisit qui accompagne (le
     chien + un autre) ; la nuit, le loup chasse les zombies avec le chien ; le lendemain matin, le chat a déposé un
-    « cadeau » devant la porte.
+    « cadeau » devant la porte. **Retour du parent (24 nov.) : la super force** — nouveau pouvoir de la pierre (J5),
+    un mot difficile = 20 s de super force : un coup de poing envoie le zombie valser en tournant (« Pof ! », il
+    disparaît dans un nuage de fumée, jamais de sang), le loup et le chien aident ; objectif de la nuit : 5 zombies.
   - Plus fun : le chat s'assoit parfois sur la tête du héros ; son cadeau est un poisson… ou une vieille botte ;
     la nuit, le loup et le chien hurlent à la lune.
   - Cocotte : dans le panier du chat, qui la regarde d'un drôle d'air.
-  - Réduite : le chat seulement ; en session 2, le choix du compagnon et le cadeau du chat.
+  - Réduite : le chat seulement ; en session 2, le choix du compagnon, le cadeau du chat et la super force contre les
+    zombies.
   - S'appuie sur : chien (`PetManager`), zombies, poissons.
   - Texte lu : « Les chats et les loups peuvent devenir tes amis ! Épelle un mot pour les apprivoiser, donne-leur un nom, puis choisis qui part à l'aventure avec toi. »
   - Devinette : « Quel est le comble pour un chat ? » — « D'avoir un chat dans la gorge ! »
