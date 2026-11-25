@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.24.1 — Les boutons secrets s'expliquent
+
+- 🔴 Devant les boutons secrets (les trois boutons rouges près de la tour, de la boutique…), sans le petit golem, il ne se passait rien. Maintenant, quand le héros s'arrête devant, Alaric explique, à l'écrit et à voix haute : « Ils sont trop durs pour toi : seul un petit golem de cuivre peut appuyer dessus. Fabrique-le sur l'enclume, à côté de la forge ! », et la flèche dorée montre l'enclume. Les boutons bougent à peine sous le pied du héros.
+- 🌙 Les boutons brillent moins la nuit (ils ressemblaient à des lasers rouges).
+- 🧪 Test des zombies plus fiable (un zombie pouvait rester coincé en bas des terrasses de la colline).
+
 ## v1.24.0 — J6 : Le petit golem de cuivre et les boss vivants 🤖
 
 - 🔨 **Une enclume** attend à côté de la forge (la flèche de « Montre-moi ! » y mène). La recette du petit golem : **fer + pierre + feu**. On épelle FER, PIERRE puis FEU (la première lettre à 5 ans) : à chaque mot, « Clang ! », l'ingrédient se pose sur l'enclume. Au troisième, les pièces s'envolent et s'assemblent une à une (« Bong ! Bong ! »), fanfare, confettis : **Boulon, le petit golem de cuivre**, ouvre les yeux et dit bonjour.

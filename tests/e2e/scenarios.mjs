@@ -428,6 +428,8 @@ export const SCENARIOS = [
       check(d1 < d0 - 3, `ils poursuivent le héros dehors (${d0.toFixed(1)} → ${d1.toFixed(1)} en 2 s)`);
       // First touch: one heart lost, nothing else. Second touch: back home, nothing lost.
       await g.page.evaluate(() => { const s = window.__se.scene; window.__touch = 0; const prev = s.onZombieCatch; s.onZombieCatch = (z) => { window.__touch++; const r = prev?.(z); if (window.__touch === 1) window.__afterFirst = { ko: window.__ko, hearts: document.querySelector('#hearts').textContent, shown: !document.querySelector('#hearts').hidden }; return r; }; });
+      // (a zombie can stay stuck below the terraces of the hill: bring them up, 5 m away in the open)
+      await g.page.evaluate(() => { const s = window.__se.scene, p = s.player.position; const free = []; for (let a = 0; a < 24; a++) { const x = p.x + Math.cos(a / 24 * 6.283) * 5, z = p.z + Math.sin(a / 24 * 6.283) * 5; if (!s._checkCollision(x, z) && Math.abs(s.groundAt(x, z) - p.y) < 0.3) free.push([x, z]); } s.zombies.active.forEach((z, i) => { const f = free[(i * 5) % free.length]; if (f) z.mesh.position.set(f[0], s.groundAt(f[0], f[1]), f[1]); }); });
       for (let k = 0; k < 40 && !(await g.page.evaluate(() => window.__touch >= 1)); k++) { await step(0.5); await g.page.waitForTimeout(50); }
       const hurt = await g.page.evaluate(() => window.__afterFirst ?? { touch: window.__touch });
       check(hurt.ko === 0 && hurt.hearts === '❤️🤍', 'au premier contact, le héros perd un cœur sans être renvoyé', JSON.stringify(hurt));
@@ -1771,6 +1773,24 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'Boutons secrets sans le petit golem : le jeu explique (J6)',
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, save: save(story(2, 0)) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      const SPOTS = await g.page.evaluate(async () => (await import('/copper.js')).BUTTON_SPOTS);
+      const sp = SPOTS.find((b) => b.id === 'tower');
+      await g.page.evaluate(([x, z]) => window.__se.scene.teleport(x + 1.2, z + 1.2), [sp.x, sp.z]);
+      const ok = await g.page.waitForFunction(() => /trop durs pour toi/.test(window.__spoken.join(' | ')), null, { timeout: 6000 }).then(() => true, () => false);
+      check(ok, 'devant les boutons secrets, sans Boulon : « Ils sont trop durs pour toi… fabrique le petit golem sur l’enclume » (lu)', await g.page.evaluate(() => window.__spoken.join(' | ')));
+      await g.page.waitForTimeout(600);
+      const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.copper.obj.worldPos; return q ? Math.hypot(q.x - w.x, q.z - w.z) : 99; });
+      check(arrow < 1, 'la flèche dorée montre l’enclume', String(arrow));
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
     name: 'Espace parents : listes de mots',
     async run(browser, base, check) {
       const { WORDS } = await import('../../language-engine.js');
@@ -2025,7 +2045,7 @@ export const SCENARIOS = [
       check(view.prefix === shownPrefix, 'le pronom est déjà écrit en gris, avec sa majuscule', view.prefix);
       check(view.ctx.includes(w2.verb), 'le verbe est rappelé', view.ctx);
       check(view.keyA === 'a', 'le verbe commence en minuscule (la majuscule est sur le pronom)', view.keyA);
-      check((await g.page.evaluate(() => window.__spoken.at(-1))).includes(w2.say), 'on entend le pronom et le verbe ensemble', w2.say);
+      check((await g.page.evaluate(() => window.__spoken.at(-1))).includes(w2.say), 'on entend le pronom et le verbe ensemble', w2.say + ' / ' + await g.page.evaluate(() => window.__spoken.slice(-3).join(' | ')));
       const r2 = await g.spell();
       check(r2.result.includes(w2.sentence), 'réussi : la phrase s’affiche', r2.result);
       // Articles: the noun in grey after the boxes, the child writes le or la (first days).

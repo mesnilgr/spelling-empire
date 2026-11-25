@@ -2455,6 +2455,14 @@ function setupCopper() {
     saveGame();
   };
   cw.onChestUp = () => { sfxPop(); };
+  cw.onHeroButton = () => {
+    if (!$('#spell-modal').hidden || spellContext || !$('#dialog').hidden || !$('#news-modal').hidden) return;
+    const c = copperState(), msg = c.made ? x().heroButtonSleep : x().heroButton;
+    playTone(220, 0.12, 'square', 0.05); playTone(180, 0.15, 'square', 0.05, 0.12);
+    toast(`🔴 ${msg}`, 6000); speak(msg, 0.95);
+    newsTarget = { show: 'anvil', until: performance.now() + 4 * 60 * 1000 };
+    updateMapPins();
+  };
   if (scene3D.bosses) {
     scene3D.bosses.onWave = (b) => { animalVoice({ type: 'square', f0: 110, f1: 150, dur: 0.4, filter: 'lowpass', freq: 400, vol: 0.09 }); };
     scene3D.bosses.onSneeze = (b) => { sfxSneeze(); const p = b.mesh.position; copperFloat(p, lang === 'en' ? 'Atchoo!' : 'Atchoum !', '#a8e070', 4.2); speak(lang === 'en' ? 'Atchoo! The Moss Golem sneezes leaves!' : 'Atchoum ! Le golem de mousse éternue des feuilles !', 1.05); };

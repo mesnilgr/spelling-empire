@@ -63,6 +63,8 @@ export const CTX = {
     shine: 'Bling ! Boulon brille comme un sou neuf ! Trois boutons secrets t’attendent dans trois lieux !',
     costume: 'Le dernier coffre ! Tu gagnes le costume de Chevalier de cuivre ! Et Boulon reste avec toi pour toujours !',
     costumeSay: 'Les trois boutons secrets ! Tu gagnes le costume de Chevalier de cuivre ! Et Boulon reste avec toi pour toujours !',
+    heroButton: 'Des boutons secrets ! Ils sont trop durs pour toi : seul un petit golem de cuivre peut appuyer dessus. Fabrique-le sur l’enclume, à côté de la forge : suis la flèche !',
+    heroButtonSleep: 'Des boutons secrets ! Seul Boulon peut appuyer dessus : va le réveiller à l’enclume, à côté de la forge !',
     noPart2: 'Boulon a trouvé tous les boutons du jour. D’autres boutons arrivent à ton prochain retour !',
     happy: 'Bip bip ! Boulon fait la danse du robot !',
     ride: 'Boulon s’accroche au deltaplane !',
@@ -104,6 +106,8 @@ export const CTX = {
     shine: 'Bling! Bolt shines like a new penny! Three secret buttons are waiting in three places!',
     costume: 'The last chest! You win the Copper Knight outfit! And Bolt stays with you for good!',
     costumeSay: 'All three secret buttons! You win the Copper Knight outfit! And Bolt stays with you for good!',
+    heroButton: 'Secret buttons! They are too hard for you: only a little copper golem can press them. Build one on the anvil next to the forge: follow the arrow!',
+    heroButtonSleep: 'Secret buttons! Only Bolt can press them: go and wake him up at the anvil next to the forge!',
     noPart2: 'Bolt found all of today’s buttons. More buttons next time you come back!',
     happy: 'Beep beep! Bolt does the robot dance!',
     ride: 'Bolt holds on to the hang-glider!',
@@ -247,7 +251,7 @@ export class CopperWorkshop {
     this.buttons = BUTTON_SPOTS.flatMap((spot, si) => spotButtons(spot).map((b, k) => ({ ...b, si, k, y: scene3D.groundAt(b.x, b.z), down: 0 })));
     const n = this.buttons.length;
     this.bases = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.34, 0.08, 12), new THREE.MeshStandardMaterial({ color: 0x8a8a92, roughness: 0.8 }), n);
-    this.caps = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.2, 0.22, 0.14, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, emissive: 0x401010, emissiveIntensity: 0.6 }), n);
+    this.caps = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.2, 0.22, 0.14, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, emissive: 0x401010, emissiveIntensity: 0.15 }), n);
     for (const im of [this.bases, this.caps]) { im.userData.dynamic = true; im.frustumCulled = false; scene3D.scene.add(im); }
     // The secret chest (one at a time).
     this.chest = buildChest();
@@ -548,6 +552,22 @@ export class CopperWorkshop {
     this._sync();
   }
   _updateButtons(dt) {
+    // The hero alone at a spot of buttons (no Boulon to press them): say what they are.
+    this.heroCool = (this.heroCool ?? 0) - dt;
+    const helper = this.golem.visible && ['follow', 'press', 'ride'].includes(this.mode);
+    if (!helper && this.heroCool <= 0 && !this.s.inputLocked) {
+      const p = this.s.player.position;
+      const si = BUTTON_SPOTS.findIndex((sp, i) => this.spotVisible(i) && !this.state.pressed.includes(i) && Math.hypot(sp.x - p.x, sp.z - p.z) < 2.6);
+      // (only once the hero has stood there a moment, not when just passing through)
+      this.heroDwell = si >= 0 && si === this.heroSpot ? (this.heroDwell ?? 0) + dt : 0;
+      this.heroSpot = si;
+      if (si >= 0 && this.heroDwell > 0.8) {
+        this.heroCool = 25; this.heroDwell = 0;
+        for (const b of this.buttons) if (b.si === si) b.down = 0.25; // they barely move: too hard for the hero
+        this.layout();
+        this.onHeroButton?.(si);
+      }
+    }
     let dirty = false;
     for (const b of this.buttons) if (b.down > 0 && !b.pressedNow && !(b.real && this.state.pressed.includes(b.si))) { b.down = Math.max(0, b.down - dt * 2); dirty = true; }
     if (dirty) this.layout();
