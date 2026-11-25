@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.24.2 — La fête des mots 🎉
+
+Chaque mot réussi devient une petite fête (c'est ce que l'enfant fait le plus souvent : ça devait être le moment le plus fun du jeu).
+
+- 🎵 **Les lettres sautent** une à une sur une petite mélodie qui monte, et **un gros emoji** surgit (🎉 🤩 🦄 🚀…).
+- ⭐ **Les étoiles gagnées s'envolent** de la fenêtre jusqu'au compteur, qui fait un bond.
+- 🗣️ **Le bravo change à chaque fois** (« Génial ! », « Trop fort ! », « Champion ! », « Du premier coup ! »…) et il est **dit à voix haute** avant la petite phrase du mot : même un enfant de 5 ans qui ne lit pas encore l'entend.
+- 🔥 **Séries** : 3, 5, 10 mots d'affilée du premier coup (puis tous les 5) font apparaître « 🔥 3 d'affilée ! » en grand, avec fanfare et confettis.
+- ✨ **Les mots dorés** : de temps en temps (un mot à miner sur dix), la fenêtre devient dorée et Alaric annonce « Un mot doré ! ». Réussi du premier coup, il rapporte **trois fois plus d'étoiles**, avec un trophée 🏆 et une pluie de confettis.
+- 🤗 **Un raté n'est jamais triste** : les lettres tremblent gentiment, un mot doux change à chaque fois (« Presque ! », « Pas grave, on réessaie ! »…) et le mot est redit à voix haute.
+- 💃 **Petite danse** : si on laisse le héros sans bouger un moment, il danse (♪ ♫) et le chien fait une pirouette.
+- Petites corrections : « 2 essais restants » ne s'affiche plus après un mot réussi ; « Tu as obtenu : bois » (espace avant les deux-points).
+- 📋 Nouvelle règle du plan, demandée par les parents : **rien de muet**. Tout nouvel objet qui demande quelque chose que l'enfant n'a pas encore s'explique tout seul, à l'écrit et à voix haute, et la flèche dorée montre où aller.
+
 ## v1.24.1 — Les boutons secrets s'expliquent
 
 - 🔴 Devant les boutons secrets (les trois boutons rouges près de la tour, de la boutique…), sans le petit golem, il ne se passait rien. Maintenant, quand le héros s'arrête devant, Alaric explique, à l'écrit et à voix haute : « Ils sont trop durs pour toi : seul un petit golem de cuivre peut appuyer dessus. Fabrique-le sur l'enclume, à côté de la forge ! », et la flèche dorée montre l'enclume. Les boutons bougent à peine sous le pied du héros.

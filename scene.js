@@ -244,6 +244,30 @@ export class GameScene {
     if (hen && !hen.album) this.cocotte = new Cocotte(this, hen);
   }
 
+  // Left standing still for a while, the hero does a little dance (and the dog a twirl).
+  _tickIdleDance(dt) {
+    if (this.mode !== 'play' || !this.player) return;
+    const u = this.player.userData, p = u.parts;
+    if (!p) return;
+    const still = !u.isMoving && this.onGround && !this.inputLocked && !this.horses?.riding && !u.action && !this.activeHouse;
+    if (this.danceT > 0) {
+      this.danceT -= dt;
+      const k = this.danceT;
+      if (!still || k <= 0) { this.danceT = 0; p.rig.rotation.y = 0; p.leftArm.rotation.z = 0; p.rightArm.rotation.z = 0; return; }
+      p.rig.position.y = Math.abs(Math.sin(k * 10)) * 0.12;
+      p.rig.rotation.y = Math.sin(k * 5) * 0.7;
+      p.leftArm.rotation.x = -2.5 + Math.sin(k * 10) * 0.4; p.rightArm.rotation.x = -2.5 - Math.sin(k * 10) * 0.4;
+      p.leftArm.rotation.z = 0.35; p.rightArm.rotation.z = -0.35;
+      return;
+    }
+    this.idleT = still ? (this.idleT ?? 0) + dt : 0;
+    if (this.idleT > (this.danceAfter ?? 14)) {
+      this.idleT = 0; this.danceAfter = 25; this.danceT = 2.6; this.dances = (this.dances ?? 0) + 1;
+      if (this.pet?.tamed) this.pet.trick();
+      this.onDance?.();
+    }
+  }
+
   // Cocotte at another hiding spot (the tests of an older release's spot).
   placeCocotte(row) {
     const old = this.cocotte;
@@ -2505,6 +2529,7 @@ export class GameScene {
     this.village?.update(elapsed);
     // Character limbs (walk cycle, idle, item actions).
     for (const ch of this.characters ?? []) animateCharacter(ch, dt, elapsed);
+    this._tickIdleDance(dt);
     for (const fl of this.heldFlames ?? []) {
       if (fl.spin) { fl.mesh.rotation.y += dt * 3; continue; }
       const n = Math.sin(elapsed * fl.speed + fl.phase);

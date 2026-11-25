@@ -331,12 +331,76 @@ function renderProgrammeCard() {
   const day = (d) => d.split('-').reverse().slice(0, 2).join('/');
   $('#dash-prog-list').replaceChildren(...upcomingThemes(todayKey()).map((p) => el('li', '', `${day(p.from)} → ${day(p.to)} : ${p.emoji} ${p.name} (${p.blurb})${p.needs === 'sentences' && !SENTENCES_READY ? ` — ${t.progSoon}` : ''}`)));
 }
-// "Bravo" messages say the child's name now and then (one success in three).
-let praiseCount = 0;
+// "Bravo" messages: a different one each time, with the child's name now and then (one in three).
+const PRAISE = {
+  fr: { first: ['Orthographe parfaite !', 'Bravo !', 'Génial !', 'Trop fort !', 'Waouh, parfait !', 'Magnifique !', 'Champion !', 'Du premier coup !', 'Super !'], again: ['Tu y es arrivé !', 'Bien joué !', 'Tu as réussi !', 'Tu n’as rien lâché, bravo !'] },
+  en: { first: ['Perfect spelling!', 'Well done!', 'Brilliant!', 'Amazing!', 'Wow, perfect!', 'Fantastic!', 'Champion!', 'First try!', 'Super!'], again: ['You got it!', 'Well played!', 'You did it!', 'You never gave up, well done!'] },
+};
+let praiseCount = 0, lastPraise = -1;
 function praise(firstTry) {
-  const base = firstTry ? t.perfectSpelling : t.youGotIt;
+  const list = (PRAISE[lang] ?? PRAISE.fr)[firstTry ? 'first' : 'again'];
+  let k = Math.floor(Math.random() * list.length);
+  if (k === lastPraise) k = (k + 1) % list.length;
+  lastPraise = k;
+  const base = list[k];
   const n = childName();
   return n && praiseCount++ % 3 === 0 ? t.nameIn(base, n) : base;
+}
+
+/* ===== THE WORD PARTY: every success is a little celebration ===== */
+// The letters hop one after the other on a rising tune, a big emoji pops up, the stars fly to the
+// counter, a run of words right first time gets a fanfare (3, 5, 10, then every 5), and now and then
+// a golden word (worth three times the stars) shines before it is spelled.
+const OOPS = { fr: ['Presque !', 'Oups, pas tout à fait !', 'Pas grave, on réessaie !', 'Tu y es presque !'], en: ['Almost!', 'Oops, not quite!', 'Never mind, try again!', 'Nearly there!'] };
+const CHEER_EMOJI = ['🎉', '🤩', '🌟', '🥳', '💪', '✨', '🚀', '🦄', '👏', '😎'];
+const STREAK_CHEER = { fr: (n) => `🔥 ${n} d’affilée !`, en: (n) => `🔥 ${n} in a row!` };
+const GOLD_TXT = {
+  fr: { title: '✨ Mot doré !', instr: 'Un mot doré ! Réussi du premier coup, il vaut trois fois plus d’étoiles !', won: '✨ Mot doré : trois fois plus d’étoiles !', say: 'Un mot doré !' },
+  en: { title: '✨ Golden word!', instr: 'A golden word! Right first time, it is worth three times the stars!', won: '✨ Golden word: three times the stars!', say: 'A golden word!' },
+};
+const goldTxt = () => GOLD_TXT[lang] ?? GOLD_TXT.fr;
+const TUNE = [523, 587, 659, 784, 880, 1047, 1175, 1319, 1568, 1760];
+const isTestRun = /[?&]test\b/.test(location.search);
+function goldChance() { return window.__se?.goldChance ?? (isTestRun ? 0 : 0.1); }
+function flyStars(k) {
+  const card = $('#spell-modal .spell-modal-card'), target = $('#hud-stars');
+  if (!card || !target) return;
+  const a = card.getBoundingClientRect(), b = target.getBoundingClientRect();
+  if (!b.width) return;
+  if (window.__se) window.__se.flown = (window.__se.flown ?? 0) + k;
+  for (let i = 0; i < k; i++) {
+    const st = el('span', 'fly-star', '★');
+    st.style.left = `${a.left + a.width / 2 - 13 + (i - k / 2) * 14}px`;
+    st.style.top = `${a.top + a.height * 0.45}px`;
+    document.body.append(st);
+    setTimeout(() => {
+      st.style.transform = `translate(${b.left + b.width / 2 - (a.left + a.width / 2 + (i - k / 2) * 14)}px, ${b.top + b.height / 2 - (a.top + a.height * 0.45)}px) scale(0.6)`;
+      st.style.opacity = '0.2';
+    }, 30 + i * 70);
+    setTimeout(() => { st.remove(); if (i === k - 1) { const pill = target.parentElement ?? target; pill.classList.remove('is-bump'); void pill.offsetWidth; pill.classList.add('is-bump'); playTone(1568, 0.08, 'triangle', 0.06); } }, 820 + i * 70);
+  }
+}
+function cheerSuccess({ firstTry, copied, earned, golden }) {
+  const tiles = $('#spell-tiles'), card = $('#spell-modal .spell-modal-card');
+  $('#spell-attempts').textContent = '';
+  if (copied) return;
+  tiles.classList.remove('is-cheer'); void tiles.offsetWidth; tiles.classList.add('is-cheer');
+  const n = Math.min(10, tiles.querySelectorAll('.tile').length);
+  for (let i = 0; i < n; i++) playTone(TUNE[i], 0.09, 'triangle', 0.05, 0.15 + i * 0.08);
+  if (firstTry && card) {
+    const e = el('div', 'cheer-emoji', golden ? '🏆' : CHEER_EMOJI[Math.floor(Math.random() * CHEER_EMOJI.length)]);
+    card.append(e);
+    setTimeout(() => e.remove(), 1700);
+  }
+  if (earned > 0) setTimeout(() => flyStars(Math.min(earned, 9)), 350);
+  if (firstTry && (streak === 3 || streak === 5 || streak === 10 || (streak > 10 && streak % 5 === 0)) && card) {
+    const b = el('div', 'cheer-streak', (STREAK_CHEER[lang] ?? STREAK_CHEER.fr)(streak));
+    card.append(b);
+    setTimeout(() => b.remove(), 2300);
+    setTimeout(() => { launchConfetti(); sfxVictory(); }, 450);
+  } else if (golden && firstTry) {
+    setTimeout(() => { launchConfetti(); [1319, 1568, 2093, 2637].forEach((f, i) => playTone(f, 0.18, 'sine', 0.07, i * 0.09)); }, 400);
+  }
 }
 
 function wordsForLevel(levelId) {
@@ -696,9 +760,10 @@ function init3DScene() {
   scene3D.canBeAttacked = () => !!game && document.body.dataset.screen === 'game' && $('#spell-modal').hidden && $('#dialog').hidden && $('#travel-modal').hidden && $('#quest-modal')?.hidden !== false && !knocking;
   scene3D.zombies.enabled = progress.zombies !== false;
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
+  scene3D.onDance = () => { [523, 659, 784, 659, 523, 784].forEach((f, i) => playTone(f, 0.12, 'triangle', 0.05, i * 0.16)); const sp = scene3D.getPlayerScreenPosition(); if (sp) showFloatingText(sp.x, sp.y - 50, '♪ ♫ ♪', '#ffe08a'); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, copper: () => game?.copper, henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, streak: () => streak, copper: () => game?.copper, henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -984,6 +1049,12 @@ function openSpellModal(title, instruction, emoji) {
   stat.seen += 1;
   stat.lastSeen = Date.now();
   saveProgress();
+  // Now and then a golden word (only for the words that give materials).
+  if (spellContext.type === 'mine' && spellContext.golden === undefined) spellContext.golden = Math.random() < goldChance();
+  const golden = !!spellContext.golden && !spellContext.copyMode;
+  $('#spell-modal .spell-modal-card')?.classList.toggle('is-golden', golden);
+  $('#spell-tiles')?.classList.remove('is-cheer', 'is-oops');
+  if (golden) { title = goldTxt().title; instruction = goldTxt().instr; setTimeout(() => [1568, 2093, 2637].forEach((f, i) => playTone(f, 0.14, 'sine', 0.06, i * 0.08)), 50); }
   $('#spell-title').textContent = title;
   hw.wordGuide = progress.traceGuide === 'auto' && Math.random() < (stat.correct === 0 ? 0.75 : stat.correct < 3 ? 0.4 : 0.15);
   setTimeout(() => { hw.strokes = []; hw.current = null; hw.misses = 0; hw.forceGuide = false; hwFeedback(); $('#hw-alts')?.replaceChildren(); setInputMode(progress.inputMode ?? 'keys'); }, 0);
@@ -1013,7 +1084,7 @@ function openSpellModal(title, instruction, emoji) {
   updateSpellAttempts();
   $('#spell-modal').hidden = false;
   setSpellLocked(false);
-  speak(word.say ?? word.word, 0.9);
+  speak(golden ? `${goldTxt().say} ${word.say ?? word.word}` : word.say ?? word.word, 0.9);
 }
 
 /* ===== STORY ===== */
@@ -3383,7 +3454,8 @@ function handleSpellSuccess() {
   const streakBonus = streak >= 2 ? Math.min(streak - 1, 3) : 0;
   const baseEarned = firstTry ? FIRST_TRY_STARS : RETRY_STARS;
   // Copying the shown word gives the material but no stars.
-  const earned = copied ? 0 : baseEarned + streakBonus;
+  const golden = !!spellContext.golden && firstTry;
+  const earned = (copied ? 0 : baseEarned + streakBonus) * (golden ? 3 : 1);
   progress.stars += earned;
   game.starsEarned += earned;
   if (!copied) game.wordsSpelled += 1;
@@ -3396,6 +3468,7 @@ function handleSpellSuccess() {
 
   sfxMine();
   if (streak >= 2) sfxStreak(streak);
+  cheerSuccess({ firstTry, copied, earned, golden });
   if (!copied) {
     defiEvent('word');
     if (firstTry) defiEvent('firstTry');
@@ -3454,15 +3527,18 @@ function handleSpellSuccess() {
     sfxBreak();
     saveGame();
     const sentence = spellContext.word.sentence ?? buildSentence(wordStr, lang);
+    const bravo = copied ? t.copiedWell : praise(firstTry);
     spellResultEl.replaceChildren(
-      el('p', 'spell-success', copied ? t.copiedWell : praise(firstTry)),
+      el('p', 'spell-success', bravo),
+      ...(golden ? [el('p', 'spell-golden', goldTxt().won)] : []),
       el('p', 'spell-sentence', sentence),
       el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`),
-      el('p', 'spell-material', lootText ? `🎁 ${t.treasureFound} ${lootText}` : `${MATERIAL_EMOJI[material] ?? ''} ${t.gotMaterial}: ${materialName(material)}${amount > 1 ? ` ×${amount}` : ''}`),
+      el('p', 'spell-material', lootText ? `🎁 ${t.treasureFound} ${lootText}` : `${MATERIAL_EMOJI[material] ?? ''} ${t.gotMaterial}${lang === 'fr' ? ' :' : ':'} ${materialName(material)}${amount > 1 ? ` ×${amount}` : ''}`),
     );
-    if (streak >= 2) spellResultEl.appendChild(el('p', 'spell-streak-badge', `${streak}x ${t.streakLabel}! +${streakBonus} ${t.bonusStars}`));
+    if (streak >= 2) spellResultEl.appendChild(el('p', 'spell-streak-badge', lang === 'fr' ? `🔥 ${streak} d’affilée ! +${streakBonus} ★ bonus` : `🔥 ${streak} in a row! +${streakBonus} ★ bonus`));
     spellResultEl.hidden = false;
-    speak(sentence, 0.9);
+    // The praise is said too (a 5-year-old cannot read it yet), then the word's little sentence.
+    speak(copied ? sentence : `${bravo} ${sentence}`, 0.9);
   } else if (type === 'sign') {
     const sg = spellContext.sign;
     game.story.signs[sg.house] = true;
@@ -3674,12 +3750,17 @@ function handleSpellFailure(target) {
   const ctx = spellContext;
   if (spellContext.tries < MAX_TRIES) {
     spellRevealEl.hidden = true;
-    spellResultEl.replaceChildren(el('p', 'spell-hint', t.notQuite));
+    // A different little word of comfort each time, said aloud with the word again; the letters wobble.
+    const oops = (OOPS[lang] ?? OOPS.fr)[Math.floor(Math.random() * 4)];
+    spellResultEl.replaceChildren(el('p', 'spell-hint', `${oops} ${lang === 'fr' ? 'Écoute encore et réessaie.' : 'Listen again and try once more.'}`));
     spellResultEl.hidden = false;
+    spellTilesEl.classList.remove('is-oops'); void spellTilesEl.offsetWidth; spellTilesEl.classList.add('is-oops');
+    speak(`${oops} ${ctx.word.say ?? ctx.word.word}`, 0.85);
     setTimeout(() => {
       if (spellContext !== ctx) return;
       setSpellLocked(false);
       spellInput.value = '';
+      spellTilesEl.classList.remove('is-oops');
       renderSpellTiles();
     }, 1400);
   } else {

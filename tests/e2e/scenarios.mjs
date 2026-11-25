@@ -1791,6 +1791,59 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'La fête des mots : bravos, étoiles qui volent, séries, mots dorés, petite danse',
+    quick: true,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1000);
+      const node = "i.kind === 'node' && i.active && !i.requires && i.nodeType !== 'chest'";
+      const open = async () => { await g.page.evaluate(() => { const b = document.querySelector('#spell-continue-btn'); if (b && !b.hidden && !document.querySelector('#spell-modal').hidden) b.click(); }); await g.page.waitForTimeout(200); await g.use(node); return g.page.waitForFunction(() => !document.querySelector('#spell-modal').hidden && !!window.__se.spell(), null, { timeout: 5000 }).then(() => true, () => false); };
+      // A word right first time: the letters hop, a big emoji, the stars fly to the counter, the bravo is said.
+      check(await open(), 'un mot s’ouvre');
+      const n0 = await g.page.evaluate(() => window.__spoken.length);
+      const r1 = await g.spell({ keepOpen: true });
+      const party = await g.page.evaluate((n) => ({ cheer: document.querySelector('#spell-tiles').classList.contains('is-cheer'), emoji: !!document.querySelector('.cheer-emoji'), attempts: document.querySelector('#spell-attempts').textContent, said: window.__spoken.slice(n).join(' | ') }), n0);
+      await g.page.waitForTimeout(500);
+      const stars = await g.page.evaluate(() => window.__se.flown ?? 0);
+      check(party.cheer && party.emoji, 'les lettres sautent une à une et un gros emoji apparaît', JSON.stringify(party));
+      check(stars > 0, `les étoiles s’envolent vers le compteur (${stars})`);
+      check(party.attempts === '', 'plus de « essais restants » une fois le mot réussi', party.attempts);
+      check(/^(Orthographe parfaite|Bravo|Génial|Trop fort|Waouh, parfait|Magnifique|Champion|Du premier coup|Super)/.test(party.said), 'le bravo est dit à voix haute, avant la petite phrase', party.said);
+      void r1;
+      // Three in a row: a big « 3 d’affilée ! » with a fanfare.
+      for (let k = 0; k < 2; k++) { if (await open()) await g.spell({ keepOpen: true }); }
+      const st = await g.page.evaluate(() => ({ streak: window.__se.streak(), big: document.querySelector('.cheer-streak')?.textContent ?? '' }));
+      check(st.streak === 3 && /3 d’affilée/.test(st.big), '3 mots d’affilée : « 🔥 3 d’affilée ! » en grand', JSON.stringify(st));
+      // A miss: the letters wobble, a word of comfort and the word again, said aloud.
+      check(await open(), 'un autre mot');
+      const n1 = await g.page.evaluate(() => window.__spoken.length);
+      const word = await g.page.evaluate(() => window.__se.spell().word);
+      await g.page.evaluate((w) => { const bad = w.word.slice(0, -1) + (w.word.endsWith('z') ? 'y' : 'z'); for (const ch of bad) document.querySelector(`#spell-keyboard .key[aria-label="${ch}"]`)?.click(); document.querySelector('#spell-check-btn').click(); }, word);
+      await g.page.waitForTimeout(300);
+      const miss = await g.page.evaluate((n) => ({ oops: document.querySelector('#spell-tiles').classList.contains('is-oops'), said: window.__spoken.slice(n).join(' | '), hint: document.querySelector('#spell-result').innerText }), n1);
+      check(miss.oops && /(Presque|Oups, pas tout à fait|Pas grave, on réessaie|Tu y es presque)/.test(miss.said) && miss.said.includes(word.say ?? word.word), 'raté : les lettres tremblent, « Presque ! » et le mot redit (lu)', JSON.stringify(miss));
+      await g.page.waitForTimeout(1600);
+      await g.spell({ keepOpen: true });
+      // A golden word: it shines before it is spelled and is worth three times the stars.
+      await g.page.evaluate(() => { window.__se.goldChance = 1; });
+      check(await open(), 'un mot doré s’ouvre');
+      const gold = await g.page.evaluate(() => ({ title: document.querySelector('#spell-title').textContent, on: document.querySelector('#spell-modal .spell-modal-card').classList.contains('is-golden'), said: window.__spoken.slice(-1)[0] }));
+      check(/Mot doré/.test(gold.title) && gold.on && /Un mot doré/.test(gold.said), 'le mot doré brille et s’annonce (« Un mot doré ! », lu)', JSON.stringify(gold));
+      const before = await g.page.evaluate(() => window.__se.progress().stars);
+      const rg = await g.spell({ keepOpen: true });
+      const after = await g.page.evaluate(() => window.__se.progress().stars);
+      check(after - before >= 9 && /trois fois plus d’étoiles/.test(rg.result), `réussi du premier coup : trois fois plus d’étoiles (+${after - before})`, rg.result);
+      await g.page.evaluate(() => { window.__se.goldChance = 0; const b = document.querySelector('#spell-continue-btn'); if (b && !b.hidden) b.click(); });
+      // Standing still a while: the hero dances, the dog twirls.
+      await g.page.waitForTimeout(500);
+      const dance = await g.page.evaluate(async () => { const s = window.__se.scene; s.idleT = 0; s.danceAfter = 0.4; await new Promise((r) => setTimeout(r, 1500)); return { n: s.dances ?? 0, dog: (s.pet.trickT ?? 0) > 0 || (s.dances ?? 0) > 0 }; });
+      check(dance.n >= 1, 'sans bouger un moment, le héros fait une petite danse (♪ ♫)', JSON.stringify(dance));
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
     name: 'Espace parents : listes de mots',
     async run(browser, base, check) {
       const { WORDS } = await import('../../language-engine.js');

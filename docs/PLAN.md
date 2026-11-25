@@ -35,6 +35,11 @@ Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
    Bruitages courts et petites fanfares permis ; **pas de musique de fond**. La version réduite garde au moins
    le moment waouh et le gag.
 
+10. **Rien de muet.** Tout nouvel objet du décor qui demande quelque chose que l'enfant n'a pas encore (un outil,
+   un compagnon, une partie pas encore ouverte…) s'explique tout seul quand le héros s'arrête devant : une phrase
+   écrite **et** lue (« Il te faut… »), et la flèche dorée montre où aller. Jamais un objet qui brille sans que rien
+   ne se passe (retour du parent du 25 nov. sur les boutons secrets). Le scénario e2e le vérifie.
+
 ## Fils rouges (construits en J2, enrichis chaque jour)
 
 - **Cocotte la poule** se cache chaque jour à un endroit lié à la nouveauté (ligne « Cocotte » de chaque
