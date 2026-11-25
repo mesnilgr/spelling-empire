@@ -20,6 +20,7 @@ import { cocotteToday, COCOTTE } from './cocotte.js';
 import { ATX, ALBUM_ANIMALS, KIND_TO_CARD, PLACE_WORDS, PLACE_HINTS, BOSS_HINTS, DISCOVERY, ALBUM_GOAL1, GOLD_CHANCE, PAGES1, PAGES2 } from './album.js';
 import { FTX, CALENDAR, FLAME_STEPS, SNEEZE_STARS, HEARTH } from './flame.js';
 import { PTX, CLOUDS, RINGS, POWER_TIME, GLIDE_TIME, ANIMALS_GOAL, POWER_KINDS } from './powers.js';
+import { CTX, BUTTON_SPOTS, spotsOfPart, COPPER_LIFE, WIND_EVERY, SHINE_WORD } from './copper.js';
 import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themesFor, themeWords, themeDay, upcomingThemes } from './programme.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
@@ -697,7 +698,7 @@ function init3DScene() {
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, copper: () => game?.copper, henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -721,7 +722,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand', 'powerstone'].includes(obj.kind)) continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand', 'powerstone', 'anvil', 'copper', 'secretchest'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -768,6 +769,7 @@ function saveGame() {
     golemFlowerDay: game.golemFlowerDay ?? null,
     flame: game.flame ?? null,
     powers: game.powers ?? null,
+    copper: game.copper ?? null,
     album: game.album ?? null,
     heartsFrom: game.heartsFrom ?? [],
     savedAt: Date.now(),
@@ -801,6 +803,7 @@ function continueGame() {
     golemFlowerDay: s.golemFlowerDay ?? null,
     flame: s.flame ? JSON.parse(JSON.stringify(s.flame)) : null,
     powers: s.powers ? JSON.parse(JSON.stringify(s.powers)) : null,
+    copper: s.copper ? JSON.parse(JSON.stringify(s.copper)) : null,
     album: s.album ? JSON.parse(JSON.stringify(s.album)) : null,
     heartsFrom: [...(s.heartsFrom ?? [])],
   });
@@ -905,6 +908,9 @@ function interactWith(obj) {
   if (obj.kind === 'flame') { flameInteract(); return; }
   if (obj.kind === 'albumstand') { albumStandInteract(); return; }
   if (obj.kind === 'powerstone') { powerStoneInteract(); return; }
+  if (obj.kind === 'anvil') { anvilInteract(); return; }
+  if (obj.kind === 'copper') { copperTouch(); return; }
+  if (obj.kind === 'secretchest') { secretChestInteract(); return; }
   if (obj.kind === 'npc' && obj.npcId === 'mage' && storyAt('talkMage')) { playScene('mage1', () => { advanceStory('talkMage'); toast('🔮 ' + t.grimoireTitle + ' !'); }); return; }
   if (obj.kind === 'npc' && (obj.npcId === 'forester' || obj.npcId === 'fisher')) {
     const id = obj.npcId;
@@ -1141,7 +1147,7 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐', quest: true });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum(); tickPowers(0.3); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#collect-modal').hidden; tickNews(); }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum(); tickPowers(0.3); tickCopper(0.3); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#collect-modal').hidden; tickNews(); }, 300);
 
 /* ===== FLASH CHALLENGE: never more than 2 minutes of play without a word ===== */
 const FLASH_AFTER = 120; // seconds of play
@@ -1356,6 +1362,7 @@ function onPartTwo(key) {
   if (key === 'J3') onFlamePartTwo();
   if (key === 'J4') onAlbumPartTwo();
   if (key === 'J5') onPowersPartTwo();
+  if (key === 'J6') onCopperPartTwo();
 }
 
 /* ===== DAILY CHALLENGES, THE JUMPING CHEST AND COCOTTE (J2) ===== */
@@ -1555,7 +1562,7 @@ function henHint() {
   if (!r) return '';
   return henFound() ? dtx().cocotteFound : r.hint[lang] ?? r.hint.fr;
 }
-function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), albumSpeech(), powersSpeech(), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
+function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), albumSpeech(), powersSpeech(), copperSpeech(), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
 function renderToday() {
   const box = $('#journal-today');
   if (!box) return;
@@ -1578,6 +1585,7 @@ function renderToday() {
   for (const line of flameLines()) kids.push(el('p', 'journal-flame', line));
   for (const line of albumLines()) kids.push(el('p', 'journal-album', line));
   for (const line of powersLines()) kids.push(el('p', 'journal-powers', line));
+  for (const line of copperLines()) kids.push(el('p', 'journal-copper', line));
   if (henRow()) kids.push(el('p', 'journal-hen', `🐔 ${x.cocotteTitle} ${henHint()}`), el('p', 'journal-feathers', x.feathers((progress.feathers ?? []).length)));
   const listen = el('button', 'btn btn-ghost btn-small', '🔊');
   listen.type = 'button';
@@ -2370,6 +2378,264 @@ function powersSpeech() {
   if (!l.length) return '';
   if (l.length === 1) return l[0].replace(/^\S+ /, '');
   return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${l[1].replace(/·/g, '.').replace(/(\d)\/(\d)/g, '$1 sur $2')}.`;
+}
+
+/* ===== THE LITTLE COPPER GOLEM AND THE SECRET BUTTONS (J6) ===== */
+// Session 1: the recipe at the anvil (FER, PIERRE, FEU) builds Boulon, who follows the hero for
+// 3 minutes (a word winds his key every minute); two secret buttons in the village, each opening a
+// secret chest with a word (the second one, bigger, has two locks and a golden key for Boulon).
+// Session 2 (part 2 of J6): Boulon has gone green (spell BRILLE), then three buttons in three places;
+// the last chest gives the Copper Knight outfit and Boulon stays for good.
+const ctx6 = () => CTX[lang] ?? CTX.fr;
+function copperState() { return game ? (game.copper ??= { made: false, step: 0, left: 0, nextWind: 0, windT: 0, flat: false, asleep: false, pressed: [], opened: [], chestAt: -1, locks: 0, green: false, shiny: false, goldKey: false, forever: false, costume: false, bongs: 0, trips: 0, fakes: 0 }) : null; }
+const copperPartTwo = () => releasePart(6) === 2;
+const copperDone1 = (c = game?.copper) => spotsOfPart(1).every((sp) => c?.opened?.includes(sp.id));
+const copperDone2 = (c = game?.copper) => !!c?.costume;
+// Part 2's buttons appear once part 2 is open and part 1 is done.
+const copperPart = (c = game?.copper) => (copperPartTwo() && copperDone1(c) ? 2 : 1);
+let copperMsgs = [], copperGame = null, copperP2Said = false, copperBeepAt = 0, copperGagAt = -1e9, copperTripAt = -1e9;
+function queueCopperMsg(text, say = text.replace(/^\S+ /, ''), sfx = null) { copperMsgs.push({ text, say, sfx }); }
+function sfxClang() { playTone(1250, 0.25, 'square', 0.06); playTone(1880, 0.35, 'triangle', 0.07, 0.01); playNoise({ type: 'highpass', freq: 3000, q: 0.6, volume: 0.08, duration: 0.12 }); }
+function sfxBong() { playTone(196, 0.5, 'sine', 0.16, 0, 150); playTone(392, 0.3, 'triangle', 0.06, 0.01, 300); }
+function sfxPouet() { playTone(330, 0.12, 'sawtooth', 0.07, 0, 250); playTone(250, 0.22, 'sawtooth', 0.07, 0.12, 180); }
+function sfxClic() { playTone(1800, 0.04, 'square', 0.08); playTone(900, 0.06, 'square', 0.06, 0.05); playNoise({ type: 'lowpass', freq: 140, q: 1, volume: 0.2, duration: 0.6, delay: 0.15 }); }
+function sfxBip(d) { playTone(d < 4 ? 1400 : 1000, 0.05, 'square', 0.03); }
+function copperWord(w) {
+  const word = w[lang] ?? w.fr;
+  if ((progress.age ?? 6) <= 5) return { word: word[0], level: 'story', say: ctx6().letter(word[0].toUpperCase(), word) };
+  return { word, level: 'story', say: `${word}.` };
+}
+function copperFloat(pos, text, color = '#ffe08a', dy = 1.6) {
+  const sp = scene3D?.worldToScreen(pos.clone().setY(pos.y + dy));
+  if (sp) showFloatingText(sp.x, sp.y, text, color);
+}
+const nextSpot = (c = game?.copper) => spotsOfPart(copperPart(c)).find((sp) => !c?.opened?.includes(sp.id)) ?? null;
+const placeOf = (sp) => sp.place[lang] ?? sp.place.fr;
+function applyCopperLook() {
+  const cw = scene3D?.copper, c = game?.copper;
+  if (!cw) return;
+  const st = { part: copperPart(c), pressed: (c?.pressed ?? []).map((id) => BUTTON_SPOTS.findIndex((b) => b.id === id)), chestAt: c?.chestAt ?? -1, green: !!c?.green && !c?.shiny, goldKey: !!c?.goldKey };
+  const o = cw.state;
+  if (o.part !== st.part || o.chestAt !== st.chestAt || o.green !== st.green || o.goldKey !== st.goldKey || o.pressed.join() !== st.pressed.join()) cw.setState(st);
+  const want = ctx6().label;
+  if (cw.obj.labelText !== want) { cw.obj.labelText = want; scene3D.setSpotMaterial(cw.obj, 'talk', want); }
+  const wg = ctx6().labelGolem;
+  if (cw.gobj.labelText !== wg) { cw.gobj.labelText = wg; scene3D.setSpotMaterial(cw.gobj, 'talk', wg); cw.gobj.iconHolder.children.filter((c) => c.isObject3D && !c.userData.label).forEach((c) => { c.visible = false; }); }
+}
+function setupCopper() {
+  const cw = scene3D?.copper;
+  if (!cw || cw.wired) return;
+  cw.wired = true;
+  const x = () => ctx6();
+  cw.onPiece = (i) => { sfxBong(); copperFloat(cw.golem.position, x().bong, '#ffd6a0', 0.6 + i * 0.25); };
+  cw.onBorn = () => {
+    sfxVictory(); launchConfetti(); animalVoice({ type: 'square', f0: 520, f1: 880, dur: 0.3, filter: 'lowpass', freq: 1800, vol: 0.08 });
+    const sp = nextSpot();
+    toast(`🤖 ${x().born}`, 6000);
+    speak(x().born, 0.95);
+    if (sp) queueCopperMsg(`📡 ${x().bornHint(placeOf(sp))}`);
+  };
+  cw.onTrip = () => { const c = copperState(); c.trips++; sfxPouf(); copperFloat(cw.golem.position, x().oops, '#ffffff', 1.2); if (performance.now() - copperTripAt > 15000) { copperTripAt = performance.now(); speak(x().tripSay, 1.05); } };
+  cw.onBong = () => { const c = copperState(); c.bongs++; sfxBong(); copperFloat(cw.golem.position, x().bong, '#ffd6a0', 1.5); if (performance.now() - copperGagAt > 20000) { copperGagAt = performance.now(); speak(x().bongSay, 1.05); } };
+  cw.onGreet = () => { sfxBong(); setTimeout(() => animalVoice({ type: 'square', f0: 140, f1: 110, dur: 0.35, filter: 'lowpass', freq: 500, vol: 0.1 }), 300); copperFloat(cw.golem.position, `👋 ${x().hello}`, '#ffffff', 1.7); speak(x().hello, 1.1); };
+  cw.onBeep = (d) => { if (performance.now() - copperBeepAt > 350 && $('#spell-modal').hidden) { copperBeepAt = performance.now(); sfxBip(d); } };
+  cw.onWaitChest = () => { toast(`🤖 ${x().waitChest}`, 3000); speak(x().waitChest, 1); };
+  cw.onRide = () => { toast(`🪂 ${x().ride}`, 2500); };
+  cw.onRideLand = () => { sfxBong(); copperFloat(cw.golem.position, x().bong, '#ffd6a0', 1.4); };
+  cw.onPress = (si, real) => {
+    const c = copperState(), sp = BUTTON_SPOTS[si];
+    if (!real) { c.fakes++; sfxPouet(); launchConfetti(); copperFloat(cw.golem.position, x().pouet, '#ff8ab0', 1.2); if (c.fakes <= 2 || Math.random() < 0.3) speak(x().fake, 1.05); return; }
+    sfxClic();
+    if (!c.pressed.includes(sp.id)) c.pressed.push(sp.id);
+    const big = spotsOfPart(sp.part).filter((b) => !c.opened.includes(b.id)).length === 1;
+    c.chestAt = si; c.locks = big ? 2 : 1;
+    applyCopperLook();
+    cw.riseChest(si, big);
+    toast(`🔴 ${x().real}`, 5000); speak(x().real, 0.95);
+    saveGame();
+  };
+  cw.onChestUp = () => { sfxPop(); };
+  if (scene3D.bosses) {
+    scene3D.bosses.onWave = (b) => { animalVoice({ type: 'square', f0: 110, f1: 150, dur: 0.4, filter: 'lowpass', freq: 400, vol: 0.09 }); };
+    scene3D.bosses.onSneeze = (b) => { sfxSneeze(); const p = b.mesh.position; copperFloat(p, lang === 'en' ? 'Atchoo!' : 'Atchoum !', '#a8e070', 4.2); speak(lang === 'en' ? 'Atchoo! The Moss Golem sneezes leaves!' : 'Atchoum ! Le golem de mousse éternue des feuilles !', 1.05); };
+  }
+}
+// The golem's life on the screen: built, asleep by the anvil, following, run down.
+function copperSync() {
+  const cw = scene3D?.copper, c = game?.copper;
+  if (!cw) return;
+  if (copperGame !== game) {
+    copperGame = game; copperP2Said = false; copperMsgs = [];
+    cw.mode = 'hidden'; cw.golem.visible = false; cw.chest.visible = false; cw.cobj.active = false; cw.cobj.iconHolder.visible = false;
+    cw.setRecipe(0);
+    if (c?.made) {
+      if (c.forever) { c.flat = false; c.asleep = false; cw.mode = 'follow'; cw.golem.visible = true; cw.catchUp(); }
+      else { c.asleep = true; c.flat = false; cw.sleep(); }
+    } else cw.setRecipe(c?.step ?? 0);
+    applyCopperLook();
+    if (c?.chestAt >= 0) cw.showChest(c.chestAt, c.locks > 1 || spotsOfPart(BUTTON_SPOTS[c.chestAt].part).filter((b) => !c.opened.includes(b.id)).length === 1);
+  }
+}
+function anvilInteract() {
+  const c = copperState(), x = ctx6(), cw = scene3D.copper;
+  setupCopper(); copperSync();
+  if (!c.made) { openRecipeWord(); return; }
+  if (c.asleep) {
+    spellContext = { type: 'copper', mode: 'wake', word: pickWord(levelAt(0)), tries: 0 };
+    openSpellModal(`🤖 ${x.name}`, x.wakeInstr, '🤖');
+    return;
+  }
+  const sp = nextSpot();
+  const msg = sp ? x.bornHint(placeOf(sp)) : copperPartTwo() || copperDone2(c) ? x.happy : x.noPart2;
+  cw.dance(); toast(`🤖 ${msg}`, 4000); speak(msg, 0.95);
+}
+function openRecipeWord() {
+  const c = copperState(), x = ctx6();
+  const w = x.recipe[c.step], word = copperWord({ fr: CTX.fr.recipe[c.step], en: CTX.en.recipe[c.step] });
+  if (c.step === 0) word.say = `${x.recipeSay} ${word.say}`;
+  spellContext = { type: 'copper', mode: 'recipe', step: c.step, word, tries: 0 };
+  openSpellModal(`🔨 ${x.name}`, x.recipeInstr(w, c.step + 1), ['⚙️', '🪨', '🔥'][c.step]);
+}
+function copperTouch() {
+  const c = copperState(), x = ctx6(), cw = scene3D.copper;
+  if (cw.mode === 'sleep') { anvilInteract(); return; }
+  if (c.flat) {
+    spellContext = { type: 'copper', mode: 'wind', word: pickWord(levelAt(0)), tries: 0 };
+    openSpellModal(`🔑 ${x.golem}`, x.windInstr, '🔑');
+    return;
+  }
+  if (c.green && !c.shiny) {
+    spellContext = { type: 'copper', mode: 'shine', word: copperWord(SHINE_WORD), tries: 0 };
+    openSpellModal(`✨ ${x.golem}`, x.greenInstr, '✨');
+    return;
+  }
+  // The gag: the robot dance.
+  cw.dance(); sfxPop(); animalVoice({ type: 'square', f0: 600, f1: 900, dur: 0.25, filter: 'lowpass', freq: 2000, vol: 0.07 });
+  const sp = nextSpot();
+  const msg = sp ? `${x.happy} ${x.chestNext(placeOf(sp))}` : x.happy;
+  toast(`🤖 ${msg}`, 3500); speak(msg, 1);
+}
+function secretChestInteract() {
+  const c = copperState(), x = ctx6();
+  if (c.chestAt < 0) return;
+  spellContext = { type: 'copper', mode: 'chest', word: pickWord(levelAt(0)), tries: 0 };
+  openSpellModal(`🎁 ${x.chestTitle}`, c.locks > 1 ? x.lockInstr(1) : c.bigOpen ? x.lockInstr(2) : x.chestInstr, '🗝️');
+}
+function copperLife(start = true) {
+  const c = copperState();
+  c.left = COPPER_LIFE; c.nextWind = COPPER_LIFE - WIND_EVERY; c.windT = 0; c.flat = false; c.asleep = false;
+  if (start) scene3D.copper.wakeUp();
+}
+// After a word of the copper golem: the result shown in the spelling window.
+function copperSpelled(ctx) {
+  const c = copperState(), x = ctx6(), cw = scene3D.copper;
+  if (ctx.mode === 'recipe') {
+    c.step = Math.max(c.step, ctx.step + 1);
+    cw.setRecipe(c.step);
+    sfxClang();
+    saveGame();
+    if (c.step < 3) return { text: x.clang(ctx.step), say: x.clang(ctx.step), after: () => setTimeout(() => { if (!spellContext && $('#spell-modal').hidden) openRecipeWord(); }, 500) };
+    c.made = true;
+    copperLife(false);
+    progress.stars += 5; game.starsEarned += 5;
+    saveGame(); updateGameUI();
+    return { text: x.clang(2), say: x.clang(2), after: () => { sfxWhoosh(); cw.assemble(); } };
+  }
+  if (ctx.mode === 'wake') { copperLife(); saveGame(); return { text: `🤖 ${x.woke}`, say: x.woke, after: () => sfxBong() }; }
+  if (ctx.mode === 'wind') {
+    c.flat = false;
+    if (c.forever) c.windT = 0; else c.nextWind = Math.max(-1, c.left - WIND_EVERY);
+    cw.setFlat(false); saveGame();
+    return { text: `🔑 ${x.wound}`, say: x.wound, after: () => { playTone(900, 0.04, 'square', 0.05); playTone(900, 0.04, 'square', 0.05, 0.15); playTone(900, 0.04, 'square', 0.05, 0.3); } };
+  }
+  if (ctx.mode === 'shine') {
+    c.shiny = true; c.green = false;
+    applyCopperLook(); saveGame();
+    return { text: `✨ ${x.shine}`, say: x.shine, after: () => { cw.shine(); sfxStar(); setTimeout(sfxStar, 200); launchConfetti(); const sp = nextSpot(); if (sp) queueCopperMsg(`📡 ${x.chestNext(placeOf(sp))}`); } };
+  }
+  // The secret chest: one word (or two for the big one).
+  if (c.locks > 1) { c.locks--; c.bigOpen = true; saveGame(); sfxClang(); return { text: `🗝️ ${x.lockOne}`, say: x.lockOne, after: () => setTimeout(() => { if (!spellContext && $('#spell-modal').hidden) secretChestInteract(); }, 500) }; }
+  const sp = BUTTON_SPOTS[c.chestAt], wasBig = !!c.bigOpen;
+  if (!c.opened.includes(sp.id)) c.opened.push(sp.id);
+  c.chestAt = -1; c.locks = 0; c.bigOpen = false;
+  cw.openChest();
+  defiEvent('chest');
+  const opened = spotsOfPart(sp.part).filter((b) => c.opened.includes(b.id)).length, total = spotsOfPart(sp.part).length;
+  let text, say, after;
+  if (wasBig && sp.part === 1 && !c.goldKey) {
+    c.goldKey = true;
+    progress.stars += 10; game.starsEarned += 10;
+    text = `🗝️ ${x.goldKey}`; say = x.goldKeySay;
+    after = () => { sfxVictory(); launchConfetti(); cw.dance(); applyCopperLook(); if (copperPartTwo()) setTimeout(() => onCopperPartTwo(true), 800); };
+  } else if (wasBig && sp.part === 2 && !c.costume) {
+    c.costume = true; c.forever = true; c.flat = false;
+    unlockCostume('copper');
+    costumeState().current = 'copper'; applyCostume(); saveProgress();
+    progress.stars += 10; game.starsEarned += 10;
+    text = `🛡️ ${x.costume}`; say = x.costumeSay;
+    after = () => { sfxVictory(); launchConfetti(); cw.dance(); cw.shine(); };
+  } else {
+    game.materials.diamond = (game.materials.diamond ?? 0) + 1;
+    progress.stars += 5; game.starsEarned += 5;
+    const got = `+5 ★ · 💎 ${materialName('diamond')}`;
+    text = `🎁 ${x.chestOpen(opened, total)} ${x.reward(got)}`; say = `${x.chestOpen(opened, total)} ${x.reward(materialName('diamond'))} !`.replace(/\(\d\/\d\) /, '');
+    const nx = nextSpot();
+    after = () => { sfxCraft(); if (nx) queueCopperMsg(`📡 ${x.chestNext(placeOf(nx))}`); };
+  }
+  applyCopperLook(); saveGame(); updateGameUI(); renderCraftMenu();
+  return { text, say, after };
+}
+function onCopperPartTwo(force = false) {
+  const c = game?.copper;
+  if (!c?.made || copperP2Said || !copperDone1(c) || (copperDone2(c) && !force)) return;
+  copperP2Said = true;
+  if (!c.shiny) c.green = true;
+  applyCopperLook(); saveGame();
+  queueCopperMsg(`🟢 ${ctx6().partTwo}`, undefined, 'pop');
+}
+function tickCopper(dt) {
+  if (!game || !scene3D?.copper || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
+  if (game.story?.intro) partState('J6');
+  setupCopper(); copperSync();
+  const cw = scene3D.copper, c = copperState(), x = ctx6();
+  applyCopperLook();
+  if (copperPartTwo()) onCopperPartTwo();
+  const busy = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#collect-modal').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight;
+  // His clock: a word winds his key every minute; after 3 minutes he goes back to sleep.
+  if (c.made && !busy && cw.mode === 'follow' && !c.flat) {
+    if (c.forever) {
+      c.windT += dt;
+      if (c.windT >= WIND_EVERY * 1.5) { c.flat = true; cw.setFlat(true); queueCopperMsg(`🔑 ${x.flat}`); saveGame(); }
+    } else {
+      c.left -= dt;
+      if (c.left <= 0) { c.asleep = true; cw.sleep(); queueCopperMsg(`💤 ${x.tired}`); saveGame(); }
+      else if (c.left <= c.nextWind) { c.flat = true; cw.setFlat(true); queueCopperMsg(`🔑 ${x.flat}`); saveGame(); }
+    }
+  }
+  if (copperMsgs.length && !busy && performance.now() - defiMsgAt > 3800) {
+    defiMsgAt = performance.now();
+    const m = copperMsgs.shift();
+    toast(m.text, 4500);
+    speak(m.say, 0.95);
+    if (m.sfx === 'victory') { sfxVictory(); launchConfetti(); } else if (m.sfx === 'pop') sfxPop();
+  }
+}
+// The journal: the two parts, the buttons found and where the next one is, written and read.
+function copperLines() {
+  const c = game?.copper, x = ctx6(), dx = dtx();
+  if (!game || !scene3D?.copper) return [];
+  if (!c?.made) return [`🤖 ${x.name} : ${x.notYet}`];
+  const two = copperPartTwo();
+  const p1 = copperDone1(c) ? dx.partDone : `: ${dx.partPlay}`;
+  const p2 = !two ? `: ${dx.partLater}` : copperDone2(c) ? dx.partDone : `: ${dx.partOpen}`;
+  const part = copperPart(c), spots = spotsOfPart(part), sp = nextSpot(c);
+  return [`🤖 ${x.name} — ${dx.part(p1, p2)}`, x.lines(spots.filter((b) => c.opened.includes(b.id)).length, spots.length, sp ? placeOf(sp) : '')];
+}
+function copperSpeech() {
+  const l = copperLines(), dx = dtx();
+  if (!l.length) return '';
+  if (l.length === 1) return l[0].replace(/^\S+ /, '');
+  return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${l[1].replace(/^\S+ /, '').replace(/·/g, '.').replace(/(\d)\/(\d)/g, '$1 sur $2')}.`;
 }
 
 /* ===== HORSES ===== */
@@ -3252,6 +3518,12 @@ function handleSpellSuccess() {
     spellResultEl.hidden = false;
     speak(r.say, 0.95);
     spellContext.after = r.after;
+  } else if (type === 'copper') {
+    const r = copperSpelled(spellContext);
+    spellResultEl.replaceChildren(el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
+    spellResultEl.hidden = false;
+    speak(r.say, 0.95);
+    spellContext.after = r.after;
   } else if (type === 'powers') {
     const r = powersSpelled(spellContext, copied);
     spellResultEl.replaceChildren(el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
@@ -3738,7 +4010,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : obj.kind === 'powerstone' ? '⚡' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : obj.kind === 'powerstone' ? '⚡' : obj.kind === 'anvil' ? '🔨' : obj.kind === 'copper' ? '🤖' : obj.kind === 'secretchest' ? '🎁' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');

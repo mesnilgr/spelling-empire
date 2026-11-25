@@ -740,8 +740,8 @@ export const SCENARIOS = [
       }
       await g.page.waitForTimeout(500);
       await g.page.evaluate(() => { const b = window.__se.scene.bosses; for (let k = 0; k < 60; k++) b.update(1 / 30, k / 30); });
-      const boss = await g.page.evaluate(() => ({ won: window.__se.game().bosses.includes('mossGolem'), gone: !window.__se.scene.bosses.get('mossGolem').mesh.visible, stars: window.__se.progress().stars - window.__starsBefore, bar: document.querySelector('#boss-bar').hidden }));
-      check(boss.won && boss.gone && boss.bar, 'trois mots réussis : le Golem de mousse est vaincu', JSON.stringify(boss));
+      const boss = await g.page.evaluate(() => ({ won: window.__se.game().bosses.includes('mossGolem'), gone: (() => { const b = window.__se.scene.bosses.get('mossGolem'); return b.friendly && !b.obj.active; })(), stars: window.__se.progress().stars - window.__starsBefore, bar: document.querySelector('#boss-bar').hidden }));
+      check(boss.won && boss.gone && boss.bar, 'trois mots réussis : le Golem de mousse est vaincu (il reste dans son repaire, gentil)', JSON.stringify(boss));
       check(boss.stars >= 23, 'la victoire rapporte au moins 20 ★', JSON.stringify(boss));
       await g.page.waitForTimeout(3800);
       const bh = await g.page.evaluate(() => ({ max: window.__se.game().maxHearts, from: window.__se.game().heartsFrom }));
@@ -923,7 +923,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 2,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs'], save: save(story(2, 0)) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre'], save: save(story(2, 0)) }, { quality: 0 });
       await g.click('#continue-btn');
       // Alaric presents the release, written and spoken; the newest note comes first.
       const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
@@ -939,7 +939,7 @@ export const SCENARIOS = [
       await g.click('#news-btn');
       await g.page.waitForTimeout(300);
       const journal = await g.page.evaluate(() => [...document.querySelectorAll('#journal-list .journal-item h3')].map((e) => e.textContent));
-      check(journal.length >= 3 && /pouvoirs/i.test(journal[0]) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
+      check(journal.length >= 3 && /golem de cuivre/i.test(journal[0]) && journal.some((j) => /pouvoirs/i.test(j)) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
       await g.click('#journal-close');
       // Iron walks round the square, says hello and offers a flower once a day.
       const walk = await g.page.evaluate(() => { const gl = window.__se.scene.golem, a = gl.mesh.position.clone(); gl.pause = 0; for (let k = 0; k < 150; k++) gl.update(1 / 30, k / 30); return { points: gl.points.length, moved: a.distanceTo(gl.mesh.position) }; });
@@ -972,7 +972,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs'], save: save(story(2, 0)) }, { quality: 0, defis: true });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre'], save: save(story(2, 0)) }, { quality: 0, defis: true });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       let words = 0;
       const spellOne = async () => { const r = await g.spell(); words++; return r; };
@@ -1113,7 +1113,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
       const flame = () => g.page.evaluate(() => { const f = window.__se.flame() ?? {}, fl = window.__se.scene.flame; return { ...f, state: { ...fl.state }, out: fl.starsOut(), part: window.__se.releasePart(3) }; });
@@ -1235,7 +1235,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms', '1.23.0-pouvoirs'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1407,7 +1407,8 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.24.0-golem-cuivre'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      await g.page.evaluate(() => window.__se.henDayUse(5)); // J5's Cocotte (on the highest cloud)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
@@ -1588,6 +1589,182 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(300);
       const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
       check(/Pouvoirs des mots — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /Anneaux : 5\/5/.test(j2) && /Animaux rebondis : 5\/5/.test(j2), 'journal : les deux parties faites, 5 anneaux, 5 animaux', j2);
+      await g.click('#journal-close');
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Petit golem de cuivre, boutons secrets et boss vivants (J6)',
+    quick: true,
+    weight: 4,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', 'prog-pronoms', 'prog-articles'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 }, powers: { awake: true, clouds: [0, 1, 2, 3, 4], rings: [], animals: 0, bounced: [], petCloud: true, cape: false, uses: 3 } }) }, { quality: 0 });
+      const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
+      const nSaid = () => g.page.evaluate(() => window.__spoken.length);
+      const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
+      const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
+      const cu = () => g.page.evaluate(() => JSON.parse(JSON.stringify(window.__se.copper() ?? null)));
+      const mode = () => g.page.evaluate(() => window.__se.scene.copper.mode);
+      const spellOpen = (timeout = 6000) => g.page.waitForFunction(() => !document.querySelector('#spell-modal').hidden && !!window.__se.spell(), null, { timeout }).then(() => true, () => false);
+      const SPOTS = await g.page.evaluate(async () => (await import('/copper.js')).BUTTON_SPOTS);
+      // The hero goes to a spot of secret buttons: Boulon presses all three (two fakes, then the real one).
+      const pressSpot = async (id) => {
+        const sp = SPOTS.find((b) => b.id === id);
+        await g.page.evaluate(([x, z]) => { const s = window.__se.scene; s.teleport(x + 2.6, z + 2.6); }, [sp.x, sp.z]);
+        return g.page.waitForFunction(() => window.__se.scene.copper.cobj.active, null, { timeout: 20000 }).then(() => true, () => false);
+      };
+      let words = 0;
+      await g.click('#continue-btn');
+      // Alaric presents J6, written and spoken, with his riddle.
+      const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
+      const card = await g.page.evaluate(() => ({ title: document.querySelector('#news-title').textContent, riddle: document.querySelector('#news-riddle').innerText, said: window.__spoken.join(' | ') }));
+      check(shown && /golem de cuivre/i.test(card.title) && /petit golem de cuivre/.test(card.said) && /marchent dans leur repaire/.test(card.said), 'Alaric présente le petit golem de cuivre et les boss qui marchent (écrit et lu)', JSON.stringify(card));
+      check(/cache-cache/.test(card.riddle) && /cache-cache/.test(card.said), 'la devinette d’Alaric est écrite et lue', card.riddle);
+      await g.page.evaluate(() => document.querySelector('#news-riddle .news-answer').click());
+      await g.page.waitForTimeout(200);
+      check(/bong, bong, bong/.test(await g.page.evaluate(() => window.__spoken.slice(-1)[0])), '« La réponse ? » lit « … bong, bong, bong ! »');
+      await g.click('#news-show');
+      await g.page.waitForTimeout(900);
+      const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.copper.obj.worldPos; return { d: q ? Math.hypot(q.x - w.x, q.z - w.z) : 99, forge: Math.hypot(w.x + 10, w.z + 6), free: !s._checkCollision(w.x + 0.9, w.z + 0.9) }; });
+      check(arrow.d < 1 && arrow.forge < 7 && arrow.free, '« Montre-moi ! » pointe la flèche vers l’enclume, à côté de la forge', JSON.stringify(arrow));
+      // The wow: the recipe (FER, PIERRE, FEU), then the pieces fly together: bong, bong… Boulon!
+      const t0 = Date.now();
+      check(await g.use("i.kind === 'anvil'") === 'ok' && await spellOpen(), 'on touche l’enclume : la recette demande un mot');
+      const first = await g.page.evaluate(() => ({ w: window.__se.spell().word.word, instr: document.querySelector('#spell-modal').innerText, said: window.__spoken.slice(-1)[0] }));
+      check(first.w === 'fer' && /fer \+ pierre \+ feu/.test(first.instr) && /Recette du petit golem/.test(first.said), 'recette : « fer + pierre + feu », on épelle FER (lu)', JSON.stringify(first));
+      const r1 = await g.spell(); words++;
+      check(/Clang/.test(r1.result) && await g.page.evaluate(() => window.__se.scene.copper.blocks[0].visible), 'Clang ! Le fer est posé sur l’enclume', r1.result);
+      for (const w of ['pierre', 'feu']) {
+        if (!(await spellOpen(5000))) { check(false, `la recette demande ${w}`); continue; }
+        check(await g.page.evaluate(() => window.__se.spell().word.word) === w, `puis ${w.toUpperCase()}`);
+        await g.spell(); words++;
+      }
+      const asm = await g.page.waitForFunction(() => ['assemble', 'follow'].includes(window.__se.scene.copper.mode), null, { timeout: 5000 }).then(() => true, () => false);
+      check(asm && await saidLater(/Je suis Boulon/, 8000) && Date.now() - t0 < 30000, 'waouh : les pièces s’assemblent (bong !) et Boulon dit bonjour, moins de 30 s après « Montre-moi ! »', await said());
+      check(await saidLater(/Je sens un bouton secret… près de la tour du mage/, 12000), 'Boulon dit où chercher le premier bouton (lu)', await said());
+      check((await cu()).made && await mode() === 'follow', 'Boulon est construit et suit le héros');
+      // He follows the hero.
+      const follow = await g.page.evaluate(async () => { const s = window.__se.scene; s.teleport(-3, 24); await new Promise((r) => setTimeout(r, 300)); s.keys.arrowright = true; await new Promise((r) => setTimeout(r, 1200)); s.keys.arrowright = false; await new Promise((r) => setTimeout(r, 900)); const g = s.copper.golem.position, p = s.player.position; return +Math.hypot(g.x - p.x, g.z - p.z).toFixed(2); });
+      check(follow < 4, `Boulon suit le héros (${follow} m)`);
+      // The gag: he trips over his own feet (Oups !).
+      const trip = await g.page.evaluate(async () => { const s = window.__se.scene; s.copper.tripIn = 0; s.keys.arrowleft = true; await new Promise((r) => setTimeout(r, 1300)); s.keys.arrowleft = false; return window.__se.copper().trips; });
+      check(trip >= 1 && /Boulon a trébuché/.test(await said()), 'gag : Boulon trébuche et tombe à plat ventre (« Oups ! », lu)', String(trip));
+      // The first spot: two fake buttons (Pouet! confetti), then the real one: a secret chest comes out.
+      check(await pressSpot('tower'), 'près de la tour, Boulon appuie sur les boutons… le vrai fait sortir un coffre secret de terre');
+      const s1 = await said();
+      check(/Pouet ! Un faux bouton/.test(s1) && /Clic ! Le vrai bouton/.test(s1), 'les faux boutons font « Pouet ! » et des confettis, le vrai fait « Clic ! » (lu)', s1);
+      check(await g.use("i.kind === 'secretchest'") === 'ok' && await spellOpen(), 'on touche le coffre secret : un mot');
+      const c1 = await g.spell(); words++;
+      check(/coffre secret est ouvert ! \(1\/2\)/.test(c1.result), 'le coffre secret s’ouvre (1/2)', c1.result);
+      check(await saidLater(/Encore un bouton… devant la boutique/, 12000), 'Boulon annonce le bouton suivant (lu)', await said());
+      // His key runs down: a word winds it.
+      await g.page.evaluate(() => { const c = window.__se.copper(); c.left = c.nextWind + 0.2; });
+      check(await saidLater(/Boulon est à plat/, 8000) && await mode() === 'flat', 'au bout d’une minute, Boulon est à plat (lu)', await said());
+      check(await g.use("i.kind === 'copper'") === 'ok' && await spellOpen(), 'on touche Boulon : un mot pour remonter sa clé');
+      const w1 = await g.spell(); words++;
+      check(/La clé tourne/.test(w1.result) && await mode() === 'follow', '« Cric, cric ! La clé tourne : Boulon repart ! »', w1.result);
+      // The second spot: a big chest with two locks, and a golden key for Boulon.
+      check(await pressSpot('shop'), 'devant la boutique, le deuxième bouton secret : un gros coffre');
+      await g.use("i.kind === 'secretchest'");
+      for (let k = 0; k < 2; k++) { if (await spellOpen(6000)) { await g.spell(); words++; } else check(false, `serrure ${k + 1}`); }
+      const a1 = await cu();
+      check(a1.opened.length === 2 && a1.goldKey && await g.page.evaluate(() => window.__se.scene.copper.state.goldKey), 'deux serrures, deux mots : Boulon porte une clé dorée dans le dos (à montrer)', JSON.stringify(a1));
+      check(/clé dorée/.test(await said()), '« Regarde : Boulon a une clé dorée dans le dos ! » (lu)');
+      check(words >= 7, `au moins 7 mots en session 1 (${words})`);
+      // The bosses' golems walk round their lair, and raise their arms when the hero comes near.
+      const walk = await g.page.evaluate(async () => {
+        const s = window.__se.scene, b = s.bosses.get('mossGolem');
+        s.teleport(-74 + 16, 6);
+        await new Promise((r) => setTimeout(r, 300));
+        const a = b.mesh.position.clone();
+        await new Promise((r) => setTimeout(r, 1500));
+        return { moved: +a.distanceTo(b.mesh.position).toFixed(2) };
+      });
+      check(walk.moved > 0.3, `le golem de mousse marche dans son repaire (${walk.moved} m)`);
+      let n0 = await nSaid();
+      const wave = await g.page.evaluate(async () => { const s = window.__se.scene, b = s.bosses.get('mossGolem'); s.teleport(-74 + 4, 4); await new Promise((r) => setTimeout(r, 1200)); return +b.mesh.userData.parts.arms[0].rotation.x.toFixed(2); });
+      check(wave < -1.5, 'quand on approche, il lève les bras', String(wave));
+      check(await saidLater(/Atchoum/, 6000) && /Atchoum/.test(await saidSince(n0)), 'gag : le golem de mousse éternue des feuilles (« Atchoum ! », lu)');
+      // Cocotte rides on the moss golem's head (journal hint written and read).
+      n0 = await nSaid();
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const jh = await g.page.evaluate((n) => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(n).join(' | ') }), n0);
+      check(/tête du golem de mousse/.test(jh.txt) && /tête du golem de mousse/.test(jh.said), 'journal : l’indice de Cocotte (« sur la tête du golem de mousse ») est écrit et lu', jh.said);
+      check(/Le petit golem de cuivre — Partie 1 ✓ · Partie 2 : à ton prochain retour !/.test(jh.txt) && /Boutons secrets : 2\/2/.test(jh.txt), 'journal : « Le petit golem de cuivre — Partie 1 ✓ · Partie 2 : à ton prochain retour ! »', jh.txt);
+      check(/Partie 2 : à ton prochain retour/.test(jh.said), 'les parties sont lues', jh.said);
+      await g.click('#journal-close');
+      const hen = await g.page.evaluate(() => { const s = window.__se.scene, h = s.cocotte, b = s.bosses.get('mossGolem'); return { day: window.__se.henRow().day, dx: +Math.hypot(h.mesh.position.x - b.mesh.position.x, h.mesh.position.z - b.mesh.position.z).toFixed(2), up: +(h.mesh.position.y - b.baseY).toFixed(2) }; });
+      check(hen.day === 6 && hen.dx < 0.6 && hen.up > 3.4, 'Cocotte est assise sur la tête du golem de mousse', JSON.stringify(hen));
+      check(await g.page.evaluate(() => window.__se.findCocotte()) === 'ok', 'on touche Cocotte');
+      await g.page.waitForTimeout(300);
+      check((await g.page.evaluate(() => window.__se.progress().feathers)).includes(6) && /Cot cot/.test(await said()), 'Cocotte s’envole : une plume dorée (« Cot cot ! »)');
+      // The hang-glider (the parent's idea): with the glide power, a striped wing over the hero; Boulon holds on.
+      await g.page.evaluate(() => { window.__se.givePower('glide'); const s = window.__se.scene; s.teleport(1.5, 16); });
+      await g.page.waitForTimeout(400);
+      const fly = await g.page.evaluate(async () => {
+        const s = window.__se.scene, c = window.__se.scene.walkways.find((w) => w.cloud && w.cloudIndex === 4);
+        s.teleport(c.x + 0.3, c.z + 0.3, 0, c.h);
+        await new Promise((r) => setTimeout(r, 200));
+        s.jump();
+        await new Promise((r) => setTimeout(r, 900));
+        s.player.rotation.y += 0.6;
+        await new Promise((r) => setTimeout(r, 300));
+        return { glider: s.copper.glider.visible, open: +s.copper.gliderOpen.toFixed(2), ride: s.copper.mode, below: +(s.player.position.y - s.copper.golem.position.y).toFixed(2) };
+      });
+      check(fly.glider && fly.open > 0.8, 'en planant, un deltaplane coloré s’ouvre au-dessus du héros', JSON.stringify(fly));
+      check(fly.ride === 'ride' && fly.below > 0.5, 'Boulon s’accroche sous le deltaplane', JSON.stringify(fly));
+      const land = await g.page.evaluate(async () => { const s = window.__se.scene; s.player.position.y = s.groundAt(s.player.position.x, s.player.position.z) + 0.3; s.playerVY = -1; await new Promise((r) => setTimeout(r, 900)); return { glider: s.copper.glider.visible, mode: s.copper.mode, bong: s.copper.rideLands ?? 0 }; });
+      check(!land.glider && land.mode === 'follow' && land.bong >= 1, 'à l’atterrissage, le deltaplane se replie et Boulon fait « Bong ! »', JSON.stringify(land));
+      await g.page.evaluate(() => window.__se.scene.powers.stop());
+      // Session 2: the game is opened again 31 minutes later.
+      await g.page.evaluate(() => { document.body.dataset.screen = 'paused'; });
+      await g.page.waitForTimeout(400);
+      await g.page.evaluate((key) => { const pr = window.__se.progress(); pr.parts.J6.last -= 31 * 60 * 1000; const p = JSON.parse(localStorage.getItem(key)); p.parts.J6.last = pr.parts.J6.last; localStorage.setItem(key, JSON.stringify(p)); }, STORE);
+      await g.page.reload();
+      await g.page.waitForSelector('#loading.is-done', { timeout: 180000 });
+      await g.page.evaluate(() => { window.__se.flashAfter = 1e9; window.__se.noDefis = true; });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      check(await g.page.evaluate(() => window.__se.releasePart(6)) === 2, 'au retour (30 min plus tard), la partie 2 du petit golem est ouverte');
+      check(await saidLater(/Boulon a verdi/, 15000), '« Oh non ! Boulon a verdi, comme le vieux cuivre ! » (lu)', await said());
+      const back = await g.page.evaluate(() => { const s = window.__se.scene.copper; return { mode: s.mode, green: s.state.green, part: s.state.part, key: s.state.goldKey }; });
+      check(back.mode === 'sleep' && back.green && back.part === 2 && back.key, 'Boulon dort près de l’enclume, tout vert, avec sa clé dorée ; trois nouveaux boutons sont cachés', JSON.stringify(back));
+      words = 0;
+      check(await g.use("i.kind === 'anvil'") === 'ok' && await spellOpen(), 'on touche l’enclume : un mot pour réveiller Boulon');
+      const wk = await g.spell(); words++;
+      check(/Debout, Boulon/.test(wk.result) && await mode() === 'follow', '« Debout, Boulon ! »', wk.result);
+      check(await g.use("i.kind === 'copper'") === 'ok' && await spellOpen(), 'on touche Boulon (tout vert) : un mot pour le faire briller');
+      check(await g.page.evaluate(() => window.__se.spell().word.word) === 'brille', 'le mot est BRILLE');
+      const sh = await g.spell(); words++;
+      check(/brille comme un sou neuf/.test(sh.result) && !(await g.page.evaluate(() => window.__se.scene.copper.state.green)), 'Bling ! Boulon brille comme un sou neuf (étincelles)', sh.result);
+      // Fer and Boulon wave at each other.
+      n0 = await nSaid();
+      const greet = await g.page.evaluate(async () => { const s = window.__se.scene, f = s.golem.mesh.position; s.teleport(f.x + 2.2, f.z + 2.2); s.copper.greetCool = 0; s.copper.golem.position.set(f.x + 1.5, f.y, f.z + 1.5); s.copper.mode = 'follow'; await new Promise((r) => setTimeout(r, 500)); return s.golem.waveT > 0 || s.copper.greetT >= 0; });
+      check(greet && /Salut, Fer/.test(await saidSince(n0)), 'Fer et Boulon se saluent (« Salut, Fer ! », lu)');
+      // Three secret buttons in three places; the last chest has two locks.
+      for (const id of ['tavern', 'pond', 'guild']) {
+        if (!(await pressSpot(id))) { check(false, `bouton secret : ${id}`); continue; }
+        await g.use("i.kind === 'secretchest'");
+        const locks = id === 'guild' ? 2 : 1;
+        for (let k = 0; k < locks; k++) { if (await spellOpen(6000)) { await g.spell(); words++; } else check(false, `coffre ${id} : mot ${k + 1}`); }
+        if (id === 'tavern') {
+          await g.page.evaluate(() => { const c = window.__se.copper(); c.left = c.nextWind + 0.2; });
+          if (await saidLater(/Boulon est à plat/, 8000)) { await g.use("i.kind === 'copper'"); if (await spellOpen()) { await g.spell(); words++; } }
+        }
+      }
+      const a2 = await cu();
+      const cos = await g.page.evaluate(() => window.__se.progress().costumes ?? {});
+      check(a2.opened.length === 5 && a2.costume && cos.owned?.includes('copper') && cos.current === 'copper', 'les trois boutons : le costume de Chevalier de cuivre (porté tout de suite)', JSON.stringify({ a2, cos }));
+      check(/Chevalier de cuivre/.test(await said()) && /pour toujours/.test(await said()), '« Tu gagnes le costume de Chevalier de cuivre ! Et Boulon reste avec toi pour toujours ! » (lu)');
+      check(a2.forever && await mode() === 'follow', 'Boulon reste avec le héros');
+      check(words >= 7, `au moins 7 mots en session 2 (${words})`);
+      await g.page.waitForTimeout(4200);
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
+      check(/Le petit golem de cuivre — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /Boutons secrets : 3\/3/.test(j2), 'journal : les deux parties faites, 3 boutons sur 3', j2);
       await g.click('#journal-close');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();

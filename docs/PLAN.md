@@ -172,7 +172,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Les mots ont des pouvoirs ! Réussis un mot difficile et tu pourras courir comme le vent, sauter jusqu'aux nuages ou devenir géant ! »
   - Devinette : « Qu'est-ce qui monte et ne redescend jamais ? » — « Ton âge ! »
 
-- [ ] **J6 · mer. 25 nov. · v1.24.0 — Boss vivants et golem de cuivre.**
+- [x] **J6 · mer. 25 nov. · v1.24.0 — Boss vivants et golem de cuivre.** (complète : l'enclume est à côté de la forge, le petit golem s'appelle Boulon ; 2 boutons secrets en partie 1 (tour, boutique), 3 en partie 2 (taverne, mare, guilde) ; dernier coffre = costume Chevalier de cuivre et Boulon reste pour toujours ; les golems battus restent dans leur repaire, gentils ; deltaplane fait)
   - Session 1 : les golems des boss (mousse, pierre) marchent dans leur repaire et lèvent les bras quand on
     approche ; nouvelle recette « petit golem de cuivre » (fer + pierre + feu) qui suit le héros 3 minutes.
   - Session 2 : chasse aux **3 boutons secrets** cachés dans 3 lieux ; le petit golem appuie dessus et un coffre

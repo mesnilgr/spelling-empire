@@ -11,6 +11,9 @@ export const BOSSES = [
   { id: 'kraken', region: 'coast', x: -20, z: 73.8, at: { x: -20, z: 67.6 }, after: 'lighthouse', emoji: '🐙', hp: 3, name: { fr: 'le Kraken', en: 'the Kraken' } },
 ];
 
+// The golems walk in their lair (J6) and raise their arms when the hero comes near.
+export const GOLEM_IDS = ['mossGolem', 'stoneGolem'];
+const PATROL_R = 2.0;
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...extra });
 function box(parent, w, h, d, mat, x, y, z) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -133,12 +136,26 @@ export class BossManager {
       if (def.id !== 'kraken') scene3D.collidables.push({ x: def.x, z: def.z, r: 1.6 });
       const at = def.at ?? { x: def.x + Math.sin(mesh.rotation.y) * 2.6, z: def.z + Math.cos(mesh.rotation.y) * 2.6 };
       const obj = scene3D._addInteractable({ kind: 'boss', bossId: def.id, worldPos: new THREE.Vector3(at.x, scene3D.groundAt(at.x, at.z), at.z), iconY: def.id === 'kraken' ? 2.2 : 4.4, reach: 2.4, hitRadius: 1.4 });
-      return { def, mesh, obj, baseY: y, awake: false, hitT: 0, defeatT: -1, roarT: 0 };
+      mesh.updateMatrixWorld(true);
+      return { def, mesh, obj, baseY: y, awake: false, hitT: 0, defeatT: -1, roarT: 0, headTop: mesh.localToWorld(new THREE.Vector3(-0.2, 3.74, 0)) };
     });
   }
   get(id) { return this.list.find((b) => b.def.id === id); }
-  setDefeated(id) { const b = this.get(id); if (b) { b.mesh.visible = false; b.gone = true; b.obj.active = false; b.obj.iconHolder.visible = false; this.s.collidables = this.s.collidables.filter((c) => !(c.x === b.def.x && c.z === b.def.z && c.r === 1.6)); } }
-  wake(id) { const b = this.get(id); if (b) { b.awake = true; b.roarT = 0.8; this.s.screenShake?.(0.25); } }
+  // Beaten. The two golems (J6) come back friendly: they walk in their lair and wave; the others are gone.
+  setDefeated(id) {
+    const b = this.get(id);
+    if (!b || b.gone || b.friendly || (b.defeatT >= 0 && b.defeatT <= 1.2 && GOLEM_IDS.includes(id))) return;
+    b.obj.active = false; b.obj.iconHolder.visible = false;
+    if (GOLEM_IDS.includes(id)) {
+      b.friendly = true; b.defeatT = -1; b.awake = false;
+      b.mesh.visible = true; b.mesh.scale.setScalar(1); b.mesh.position.y = b.baseY;
+      b.mesh.rotation.y = Math.atan2(-b.def.x, -b.def.z);
+      return;
+    }
+    b.mesh.visible = false; b.gone = true;
+    this.s.collidables = this.s.collidables.filter((c) => !(c.x === b.def.x && c.z === b.def.z && c.r === 1.6));
+  }
+  wake(id) { const b = this.get(id); if (b) { if (GOLEM_IDS.includes(id)) b.mesh.position.set(b.def.x, b.baseY, b.def.z); b.awake = true; b.roarT = 0.8; this.s.screenShake?.(0.25); } }
   sleep(id) { const b = this.get(id); if (b) b.awake = false; }
   // Asleep but disturbed: it shifts and grumbles.
   stir(id) { const b = this.get(id); if (b) { b.roarT = 0.5; b.hitT = 0.3; this.onGrumble?.(b); } }
@@ -156,9 +173,58 @@ export class BossManager {
     if (!b) return;
     b.defeatT = 0;
   }
+  // A golem out of a fight (J6): far from the hero, it walks slowly round its lair; when the hero
+  // comes near, it goes back to its spot, turns to face the hero and raises its arms. The moss golem
+  // sneezes leaves ("Atchoum!").
+  _golemLife(b, dt, t, dHero) {
+    const { rig, arms } = b.mesh.userData.parts, m = b.mesh, s = this.s;
+    b.walkA = (b.walkA ?? 0);
+    rig.rotation.x = 0; rig.position.x = 0; rig.rotation.z = 0;
+    const near = dHero < 9;
+    if (near && !b.wasNear) { b.waveT = 2.4; b.sneezeAt = b.def.id === 'mossGolem' ? 1.4 : -1; this.onWave?.(b); }
+    b.wasNear = near;
+    let moving = false;
+    if (!near) {
+      b.walkA += dt * 0.22;
+      const tx = b.def.x + Math.cos(b.walkA) * PATROL_R, tz = b.def.z + Math.sin(b.walkA) * PATROL_R;
+      const dx = tx - m.position.x, dz = tz - m.position.z, d = Math.hypot(dx, dz);
+      if (d > 0.02) { const k = Math.min(1, (1.0 * dt) / d); m.position.x += dx * k; m.position.z += dz * k; moving = true; m.rotation.y += Math.atan2(Math.sin(Math.atan2(dx, dz) - m.rotation.y), Math.cos(Math.atan2(dx, dz) - m.rotation.y)) * Math.min(1, dt * 3); }
+    } else {
+      // Back to its spot (quickly), facing the hero.
+      const dx = b.def.x - m.position.x, dz = b.def.z - m.position.z, d = Math.hypot(dx, dz);
+      if (d > 0.05) { const k = Math.min(1, (3 * dt) / d); m.position.x += dx * k; m.position.z += dz * k; moving = d > 0.3; }
+      const p = s.player.position;
+      m.rotation.y += Math.atan2(Math.sin(Math.atan2(p.x - m.position.x, p.z - m.position.z) - m.rotation.y), Math.cos(Math.atan2(p.x - m.position.x, p.z - m.position.z) - m.rotation.y)) * Math.min(1, dt * 4);
+    }
+    m.position.y = b.baseY + (moving ? Math.abs(Math.sin(t * 3)) * 0.12 : 0);
+    rig.scale.set(1, 1 + Math.sin(t * 2) * 0.02, 1);
+    if (moving) { rig.rotation.z = Math.sin(t * 3) * 0.06; arms.forEach((a, i) => { a.rotation.x = Math.sin(t * 3 + i * Math.PI) * 0.4; a.rotation.z = 0; }); }
+    else if (near) {
+      // Arms up, waving (a big hello; a challenge if it can be fought).
+      b.waveT = Math.max(0, (b.waveT ?? 0) - dt);
+      const up = b.waveT > 0 || b.friendly ? 1 : 0.6;
+      arms.forEach((a, i) => { a.rotation.x = -2.5 * up + Math.sin(t * 6 + i) * 0.25; a.rotation.z = (i ? -1 : 1) * Math.sin(t * 4) * 0.15; });
+    } else arms.forEach((a) => { a.rotation.x = 0; a.rotation.z = 0; });
+    // Atchoum! A cloud of leaves out of the moss golem's head.
+    if (b.sneezeAt >= 0) {
+      b.sneezeAt -= dt;
+      if (b.sneezeAt < 0.5 && b.sneezeAt > 0) rig.rotation.x = -0.25 * (1 - b.sneezeAt / 0.5);
+      if (b.sneezeAt <= 0) {
+        b.sneezeAt = -1; b.sneezes = (b.sneezes ?? 0) + 1;
+        rig.rotation.x = 0.3;
+        const head = new THREE.Vector3(Math.sin(m.rotation.y) * 0.8, 3.2, Math.cos(m.rotation.y) * 0.8).add(m.position);
+        for (const c of ['#4f9a3a', '#7ac850', '#a8e070', '#ff8ab0']) s.particleBurst(head, c, 16);
+        s.screenShake?.(0.08);
+        this.onSneeze?.(b);
+      }
+    }
+    // Whoever stands on its head follows it (Cocotte!).
+    b.headTop = m.localToWorld(new THREE.Vector3(-0.2, 3.74, 0));
+  }
   update(dt, t) {
     for (const b of this.list) {
       if (b.gone) continue;
+      if (b.friendly) { const dh = Math.hypot(this.s.player.position.x - b.def.x, this.s.player.position.z - b.def.z); if (dh < 30) this._golemLife(b, dt, t, dh); continue; }
       const { rig, arms, tentacles } = b.mesh.userData.parts;
       const near = Math.hypot(this.s.player.position.x - b.def.x, this.s.player.position.z - b.def.z) < 30;
       if (!near && b.defeatT < 0) continue;
@@ -171,12 +237,14 @@ export class BossManager {
           const p = b.mesh.position;
           for (const c of ['#ffd36a', '#ffffff', '#ff8ab0', '#7ae8ff']) this.s.particleBurst({ x: p.x, y: b.baseY + 1.5, z: p.z }, c, 30);
           this.setDefeated(b.def.id);
+          if (b.friendly) { b.mesh.position.set(b.def.x, b.baseY, b.def.z); b.wasNear = false; }
         }
         continue;
       }
       // The hero comes close to a sleeping boss: it stirs and grumbles now and then.
       const dHero = Math.hypot(this.s.player.position.x - b.def.x, this.s.player.position.z - b.def.z);
       b.grumbleT = (b.grumbleT ?? 0) - dt;
+      if (GOLEM_IDS.includes(b.def.id) && !b.awake) { this._golemLife(b, dt, t, dHero); continue; }
       if (!b.awake && dHero < 9 && b.grumbleT <= 0) { b.grumbleT = 6; this.stir(b.def.id); }
       // Asleep: slow breathing, slumped. Awake: bigger breathing, arms swinging.
       const k = b.awake ? 1 : 0.35;

@@ -141,4 +141,16 @@ export const NEWS = [
       a: { fr: 'La neige est blanche !', en: 'La neige est blanche!' },
     },
   },
+  {
+    id: '1.24.0-golem-cuivre', day: 6, date: '2026-11-25', emoji: '🤖', show: 'anvil',
+    title: { fr: 'Ton petit golem de cuivre', en: 'Your little copper golem' },
+    text: {
+      fr: 'Les golems des boss se réveillent un peu : ils marchent dans leur repaire ! Et tu peux fabriquer ton propre petit golem de cuivre, sur l’enclume à côté de la forge. Il est un peu maladroit… mais il connaît des coffres secrets ! Et quand tu planes : un deltaplane !',
+      en: 'The bosses’ golems are waking up a little: they walk around their lair! And you can build your own little copper golem, on the anvil next to the forge. He is a bit clumsy… but he knows about secret chests! And when you glide: a hang-glider!',
+    },
+    riddle: {
+      q: { fr: 'Pourquoi les golems ne gagnent jamais à cache-cache ?', en: 'Why do golems never win at hide-and-seek?' },
+      a: { fr: 'Parce qu’on les entend venir : bong, bong, bong !', en: 'Because you can hear them coming: bong, bong, bong!' },
+    },
+  },
 ];

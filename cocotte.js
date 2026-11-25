@@ -38,6 +38,14 @@ export const COCOTTE = [
       en: 'Cocotte wanted to see the village from above: she is sitting on the highest cloud, above your cottage! You need the super jump.',
     },
   },
+  {
+    // `boss`: on the head of the moss golem, who walks round his lair in the pine forest.
+    day: 6, pos: { x: -74.2, y: 3.7, z: 0 }, pose: 'sit', boss: 'mossGolem',
+    hint: {
+      fr: 'Cocotte fait une promenade… sur la tête du golem de mousse, dans la forêt de sapins !',
+      en: 'Cocotte is going for a ride… on the Moss Golem’s head, in the pine forest!',
+    },
+  },
 ];
 
 // The row for the current release (the highest day not after `maxDay`).
@@ -101,6 +109,17 @@ export class Cocotte {
     if (!this.mesh.visible) return;
     this.t += dt;
     const m = this.mesh;
+    // On a boss golem's head (J6): she rides along while it walks round its lair.
+    const boss = this.row.boss && this.flyT < 0 ? this.s.bosses?.get(this.row.boss) : null;
+    if (boss?.headTop && boss.mesh.visible) {
+      this.base.copy(boss.headTop);
+      m.rotation.y = boss.mesh.rotation.y;
+      m.position.x = this.base.x; m.position.z = this.base.z;
+      const o = this.obj;
+      o.worldPos.copy(this.base);
+      o.iconHolder.position.copy(this.base).add(new THREE.Vector3(0, o.iconY, 0));
+      o.hit.position.copy(o.iconHolder.position).add(new THREE.Vector3(0, -0.35, 0));
+    }
     if (this.flyT >= 0) {
       this.flyT += dt;
       m.position.y = this.base.y + this.flyT * this.flyT * 3 + this.flyT * 2;

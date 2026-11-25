@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.24.0 — J6 : Le petit golem de cuivre et les boss vivants 🤖
+
+- 🔨 **Une enclume** attend à côté de la forge (la flèche de « Montre-moi ! » y mène). La recette du petit golem : **fer + pierre + feu**. On épelle FER, PIERRE puis FEU (la première lettre à 5 ans) : à chaque mot, « Clang ! », l'ingrédient se pose sur l'enclume. Au troisième, les pièces s'envolent et s'assemblent une à une (« Bong ! Bong ! »), fanfare, confettis : **Boulon, le petit golem de cuivre**, ouvre les yeux et dit bonjour.
+- 🤖 **Boulon suit le héros pendant 3 minutes.** Toutes les minutes, sa clé de remontoir s'arrête (« Crrr… Boulon est à plat ! ») : on le touche et on épelle un mot pour la remonter. Au bout de 3 minutes, il retourne dormir près de l'enclume ; un mot le réveille.
+- 😂 **Il est maladroit** : il trébuche et tombe à plat ventre (« Oups ! »), se cogne contre les arbres (« Bong ! »), et appuie sur tous les boutons qu'il trouve, même les faux, qui font « Pouet ! » et lâchent des confettis. Quand il croise Fer, ils se saluent (« Salut, Fer ! »). Le toucher : la danse du robot.
+- 🔴 **Partie 1 : deux boutons secrets** dans le village (près de la tour du mage, puis devant la boutique). Boulon les sent : son antenne clignote et bipe de plus en plus vite. Il appuie sur les deux faux, puis sur le vrai : « Clic ! », la terre tremble et **un coffre secret sort de terre** (un mot pour l'ouvrir : +5 ★ et un diamant). Le deuxième est un gros coffre à deux serrures (deux mots) avec **une clé dorée que Boulon porte dans le dos** (à montrer !).
+- 🟢 **Partie 2** (au retour suivant, au moins 30 minutes plus tard, ou après 15 minutes de jeu) : Boulon a verdi, comme le vieux cuivre ! On épelle BRILLE : « Bling ! », il brille comme un sou neuf. Puis **trois boutons secrets dans trois lieux** (devant la taverne, près de la mare, devant la guilde) ; le dernier coffre a deux serrures et donne **le costume de Chevalier de cuivre** 🛡️ (porté tout de suite). Et **Boulon reste avec le héros pour toujours** (un mot de temps en temps pour remonter sa clé).
+- 🌿 **Les golems des boss se réveillent un peu** : le golem de mousse et le golem de pierre marchent doucement dans leur repaire, reviennent à leur place et **lèvent les bras** quand on approche. Le golem de mousse **éternue des feuilles** (« Atchoum ! »). Une fois battus, ils ne disparaissent plus : ils restent dans leur repaire, gentils, et font coucou.
+- 🪂 **Le deltaplane** (idée des parents après J5) : avec le pouvoir planer, un deltaplane aux couleurs de l'arc-en-ciel s'ouvre au-dessus du héros, penche dans les virages et se replie à l'atterrissage. Si Boulon est là, il s'accroche dessous… et fait « Bong ! » en arrivant.
+- 📜 Le journal montre les deux parties du petit golem, les boutons trouvés et où chercher le suivant, écrit et lu.
+- 🐔 **Cocotte** fait une promenade… **sur la tête du golem de mousse**, dans la forêt de sapins, pendant qu'il marche.
+- ❓ Devinette d'Alaric : « Pourquoi les golems ne gagnent jamais à cache-cache ? »
+- Version complète du plan, avec deux petits changements : la recette se fait en épelant à l'enclume (sans dépenser de matériaux), et le petit golem verdit au début de la partie 2 plutôt qu'avec le temps.
+
 ## v1.23.0 — J5 : Les pouvoirs des mots ⚡
 
 - ⚡ **La pierre des pouvoirs** attend au bout du chemin, devant la chaumière. Quand on la touche la première fois, elle se réveille : elle monte en tournant, ses runes s'allument en arc-en-ciel, des étincelles montent une à une vers **cinq nuages** au-dessus du village (petite note à chaque nuage), une étoile apparaît sur chacun, fanfare et confettis. Alaric dit : « Les mots ont des pouvoirs ! »
