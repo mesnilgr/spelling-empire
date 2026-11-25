@@ -1815,3 +1815,6 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 @media (prefers-reduced-motion: reduce) { .tiles.is-cheer .tile, .cheer-emoji, .cheer-streak, .hud-stars.is-bump { animation: none; } .fly-star { display: none; } }
 .tiles.is-oops .tile { animation: tile-oops 0.45s ease both; }
 @keyframes tile-oops { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px) rotate(-3deg); } 40% { transform: translateX(6px) rotate(3deg); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+.fly-item { font-size: 34px; }
+#materials-display.is-bump { animation: star-bump .45s ease; }
+.cheer-record { color: #e2a400; text-shadow: 0 4px 0 #8a5a00, 0 0 24px rgba(255,210,60,.9); font-size: clamp(1.4rem, 4.6vw, 2.2rem); }

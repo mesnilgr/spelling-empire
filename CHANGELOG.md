@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.24.3 — Encore plus de surprises 🎁
+
+- 🔴 **Les boutons secrets se touchent** : tant qu'ils ne sont pas tous activés, toucher un groupe de boutons redit l'explication (écrite et lue) et la flèche dorée montre l'enclume (ou Boulon, s'il est à plat). Si Boulon est là, il court appuyer dessus : « Boulon, à toi ! ».
+- 🎁 **Le coffre surprise** : toutes les 5 minutes de jeu environ, un coffre qui scintille sort de terre près du héros. Alaric l'annonce (« Un coffre surprise est apparu près de toi ! ») et la flèche dorée le montre. Un mot l'ouvre : des étoiles, un diamant, deux cristaux… ou, une fois sur dix, un méga coffre de 15 étoiles avec confettis.
+- 🐑 **Les animaux sursautent** : sauter à côté d'un animal le fait sauter lui aussi, avec son cri et un « ❗ » au-dessus de la tête.
+- 🪵 **Les matériaux s'envolent** de la fenêtre du mot jusqu'à l'inventaire, qui fait un petit bond.
+- 🏆 **Records de série** : battre son record de mots d'affilée du premier coup (à partir de 5) fait apparaître « 🏆 Nouveau record : 6 mots d'affilée ! », dit à voix haute, avec fanfare. Le journal 📜 montre la meilleure série du jour et le record.
+
 ## v1.24.2 — La fête des mots 🎉
 
 Chaque mot réussi devient une petite fête (c'est ce que l'enfant fait le plus souvent : ça devait être le moment le plus fun du jeu).

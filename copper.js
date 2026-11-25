@@ -65,6 +65,8 @@ export const CTX = {
     costumeSay: 'Les trois boutons secrets ! Tu gagnes le costume de Chevalier de cuivre ! Et Boulon reste avec toi pour toujours !',
     heroButton: 'Des boutons secrets ! Ils sont trop durs pour toi : seul un petit golem de cuivre peut appuyer dessus. Fabrique-le sur l’enclume, à côté de la forge : suis la flèche !',
     heroButtonSleep: 'Des boutons secrets ! Seul Boulon peut appuyer dessus : va le réveiller à l’enclume, à côté de la forge !',
+    heroButtonFlat: 'Des boutons secrets ! Mais Boulon est à plat : touche-le et épelle un mot pour remonter sa clé !',
+    goPress: 'Boulon, à toi ! Appuie sur les boutons !',
     noPart2: 'Boulon a trouvé tous les boutons du jour. D’autres boutons arrivent à ton prochain retour !',
     happy: 'Bip bip ! Boulon fait la danse du robot !',
     ride: 'Boulon s’accroche au deltaplane !',
@@ -108,6 +110,8 @@ export const CTX = {
     costumeSay: 'All three secret buttons! You win the Copper Knight outfit! And Bolt stays with you for good!',
     heroButton: 'Secret buttons! They are too hard for you: only a little copper golem can press them. Build one on the anvil next to the forge: follow the arrow!',
     heroButtonSleep: 'Secret buttons! Only Bolt can press them: go and wake him up at the anvil next to the forge!',
+    heroButtonFlat: 'Secret buttons! But Bolt has run down: touch him and spell a word to wind his key!',
+    goPress: 'Your turn, Bolt! Press the buttons!',
     noPart2: 'Bolt found all of today’s buttons. More buttons next time you come back!',
     happy: 'Beep beep! Bolt does the robot dance!',
     ride: 'Bolt holds on to the hang-glider!',
@@ -253,6 +257,8 @@ export class CopperWorkshop {
     this.bases = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.34, 0.08, 12), new THREE.MeshStandardMaterial({ color: 0x8a8a92, roughness: 0.8 }), n);
     this.caps = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.2, 0.22, 0.14, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, emissive: 0x401010, emissiveIntensity: 0.15 }), n);
     for (const im of [this.bases, this.caps]) { im.userData.dynamic = true; im.frustumCulled = false; scene3D.scene.add(im); }
+    // Each spot can be touched: the game says what the buttons are (until they are pressed).
+    this.spotObjs = BUTTON_SPOTS.map((sp, si) => scene3D._addInteractable({ kind: 'secretbutton', spot: si, worldPos: new THREE.Vector3(sp.x, scene3D.groundAt(sp.x, sp.z), sp.z), iconY: 0.9, reach: 2.8, hitRadius: 1.5 }));
     // The secret chest (one at a time).
     this.chest = buildChest();
     this.chest.userData.dynamic = true;
@@ -286,6 +292,7 @@ export class CopperWorkshop {
       this.caps.setColorAt(i, done ? green : red);
     });
     this.bases.instanceMatrix.needsUpdate = true; this.caps.instanceMatrix.needsUpdate = true;
+    for (const o of this.spotObjs ?? []) { o.active = this.spotVisible(o.spot) && !this.state.pressed.includes(o.spot); o.iconHolder.visible = false; }
     if (this.caps.instanceColor) this.caps.instanceColor.needsUpdate = true;
     const P = this.golem.userData.parts;
     P.mat.color.set(this.state.green ? 0x7ad0a8 : 0xffffff);
@@ -353,6 +360,15 @@ export class CopperWorkshop {
     this.openT = 0; this.cobj.active = false; this.cobj.iconHolder.visible = false;
     const p = this.chest.position.clone(); p.y += 1;
     for (const [k, c] of ['#ff5a5a', '#ffd34a', '#5ad06a', '#5ab4ff', '#ffffff'].entries()) setTimeout(() => this.s.particleBurst(p, c, 22), k * 90);
+  }
+  // The hero asks Boulon to press the buttons of a spot (he runs there).
+  pressSpot(si) {
+    if (!['follow', 'press'].includes(this.mode) || this.state.pressed.includes(si)) return false;
+    if (this.state.chestAt >= 0) { this.onWaitChest?.(); return 'wait'; }
+    if (Math.hypot(BUTTON_SPOTS[si].x - this.golem.position.x, BUTTON_SPOTS[si].z - this.golem.position.z) > 16) this.catchUp();
+    this.mode = 'press'; this.pressT = 0; this.pressStuck = 0;
+    this.pressQ = this.buttons.filter((b) => b.si === si).sort((a, b) => a.real - b.real);
+    return true;
   }
   // The nearest spot still to press (visible, not pressed), and how far it is from the golem.
   nearestSpot() {

@@ -21,6 +21,7 @@ import { ATX, ALBUM_ANIMALS, KIND_TO_CARD, PLACE_WORDS, PLACE_HINTS, BOSS_HINTS,
 import { FTX, CALENDAR, FLAME_STEPS, SNEEZE_STARS, HEARTH } from './flame.js';
 import { PTX, CLOUDS, RINGS, POWER_TIME, GLIDE_TIME, ANIMALS_GOAL, POWER_KINDS } from './powers.js';
 import { CTX, BUTTON_SPOTS, spotsOfPart, COPPER_LIFE, WIND_EVERY, SHINE_WORD } from './copper.js';
+import { STX, SURPRISE_EVERY, rollSurprise } from './surprise.js';
 import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themesFor, themeWords, themeDay, upcomingThemes } from './programme.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
@@ -362,6 +363,20 @@ const goldTxt = () => GOLD_TXT[lang] ?? GOLD_TXT.fr;
 const TUNE = [523, 587, 659, 784, 880, 1047, 1175, 1319, 1568, 1760];
 const isTestRun = /[?&]test\b/.test(location.search);
 function goldChance() { return window.__se?.goldChance ?? (isTestRun ? 0 : 0.1); }
+// A material won flies from the spelling window to the inventory bar.
+function flyItem(emoji) {
+  const card = $('#spell-modal .spell-modal-card'), target = $('#materials-display') ?? $('#inventory-panel');
+  if (!card || !target || !emoji) return;
+  const a = card.getBoundingClientRect(), b = target.getBoundingClientRect();
+  if (!b.width) return;
+  if (window.__se) window.__se.flownItems = (window.__se.flownItems ?? 0) + 1;
+  const it = el('span', 'fly-star fly-item', emoji);
+  const x0 = a.left + a.width / 2 - 16, y0 = a.top + a.height * 0.55;
+  it.style.left = `${x0}px`; it.style.top = `${y0}px`;
+  document.body.append(it);
+  setTimeout(() => { it.style.transform = `translate(${b.left + Math.min(b.width, 120) / 2 - x0}px, ${b.top + b.height / 2 - y0}px) scale(0.7)`; it.style.opacity = '0.3'; }, 400);
+  setTimeout(() => { it.remove(); target.classList.remove('is-bump'); void target.offsetWidth; target.classList.add('is-bump'); playTone(988, 0.07, 'triangle', 0.05); }, 1200);
+}
 function flyStars(k) {
   const card = $('#spell-modal .spell-modal-card'), target = $('#hud-stars');
   if (!card || !target) return;
@@ -380,7 +395,7 @@ function flyStars(k) {
     setTimeout(() => { st.remove(); if (i === k - 1) { const pill = target.parentElement ?? target; pill.classList.remove('is-bump'); void pill.offsetWidth; pill.classList.add('is-bump'); playTone(1568, 0.08, 'triangle', 0.06); } }, 820 + i * 70);
   }
 }
-function cheerSuccess({ firstTry, copied, earned, golden }) {
+function cheerSuccess({ firstTry, copied, earned, golden, record = false }) {
   const tiles = $('#spell-tiles'), card = $('#spell-modal .spell-modal-card');
   $('#spell-attempts').textContent = '';
   if (copied) return;
@@ -393,7 +408,12 @@ function cheerSuccess({ firstTry, copied, earned, golden }) {
     setTimeout(() => e.remove(), 1700);
   }
   if (earned > 0) setTimeout(() => flyStars(Math.min(earned, 9)), 350);
-  if (firstTry && (streak === 3 || streak === 5 || streak === 10 || (streak > 10 && streak % 5 === 0)) && card) {
+  if (record && card) {
+    const b = el('div', 'cheer-streak cheer-record', funTxt().record(streak));
+    card.append(b);
+    setTimeout(() => b.remove(), 2600);
+    setTimeout(() => { launchConfetti(); sfxVictory(); }, 450);
+  } else if (firstTry && (streak === 3 || streak === 5 || streak === 10 || (streak > 10 && streak % 5 === 0)) && card) {
     const b = el('div', 'cheer-streak', (STREAK_CHEER[lang] ?? STREAK_CHEER.fr)(streak));
     card.append(b);
     setTimeout(() => b.remove(), 2300);
@@ -769,7 +789,7 @@ function init3DScene() {
   scene3D.onInteractObject = (obj) => interactWith(obj);
   scene3D.minimapCanvas = $('#minimap');
   scene3D.onStep = (surface) => sfxStep(surface);
-  scene3D.onJump = () => { sfxJump(); defiEvent('jump'); };
+  scene3D.onJump = () => { sfxJump(); defiEvent('jump'); jumpSurprise(); };
   scene3D.onDayPhase = (phase) => {
     $('#hud-time').textContent = phase === 'night' ? '🌙' : '☀️';
     refreshBed();
@@ -787,7 +807,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand', 'powerstone', 'anvil', 'copper', 'secretchest'].includes(obj.kind)) continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand', 'powerstone', 'anvil', 'copper', 'secretchest', 'secretbutton', 'surprisechest'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -976,6 +996,8 @@ function interactWith(obj) {
   if (obj.kind === 'anvil') { anvilInteract(); return; }
   if (obj.kind === 'copper') { copperTouch(); return; }
   if (obj.kind === 'secretchest') { secretChestInteract(); return; }
+  if (obj.kind === 'secretbutton') { secretButtonTouch(obj.spot); return; }
+  if (obj.kind === 'surprisechest') { surpriseInteract(); return; }
   if (obj.kind === 'npc' && obj.npcId === 'mage' && storyAt('talkMage')) { playScene('mage1', () => { advanceStory('talkMage'); toast('🔮 ' + t.grimoireTitle + ' !'); }); return; }
   if (obj.kind === 'npc' && (obj.npcId === 'forester' || obj.npcId === 'fisher')) {
     const id = obj.npcId;
@@ -1218,7 +1240,7 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐', quest: true });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum(); tickPowers(0.3); tickCopper(0.3); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#collect-modal').hidden; tickNews(); }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum(); tickPowers(0.3); tickCopper(0.3); tickSurprise(0.3); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#collect-modal').hidden; tickNews(); }, 300);
 
 /* ===== FLASH CHALLENGE: never more than 2 minutes of play without a word ===== */
 const FLASH_AFTER = 120; // seconds of play
@@ -1633,7 +1655,7 @@ function henHint() {
   if (!r) return '';
   return henFound() ? dtx().cocotteFound : r.hint[lang] ?? r.hint.fr;
 }
-function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), albumSpeech(), powersSpeech(), copperSpeech(), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
+function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), albumSpeech(), powersSpeech(), copperSpeech(), funLines().join(' ').replace(/^\S+ /, '').replace('·', '.'), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
 function renderToday() {
   const box = $('#journal-today');
   if (!box) return;
@@ -1657,6 +1679,7 @@ function renderToday() {
   for (const line of albumLines()) kids.push(el('p', 'journal-album', line));
   for (const line of powersLines()) kids.push(el('p', 'journal-powers', line));
   for (const line of copperLines()) kids.push(el('p', 'journal-copper', line));
+  for (const line of funLines()) kids.push(el('p', 'journal-fun', line));
   if (henRow()) kids.push(el('p', 'journal-hen', `🐔 ${x.cocotteTitle} ${henHint()}`), el('p', 'journal-feathers', x.feathers((progress.feathers ?? []).length)));
   const listen = el('button', 'btn btn-ghost btn-small', '🔊');
   listen.type = 'button';
@@ -2451,6 +2474,79 @@ function powersSpeech() {
   return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${l[1].replace(/·/g, '.').replace(/(\d)\/(\d)/g, '$1 sur $2')}.`;
 }
 
+
+/* ===== JUMPY ANIMALS, STREAK RECORDS, THE SURPRISE CHEST (v1.24.3) ===== */
+const FUN_TXT = {
+  fr: { record: (n) => `🏆 Nouveau record : ${n} mots d’affilée !`, recordSay: (n) => `Nouveau record ! ${n} mots d’affilée !`, today: (b, r) => `🔥 Meilleure série aujourd’hui : ${b}${r ? ` · record : ${r}` : ''}` },
+  en: { record: (n) => `🏆 New record: ${n} words in a row!`, recordSay: (n) => `New record! ${n} words in a row!`, today: (b, r) => `🔥 Best run today: ${b}${r ? ` · record: ${r}` : ''}` },
+};
+const funTxt = () => FUN_TXT[lang] ?? FUN_TXT.fr;
+// Jump next to an animal: it jumps too, with its cry (and a "!" above its head).
+let jumpScareAt = 0;
+function jumpSurprise() {
+  const s = scene3D, p = s?.player.position;
+  if (!p || !s.fauna || performance.now() - jumpScareAt < 1200) return;
+  const near = s.fauna.list.filter((a) => !a.def.swim && a.mesh.visible && !(a.bounceT > 0) && Math.hypot(a.mesh.position.x - p.x, a.mesh.position.z - p.z) < 4.5);
+  if (!near.length) return;
+  jumpScareAt = performance.now();
+  near.forEach((a) => { a.bounceT = 0.7; });
+  ANIMAL_CRIES[near[0].kind]?.();
+  if (window.__se) window.__se.jumpScares = (window.__se.jumpScares ?? 0) + 1;
+  const sp = s.worldToScreen(near[0].mesh.position.clone().setY(near[0].mesh.position.y + 1.4));
+  if (sp) showFloatingText(sp.x, sp.y, '❗', '#ffffff');
+}
+// The best run of words right first time, today and ever: a new record is celebrated.
+function streakRecord(n) {
+  const d = today();
+  if (progress.dayStreak?.date !== d) progress.dayStreak = { date: d, best: 0 };
+  if (n > progress.dayStreak.best) progress.dayStreak.best = n;
+  const old = progress.recordStreak ?? progress.bestStreak ?? 0;
+  if (n >= 5 && n === old + 1) { progress.recordStreak = n; return true; }
+  if (n > old) progress.recordStreak = n;
+  return false;
+}
+function funLines() {
+  const ds = progress.dayStreak;
+  if (!ds || ds.date !== today() || !ds.best) return [];
+  return [funTxt().today(ds.best, progress.recordStreak ?? progress.bestStreak ?? 0)];
+}
+// The surprise chest: one every few minutes of play, near the hero.
+let surpriseT = 0;
+function tickSurprise(dt) {
+  if (!game || !scene3D?.surprise || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game' || !game.story?.intro) return;
+  const sc = scene3D.surprise;
+  const busy = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#collect-modal').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight || scene3D.activeHouse;
+  if (sc.out || sc.mesh.visible || busy) return;
+  surpriseT += dt;
+  if (surpriseT < (window.__se?.surpriseEvery ?? (isTestRun ? 1e9 : SURPRISE_EVERY))) return;
+  const at = sc.spawn();
+  if (!at) return;
+  surpriseT = 0;
+  const msg = (STX[lang] ?? STX.fr).appear;
+  [784, 988, 1175, 1568].forEach((f, i) => playTone(f, 0.12, 'triangle', 0.07, i * 0.09));
+  toast(`🎁 ${msg}`, 5000); speak(msg, 0.95);
+  newsTarget = { show: { x: at.x, z: at.z }, until: performance.now() + 3 * 60 * 1000 };
+  updateMapPins();
+  if (!sc.labelled) { sc.labelled = true; scene3D.setSpotMaterial(sc.obj, 'talk', (STX[lang] ?? STX.fr).label); }
+}
+function surpriseInteract() {
+  const x = STX[lang] ?? STX.fr;
+  if (!scene3D.surprise.out) return;
+  spellContext = { type: 'surprise', word: pickWord(levelAt(0)), tries: 0 };
+  openSpellModal(`🎁 ${x.title}`, x.instr, '🎁');
+}
+function surpriseOpened() {
+  const x = STX[lang] ?? STX.fr, r = rollSurprise(window.__se?.surpriseRoll);
+  scene3D.surprise.open();
+  newsTarget = null; updateMapPins();
+  progress.stars += r.stars; game.starsEarned += r.stars;
+  for (const [m, n] of Object.entries(r.materials ?? {})) game.materials[m] = (game.materials[m] ?? 0) + n;
+  defiEvent('chest');
+  saveGame(); updateGameUI(); renderCraftMenu();
+  const text = r.kind === 'mega' ? x.mega : r.kind === 'diamond' ? x.diamond : r.kind === 'crystal' ? x.crystal : x.stars(r.stars);
+  return { text: `🎁 ${text}`, say: text, after: () => { sfxVictory(); if (r.kind === 'mega') launchConfetti(); }, emoji: r.kind === 'diamond' ? '💎' : r.kind === 'crystal' ? '🔮' : null };
+}
+
 /* ===== THE LITTLE COPPER GOLEM AND THE SECRET BUTTONS (J6) ===== */
 // Session 1: the recipe at the anvil (FER, PIERRE, FEU) builds Boulon, who follows the hero for
 // 3 minutes (a word winds his key every minute); two secret buttons in the village, each opening a
@@ -2528,11 +2624,7 @@ function setupCopper() {
   cw.onChestUp = () => { sfxPop(); };
   cw.onHeroButton = () => {
     if (!$('#spell-modal').hidden || spellContext || !$('#dialog').hidden || !$('#news-modal').hidden) return;
-    const c = copperState(), msg = c.made ? x().heroButtonSleep : x().heroButton;
-    playTone(220, 0.12, 'square', 0.05); playTone(180, 0.15, 'square', 0.05, 0.12);
-    toast(`🔴 ${msg}`, 6000); speak(msg, 0.95);
-    newsTarget = { show: 'anvil', until: performance.now() + 4 * 60 * 1000 };
-    updateMapPins();
+    explainButtons();
   };
   if (scene3D.bosses) {
     scene3D.bosses.onWave = (b) => { animalVoice({ type: 'square', f0: 110, f1: 150, dur: 0.4, filter: 'lowpass', freq: 400, vol: 0.09 }); };
@@ -2554,6 +2646,27 @@ function copperSync() {
     applyCopperLook();
     if (c?.chestAt >= 0) cw.showChest(c.chestAt, c.locks > 1 || spotsOfPart(BUTTON_SPOTS[c.chestAt].part).filter((b) => !c.opened.includes(b.id)).length === 1);
   }
+}
+// The secret buttons said aloud: what they are, and what to do (no Boulon, asleep, or run down).
+function explainButtons() {
+  const c = copperState(), x = ctx6(), cw = scene3D.copper;
+  const flat = c.made && !c.asleep && c.flat;
+  const msg = !c.made ? x.heroButton : flat ? x.heroButtonFlat : x.heroButtonSleep;
+  playTone(220, 0.12, 'square', 0.05); playTone(180, 0.15, 'square', 0.05, 0.12);
+  for (const b of cw.buttons) if (!c.pressed.includes(BUTTON_SPOTS[b.si].id)) b.down = Math.max(b.down, 0.25);
+  cw.layout();
+  toast(`🔴 ${msg}`, 6000); speak(msg, 0.95);
+  newsTarget = { show: flat ? 'copper' : 'anvil', until: performance.now() + 4 * 60 * 1000 };
+  updateMapPins();
+}
+// Touching the buttons of a spot: Boulon (if he is there) runs to press them; otherwise the game explains.
+function secretButtonTouch(si) {
+  const c = copperState(), cw = scene3D.copper;
+  setupCopper(); copperSync();
+  const r = c.made && !c.asleep && !c.flat ? cw.pressSpot(si) : false;
+  if (r === 'wait') return;
+  if (r) { const m = ctx6().goPress; toast(`🤖 ${m}`, 2500); speak(m, 1.05); return; }
+  explainButtons();
 }
 function anvilInteract() {
   const c = copperState(), x = ctx6(), cw = scene3D.copper;
@@ -3448,8 +3561,9 @@ function handleSpellSuccess() {
     if (game?.pet?.tamed) scene3D?.pet?.joy();
     streak += 1;
     if (streak >= 10) gainHeart('streak10');
-    if (streak > (progress.bestStreak || 0)) progress.bestStreak = streak;
   } else { streak = 0; }
+  const record = firstTry && !copied ? streakRecord(streak) : false;
+  if (streak > (progress.bestStreak || 0)) progress.bestStreak = streak;
 
   const streakBonus = streak >= 2 ? Math.min(streak - 1, 3) : 0;
   const baseEarned = firstTry ? FIRST_TRY_STARS : RETRY_STARS;
@@ -3468,7 +3582,7 @@ function handleSpellSuccess() {
 
   sfxMine();
   if (streak >= 2) sfxStreak(streak);
-  cheerSuccess({ firstTry, copied, earned, golden });
+  cheerSuccess({ firstTry, copied, earned, golden, record });
   if (!copied) {
     defiEvent('word');
     if (firstTry) defiEvent('firstTry');
@@ -3538,7 +3652,8 @@ function handleSpellSuccess() {
     if (streak >= 2) spellResultEl.appendChild(el('p', 'spell-streak-badge', lang === 'fr' ? `🔥 ${streak} d’affilée ! +${streakBonus} ★ bonus` : `🔥 ${streak} in a row! +${streakBonus} ★ bonus`));
     spellResultEl.hidden = false;
     // The praise is said too (a 5-year-old cannot read it yet), then the word's little sentence.
-    speak(copied ? sentence : `${bravo} ${sentence}`, 0.9);
+    speak(copied ? sentence : `${record ? funTxt().recordSay(streak) : bravo} ${sentence}`, 0.9);
+    flyItem(lootText ? '🎁' : MATERIAL_EMOJI[material]);
   } else if (type === 'sign') {
     const sg = spellContext.sign;
     game.story.signs[sg.house] = true;
@@ -3601,6 +3716,13 @@ function handleSpellSuccess() {
     spellResultEl.replaceChildren(el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
     spellResultEl.hidden = false;
     speak(r.say, 0.95);
+    spellContext.after = r.after;
+  } else if (type === 'surprise') {
+    const r = surpriseOpened();
+    spellResultEl.replaceChildren(el('p', 'spell-success', praise(firstTry)), el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
+    spellResultEl.hidden = false;
+    speak(r.say, 0.95);
+    if (r.emoji) flyItem(r.emoji);
     spellContext.after = r.after;
   } else if (type === 'copper') {
     const r = copperSpelled(spellContext);
@@ -4099,7 +4221,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : obj.kind === 'powerstone' ? '⚡' : obj.kind === 'anvil' ? '🔨' : obj.kind === 'copper' ? '🤖' : obj.kind === 'secretchest' ? '🎁' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : obj.kind === 'powerstone' ? '⚡' : obj.kind === 'anvil' ? '🔨' : obj.kind === 'copper' ? '🤖' : obj.kind === 'secretchest' || obj.kind === 'surprisechest' ? '🎁' : obj.kind === 'secretbutton' ? '🔴' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');

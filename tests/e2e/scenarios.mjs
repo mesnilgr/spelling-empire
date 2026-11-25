@@ -1667,7 +1667,9 @@ export const SCENARIOS = [
       const w1 = await g.spell(); words++;
       check(/La clé tourne/.test(w1.result) && await mode() === 'follow', '« Cric, cric ! La clé tourne : Boulon repart ! »', w1.result);
       // The second spot: a big chest with two locks, and a golden key for Boulon.
-      check(await pressSpot('shop'), 'devant la boutique, le deuxième bouton secret : un gros coffre');
+      const nTap = await nSaid();
+      check(await g.use("i.kind === 'secretbutton' && i.spot === 1") === 'ok' && /Boulon, à toi/.test(await saidSince(nTap)), 'on touche les boutons de la boutique : « Boulon, à toi ! » (lu), il court appuyer');
+      check(await g.page.waitForFunction(() => window.__se.scene.copper.cobj.active, null, { timeout: 20000 }).then(() => true, () => false), 'devant la boutique, le deuxième bouton secret : un gros coffre');
       await g.use("i.kind === 'secretchest'");
       for (let k = 0; k < 2; k++) { if (await spellOpen(6000)) { await g.spell(); words++; } else check(false, `serrure ${k + 1}`); }
       const a1 = await cu();
@@ -1786,6 +1788,12 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(600);
       const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.copper.obj.worldPos; return q ? Math.hypot(q.x - w.x, q.z - w.z) : 99; });
       check(arrow < 1, 'la flèche dorée montre l’enclume', String(arrow));
+      // Touching the buttons says it again (as long as they are not pressed).
+      await g.page.waitForTimeout(300);
+      const nb = await g.page.evaluate(() => window.__spoken.length);
+      check(await g.use("i.kind === 'secretbutton' && i.spot === 1") === 'ok', 'on touche les boutons devant la boutique');
+      await g.page.waitForTimeout(300);
+      check(/trop durs pour toi/.test(await g.page.evaluate((n) => window.__spoken.slice(n).join(' | '), nb)), 'toucher les boutons redit l’explication (lu)');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },
@@ -1809,7 +1817,7 @@ export const SCENARIOS = [
       check(party.cheer && party.emoji, 'les lettres sautent une à une et un gros emoji apparaît', JSON.stringify(party));
       check(stars > 0, `les étoiles s’envolent vers le compteur (${stars})`);
       check(party.attempts === '', 'plus de « essais restants » une fois le mot réussi', party.attempts);
-      check(/^(Orthographe parfaite|Bravo|Génial|Trop fort|Waouh, parfait|Magnifique|Champion|Du premier coup|Super)/.test(party.said), 'le bravo est dit à voix haute, avant la petite phrase', party.said);
+      check(party.said.split(' | ').some((x) => /^(Orthographe parfaite|Bravo|Génial|Trop fort|Waouh, parfait|Magnifique|Champion|Du premier coup|Super)/.test(x)), 'le bravo est dit à voix haute, avant la petite phrase', party.said);
       void r1;
       // Three in a row: a big « 3 d’affilée ! » with a fanfare.
       for (let k = 0; k < 2; k++) { if (await open()) await g.spell({ keepOpen: true }); }
@@ -1839,6 +1847,56 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(500);
       const dance = await g.page.evaluate(async () => { const s = window.__se.scene; s.idleT = 0; s.danceAfter = 0.4; await new Promise((r) => setTimeout(r, 1500)); return { n: s.dances ?? 0, dog: (s.pet.trickT ?? 0) > 0 || (s.dances ?? 0) > 0 }; });
       check(dance.n >= 1, 'sans bouger un moment, le héros fait une petite danse (♪ ♫)', JSON.stringify(dance));
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Petits plus : matériaux qui volent, animaux qui sursautent, records, coffre surprise',
+    quick: true,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, recordStreak: 4, bestStreak: 4, save: save(story(2, 0)) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1000);
+      const node = "i.kind === 'node' && i.active && !i.requires && i.nodeType !== 'chest'";
+      const open = async () => { await g.page.evaluate(() => { const b = document.querySelector('#spell-continue-btn'); if (b && !b.hidden && !document.querySelector('#spell-modal').hidden) b.click(); }); await g.page.waitForTimeout(200); await g.use(node); return g.page.waitForFunction(() => !document.querySelector('#spell-modal').hidden && !!window.__se.spell(), null, { timeout: 5000 }).then(() => true, () => false); };
+      // Five words in a row beat the record of 4: « Nouveau record ! » (said and shown).
+      let rec = null;
+      for (let k = 0; k < 5; k++) {
+        if (!(await open())) { check(false, `mot ${k + 1}`); continue; }
+        await g.spell({ keepOpen: true });
+        if (k === 0) { await g.page.waitForTimeout(900); check(await g.page.evaluate(() => (window.__se.flownItems ?? 0) > 0), 'le matériau gagné s’envole vers l’inventaire'); }
+        if (k === 4) rec = await g.page.evaluate(() => ({ big: document.querySelector('.cheer-record')?.textContent ?? '', said: window.__spoken.slice(-1)[0], rec: window.__se.progress().recordStreak }));
+      }
+      check(/Nouveau record : 5 mots d’affilée/.test(rec?.big) && /Nouveau record ! 5 mots d’affilée/.test(rec?.said) && rec?.rec === 5, '5 d’affilée bat le record : « Nouveau record ! » (écrit et lu)', JSON.stringify(rec));
+      await g.click('#spell-continue-btn');
+      await g.page.waitForTimeout(400);
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j = await g.page.evaluate(() => document.querySelector('#journal-today')?.innerText ?? '');
+      check(/Meilleure série aujourd’hui : 5/.test(j), 'journal : « Meilleure série aujourd’hui : 5 »', j);
+      await g.click('#journal-close');
+      // Jump next to an animal: it jumps too, with its cry.
+      const jump = await g.page.evaluate(async () => {
+        const s = window.__se.scene, a = s.fauna.list.find((f) => !f.def.swim && f.mesh.visible && Math.hypot(f.mesh.position.x, f.mesh.position.z) < 45);
+        s.teleport(a.mesh.position.x + 1.5, a.mesh.position.z + 1.5);
+        await new Promise((r) => setTimeout(r, 300));
+        s.jump();
+        await new Promise((r) => setTimeout(r, 100));
+        return { n: window.__se.jumpScares ?? 0, bounce: a.bounceT > 0 };
+      });
+      check(jump.n >= 1 && jump.bounce, 'on saute à côté d’un animal : il sursaute avec son cri', JSON.stringify(jump));
+      // The surprise chest: it pops out near the hero, is announced and shown by the arrow; a word opens it.
+      await g.page.evaluate(() => { const s = window.__se.scene; s.teleport(4, 22); window.__se.surpriseEvery = 0.5; window.__se.surpriseRoll = 0.25; });
+      const up = await g.page.waitForFunction(() => /coffre surprise est apparu/.test(window.__spoken.join(' | ')), null, { timeout: 8000 }).then(() => true, () => false);
+      await g.page.waitForTimeout(600);
+      const pin = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.surprise.obj.worldPos, p = s.player.position; return { d: q ? Math.hypot(q.x - w.x, q.z - w.z) : 99, far: Math.hypot(w.x - p.x, w.z - p.z) }; });
+      check(up && pin.d < 1 && pin.far > 5, 'un coffre surprise sort de terre près du héros : annoncé (lu) et montré par la flèche dorée', JSON.stringify(pin));
+      await g.page.evaluate(() => { window.__se.surpriseEvery = 1e9; });
+      check(await g.use("i.kind === 'surprisechest'") === 'ok' && await g.page.waitForFunction(() => !document.querySelector('#spell-modal').hidden, null, { timeout: 4000 }).then(() => true, () => false), 'on touche le coffre surprise : un mot');
+      const dia = await g.page.evaluate(() => window.__se.game().materials.diamond ?? 0);
+      const r = await g.spell();
+      check(/Dans le coffre surprise : un diamant/.test(r.result) && (await g.page.evaluate(() => window.__se.game().materials.diamond ?? 0)) === dia + 1, 'dans le coffre surprise : un diamant', r.result);
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },
@@ -2098,7 +2156,7 @@ export const SCENARIOS = [
       check(view.prefix === shownPrefix, 'le pronom est déjà écrit en gris, avec sa majuscule', view.prefix);
       check(view.ctx.includes(w2.verb), 'le verbe est rappelé', view.ctx);
       check(view.keyA === 'a', 'le verbe commence en minuscule (la majuscule est sur le pronom)', view.keyA);
-      check((await g.page.evaluate(() => window.__spoken.at(-1))).includes(w2.say), 'on entend le pronom et le verbe ensemble', w2.say + ' / ' + await g.page.evaluate(() => window.__spoken.slice(-3).join(' | ')));
+      check((await g.page.evaluate(() => window.__spoken.slice(-3))).some((x) => x.includes(w2.say)), 'on entend le pronom et le verbe ensemble', w2.say + ' / ' + await g.page.evaluate(() => window.__spoken.slice(-3).join(' | ')));
       const r2 = await g.spell();
       check(r2.result.includes(w2.sentence), 'réussi : la phrase s’affiche', r2.result);
       // Articles: the noun in grey after the boxes, the child writes le or la (first days).
