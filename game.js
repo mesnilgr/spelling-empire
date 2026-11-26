@@ -22,6 +22,7 @@ import { FTX, CALENDAR, FLAME_STEPS, SNEEZE_STARS, HEARTH } from './flame.js';
 import { PTX, CLOUDS, RINGS, POWER_TIME, GLIDE_TIME, ANIMALS_GOAL, POWER_KINDS } from './powers.js';
 import { CTX, BUTTON_SPOTS, spotsOfPart, COPPER_LIFE, WIND_EVERY, SHINE_WORD } from './copper.js';
 import { STX, SURPRISE_EVERY, rollSurprise } from './surprise.js';
+import { SX, PILES, PATCH, SNOWMAN, HITS_PER_WORD, HITS_PER_ROUND, ROUNDS, REV_ROUNDS, PILE_BALLS, HATS, CARROT_WORD, CRYSTAL_WORD } from './snow.js';
 import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themesFor, themeWords, themeDay, upcomingThemes } from './programme.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
@@ -783,7 +784,7 @@ function init3DScene() {
   scene3D.onDance = () => { [523, 659, 784, 659, 523, 784].forEach((f, i) => playTone(f, 0.12, 'triangle', 0.05, i * 0.16)); const sp = scene3D.getPlayerScreenPosition(); if (sp) showFloatingText(sp.x, sp.y - 50, '♪ ♫ ♪', '#ffe08a'); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, streak: () => streak, copper: () => game?.copper, henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, streak: () => streak, copper: () => game?.copper, snow: () => game?.snow, henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -807,7 +808,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand', 'powerstone', 'anvil', 'copper', 'secretchest', 'secretbutton', 'surprisechest'].includes(obj.kind)) continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand', 'powerstone', 'anvil', 'copper', 'secretchest', 'secretbutton', 'surprisechest', 'snowgolem', 'snowpile', 'snowpatch', 'snowman'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -855,6 +856,7 @@ function saveGame() {
     flame: game.flame ?? null,
     powers: game.powers ?? null,
     copper: game.copper ?? null,
+    snow: game.snow ?? null,
     album: game.album ?? null,
     heartsFrom: game.heartsFrom ?? [],
     savedAt: Date.now(),
@@ -889,6 +891,7 @@ function continueGame() {
     flame: s.flame ? JSON.parse(JSON.stringify(s.flame)) : null,
     powers: s.powers ? JSON.parse(JSON.stringify(s.powers)) : null,
     copper: s.copper ? JSON.parse(JSON.stringify(s.copper)) : null,
+    snow: s.snow ? JSON.parse(JSON.stringify(s.snow)) : null,
     album: s.album ? JSON.parse(JSON.stringify(s.album)) : null,
     heartsFrom: [...(s.heartsFrom ?? [])],
   });
@@ -998,6 +1001,10 @@ function interactWith(obj) {
   if (obj.kind === 'secretchest') { secretChestInteract(); return; }
   if (obj.kind === 'secretbutton') { secretButtonTouch(obj.spot); return; }
   if (obj.kind === 'surprisechest') { surpriseInteract(); return; }
+  if (obj.kind === 'snowgolem') { snowGolemTouch(); return; }
+  if (obj.kind === 'snowpile') { snowPileTouch(); return; }
+  if (obj.kind === 'snowpatch') { snowPatchTouch(); return; }
+  if (obj.kind === 'snowman') { snowmanTouch(); return; }
   if (obj.kind === 'npc' && obj.npcId === 'mage' && storyAt('talkMage')) { playScene('mage1', () => { advanceStory('talkMage'); toast('🔮 ' + t.grimoireTitle + ' !'); }); return; }
   if (obj.kind === 'npc' && (obj.npcId === 'forester' || obj.npcId === 'fisher')) {
     const id = obj.npcId;
@@ -1240,7 +1247,7 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐', quest: true });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum(); tickPowers(0.3); tickCopper(0.3); tickSurprise(0.3); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#collect-modal').hidden; tickNews(); }, 300);
+setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum(); tickPowers(0.3); tickCopper(0.3); tickSnow(0.3); tickSurprise(0.3); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#collect-modal').hidden; tickNews(); }, 300);
 
 /* ===== FLASH CHALLENGE: never more than 2 minutes of play without a word ===== */
 const FLASH_AFTER = 120; // seconds of play
@@ -1456,6 +1463,7 @@ function onPartTwo(key) {
   if (key === 'J4') onAlbumPartTwo();
   if (key === 'J5') onPowersPartTwo();
   if (key === 'J6') onCopperPartTwo();
+  if (key === 'J7') onSnowPartTwo();
 }
 
 /* ===== DAILY CHALLENGES, THE JUMPING CHEST AND COCOTTE (J2) ===== */
@@ -1655,7 +1663,7 @@ function henHint() {
   if (!r) return '';
   return henFound() ? dtx().cocotteFound : r.hint[lang] ?? r.hint.fr;
 }
-function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), albumSpeech(), powersSpeech(), copperSpeech(), funLines().join(' ').replace(/^\S+ /, '').replace('·', '.'), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
+function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), albumSpeech(), powersSpeech(), copperSpeech(), snowSpeech(), funLines().join(' ').replace(/^\S+ /, '').replace('·', '.'), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
 function renderToday() {
   const box = $('#journal-today');
   if (!box) return;
@@ -1679,6 +1687,7 @@ function renderToday() {
   for (const line of albumLines()) kids.push(el('p', 'journal-album', line));
   for (const line of powersLines()) kids.push(el('p', 'journal-powers', line));
   for (const line of copperLines()) kids.push(el('p', 'journal-copper', line));
+  for (const line of snowLines()) kids.push(el('p', 'journal-copper', line));
   for (const line of funLines()) kids.push(el('p', 'journal-fun', line));
   if (henRow()) kids.push(el('p', 'journal-hen', `🐔 ${x.cocotteTitle} ${henHint()}`), el('p', 'journal-feathers', x.feathers((progress.feathers ?? []).length)));
   const listen = el('button', 'btn btn-ghost btn-small', '🔊');
@@ -2830,6 +2839,368 @@ function copperSpeech() {
   return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${l[1].replace(/^\S+ /, '').replace(/·/g, '.').replace(/(\d)\/(\d)/g, '$1 sur $2')}.`;
 }
 
+/* ===== THE SNOW GOLEM AND THE SNOWBALL FIGHT (J7) ===== */
+// Session 1: on the western slope of the mountain, Flocon the snow golem wakes up for a snowball
+// fight. His snowballs never hurt (the hero is a snowman for 2 s: "Brrr!"). The hero picks up snow
+// from the white heaps and throws it back with the ❄️ button: a word every 3 hits, 6 hits win a
+// round, 3 rounds and the word CRISTAL win an ice crystal. The dog jumps to catch snowballs.
+// Session 2 (part 2 of J7): roll 3 balls in front of the cottage (they grow as the hero walks, a
+// word puts each one in place), CAROTTE for the nose, a hat to choose; the snowman dances at night.
+// Then a rematch against Flocon, who throws faster: 2 rounds, and a red scarf for the snowman.
+const sx = () => SX[lang] ?? SX.fr;
+function snowState() { return game ? (game.snow ??= { woke: false, hits: 0, rounds: 0, crystal: false, balls: 0, heroHits: 0, dog: 0, throws: 0, stack: 0, nose: false, hat: null, rev: 0, revOn: false, scarf: false }) : null; }
+const snowPartTwo = () => releasePart(7) === 2;
+const snowDone1 = (w = game?.snow) => !!w?.crystal;
+const snowDone2 = (w = game?.snow) => !!w?.scarf;
+const snowBuilt = (w = game?.snow) => !!w?.hat;
+let snowMsgs = [], snowGame = null, snowP2Said = false, snowSaidAt = {}, snowLastDodge = false, snowWordOpen = false, snowPatchDwell = 0, snowPatchCool = 0;
+function queueSnowMsg(text, say = text.replace(/^\S+ /, ''), sfx = null, show = null) { snowMsgs.push({ text, say, sfx, show }); }
+function snowOnce(key, ms) { const n = performance.now(); if (n - (snowSaidAt[key] ?? -1e9) < ms) return false; snowSaidAt[key] = n; return true; }
+function sfxSnowPouf() { playNoise({ type: 'lowpass', freq: 1100, q: 0.7, volume: 0.22, duration: 0.22 }); playTone(220, 0.14, 'sine', 0.08, 0, 110); }
+function sfxSnowThrow() { playNoise({ type: 'highpass', freq: 1800, q: 0.5, volume: 0.06, duration: 0.2 }); playTone(500, 0.12, 'triangle', 0.04, 0, 900); }
+function sfxBrrr() { for (let i = 0; i < 4; i++) playTone(300 + (i % 2) * 40, 0.07, 'square', 0.035, i * 0.07); }
+function sfxCrunch() { for (let i = 0; i < 3; i++) playNoise({ type: 'bandpass', freq: 2200 - i * 300, q: 1.5, volume: 0.12, duration: 0.06, delay: i * 0.08 }); }
+function snowWord(w) {
+  const word = w[lang] ?? w.fr;
+  if ((progress.age ?? 6) <= 5) return { word: word[0], level: 'story', say: sx().letter(word[0].toUpperCase(), word) };
+  return { word, level: 'story', say: `${word}.` };
+}
+function snowFloat(pos, text, color = '#ffffff', dy = 2) {
+  const sp = scene3D?.worldToScreen(pos.clone().setY(pos.y + dy));
+  if (sp) showFloatingText(sp.x, sp.y, text, color);
+}
+// Flocon's resting phase for the saved state: a heap (asleep, or waiting for the rematch), fighting, or done.
+function snowRestPhase(w = game?.snow) {
+  if (!w?.woke) return 'sleep';
+  if (!w.crystal || (w.revOn && !w.scarf)) return 'battle';
+  if (snowPartTwo() && snowBuilt(w) && !w.scarf) return 'sleep';
+  return 'idle';
+}
+function applySnowLook() {
+  const sw = scene3D?.snow, w = game?.snow;
+  if (!sw) return;
+  const st = { stack: w?.stack ?? 0, nose: !!w?.nose, hat: w?.hat ?? null, scarf: !!w?.scarf };
+  const o = sw.state;
+  if (o.stack !== st.stack || o.nose !== st.nose || o.hat !== st.hat || o.scarf !== st.scarf) sw.setMan(st);
+  sw.fast = !!w?.revOn;
+  const x = sx();
+  const built = snowBuilt(w);
+  if (sw.pobj.active === built) { sw.pobj.active = !built; sw.pobj.iconHolder.visible = !built; }
+  for (const [o2, label] of [[sw.gobj, x.label], [sw.pobj, x.patch], [sw.mobj, x.mine], ...sw.pileObjs.map((p) => [p, x.pile])]) {
+    if (o2.labelText !== label) { o2.labelText = label; scene3D.setSpotMaterial(o2, 'talk', label); }
+  }
+}
+function setupSnow() {
+  const sw = scene3D?.snow;
+  if (!sw || sw.wired) return;
+  sw.wired = true;
+  const x = () => sx();
+  sw.onNear = () => { if (!snowBusy()) snowWake(); };
+  sw.onAwake = () => {
+    const w = snowState();
+    if (w.revOn) return;
+    if (w.balls <= 0) { queueSnowMsg(`❄️ ${x().howTo}`, undefined, null, { x: PILES[1].x, z: PILES[1].z }); }
+  };
+  sw.onThrow = () => { sfxSnowThrow(); snowState().throws++; };
+  sw.onHeroHit = () => {
+    const w = snowState();
+    w.heroHits++;
+    sfxSnowPouf(); setTimeout(sfxBrrr, 250);
+    snowFloat(scene3D.player.position, x().pouf, '#cfe8ff', 2.4);
+    if (snowOnce('brrr', 14000)) speak(x().brrr, 1.05); else toast(`⛄ ${x().brrr}`, 1800);
+  };
+  sw.onDogCatch = () => {
+    const w = snowState();
+    w.dog++;
+    sfxBark();
+    snowFloat(scene3D.pet.mesh.position, '🐶 ❄️', '#ffffff', 1.6);
+    if (snowOnce('dog', 20000)) speak(x().dog, 1.05);
+  };
+  sw.onGolemHit = () => {
+    const w = snowState();
+    sfxSnowPouf();
+    w.hits++;
+    snowFloat(sw.golem.position, `❄️ ${x().touched}`, '#9ad0ff', 3.6);
+    if (w.hits % HITS_PER_WORD === 0) { snowWordOpen = true; setTimeout(() => openSnowHitWord(), 650); }
+    saveGame();
+  };
+  sw.onGolemMiss = () => {
+    sfxPouet();
+    snowFloat(sw.golem.position, x().dodgeFloat, '#ff8ab0', 3.6);
+    if (snowOnce('dodge', 12000)) speak(x().dodge, 1.05);
+  };
+  sw.onFlop = () => { sfxPouf(); };
+  sw.onRollBig = (k) => { if (!snowBusy(true)) openSnowRollWord(k); else sw.rollWait = true; };
+  sw.onStacked = (k) => {
+    sfxCrunch();
+    if (k < 2) { sw.startRoll(k + 1); return; }
+    setTimeout(() => { if (!spellContext && $('#spell-modal').hidden) openCarrotWord(); }, 600);
+  };
+  sw.onNightDance = () => {
+    const p = scene3D.player.position;
+    if (Math.hypot(p.x - SNOWMAN.x, p.z - SNOWMAN.z) < 25 && snowOnce('night', 120000)) queueSnowMsg(`⛄ ${x().snowmanNight}`);
+  };
+}
+function snowBusy(spellOnly = false) {
+  if (!$('#spell-modal').hidden || spellContext) return true;
+  if (spellOnly) return false;
+  return !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#collect-modal').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight;
+}
+function snowSync() {
+  const sw = scene3D?.snow, w = game?.snow;
+  if (!sw || snowGame === game) return;
+  snowGame = game; snowP2Said = false; snowMsgs = []; snowWordOpen = false;
+  sw.flying = []; sw.stopRoll();
+  if (w?.nose && !w.hat) w.hat = 'top';
+  sw.setPhase(snowRestPhase(w));
+  applySnowLook();
+}
+// Flocon wakes up: the first time (the fight), or for the rematch (part 2, once the snowman is built).
+function snowWake() {
+  const w = snowState(), sw = scene3D.snow, x = sx();
+  if (sw.phase !== 'sleep') return;
+  if (!w.woke) {
+    w.woke = true; w.hits = 0;
+    sw.wake();
+    sfxVictory(); launchConfetti();
+    animalVoice({ type: 'triangle', f0: 220, mid: 330, f1: 180, dur: 0.6, filter: 'lowpass', freq: 900, vol: 0.12 });
+    toast(`⛄ ${x.wake}`, 5000); speak(x.wake, 0.95);
+    saveGame();
+    return;
+  }
+  if (snowPartTwo() && snowBuilt(w) && !w.scarf) {
+    w.revOn = true; w.hits = 0;
+    sw.fast = true; sw.wake();
+    sfxVictory(); launchConfetti();
+    toast(`⛄ ${x.revStart}`, 4500); speak(x.revStart, 0.95);
+    if (w.balls <= 0) queueSnowMsg(`❄️ ${x.howTo}`, undefined, null, { x: PILES[1].x, z: PILES[1].z });
+    saveGame();
+  }
+}
+function snowGolemTouch() {
+  const w = snowState(), sw = scene3D.snow, x = sx();
+  setupSnow(); snowSync();
+  if (sw.phase === 'sleep') {
+    if (!w.woke || (snowPartTwo() && snowBuilt(w) && !w.scarf)) { snowWake(); return; }
+  }
+  if (sw.phase === 'battle') { toast(`⛄ ${x.battleTouch}`, 3500); speak(x.battleTouch, 1); newsTarget = { show: { x: PILES[1].x, z: PILES[1].z }, until: performance.now() + 60000 }; updateMapPins(); return; }
+  sw.wave(); animalVoice({ type: 'triangle', f0: 260, mid: 360, f1: 220, dur: 0.4, filter: 'lowpass', freq: 900, vol: 0.1 });
+  const msg = !w.crystal ? x.battleTouch : w.scarf ? x.idleDone : snowPartTwo() ? x.idleBuild : x.idle;
+  toast(`⛄ ${msg}`, 4500); speak(msg, 0.95);
+  if (w.crystal && snowPartTwo() && !snowBuilt(w)) { newsTarget = { show: 'snowpatch', until: performance.now() + 4 * 60 * 1000 }; updateMapPins(); }
+}
+function snowPileTouch() {
+  const w = snowState(), sw = scene3D.snow, x = sx();
+  setupSnow(); snowSync();
+  if (sw.phase === 'sleep' && (!w.woke || (snowPartTwo() && snowBuilt(w) && !w.scarf))) snowWake();
+  if (sw.phase === 'idle') { snowGolemTouch(); return; }
+  w.balls = PILE_BALLS;
+  sfxCrunch(); playActionSwing();
+  sw.s.particleBurst(scene3D.player.position.clone().setY(scene3D.player.position.y + 0.5), '#ffffff', 14);
+  const msg = x.pick(w.balls);
+  toast(`❄️ ${msg}`, 3000);
+  if (snowOnce('pick', 30000)) speak(msg, 1.0);
+  newsTarget = null; updateMapPins(); updateSnowButton(); saveGame();
+}
+function snowThrow() {
+  const w = snowState(), sw = scene3D?.snow, x = sx();
+  if (!sw || $('#snow-btn').hidden || snowWordOpen || snowBusy()) return;
+  initAudio();
+  if (w.balls <= 0) {
+    if (snowOnce('empty', 5000)) { toast(`❄️ ${x.empty}`, 3000); speak(x.empty, 1); }
+    newsTarget = { show: { x: PILES[1].x, z: PILES[1].z }, until: performance.now() + 60000 }; updateMapPins();
+    return;
+  }
+  if (sw.phase !== 'battle' || sw.flying.some((f) => f.who === 'hero')) return;
+  const forced = window.__se?.snowDodge;
+  const dodge = forced !== undefined ? !!forced : !snowLastDodge && Math.random() < 0.2;
+  snowLastDodge = dodge;
+  w.balls--;
+  playActionSwing(); sfxSnowThrow();
+  sw.throwBall(dodge);
+  updateSnowButton(); saveGame();
+}
+function updateSnowButton() {
+  const b = $('#snow-btn'), sw = scene3D?.snow, w = game?.snow;
+  if (!b || !sw) return;
+  const show = !!w?.woke && ['battle', 'down', 'wake'].includes(sw.phase) && sw.inArena();
+  b.hidden = !show;
+  if (!show) return;
+  const n = String(w.balls ?? 0);
+  if ($('#snow-count').textContent !== n) $('#snow-count').textContent = n;
+  b.classList.toggle('is-empty', !w.balls);
+}
+function openSnowHitWord() {
+  const x = sx();
+  if (spellContext || !$('#spell-modal').hidden) { setTimeout(openSnowHitWord, 800); return; }
+  spellContext = { type: 'snow', mode: 'hit', word: pickWord(levelAt(0)), tries: 0 };
+  openSpellModal(`❄️ ${x.wordTitle}`, x.wordInstr, '⛄');
+}
+function openCrystalWord() {
+  const x = sx();
+  if (spellContext || !$('#spell-modal').hidden) { setTimeout(openCrystalWord, 800); return; }
+  spellContext = { type: 'snow', mode: 'crystal', word: snowWord(CRYSTAL_WORD), tries: 0 };
+  openSpellModal(`💎 ${x.name}`, x.crystalInstr, '🔮');
+}
+function openSnowRollWord(k) {
+  const x = sx();
+  scene3D.snow.rollWait = false;
+  spellContext = { type: 'snow', mode: 'roll', k, word: pickWord(levelAt(0)), tries: 0 };
+  openSpellModal(`⛄ ${x.rollTitle}`, x.rollBig, '⛄');
+}
+function openCarrotWord() {
+  const x = sx();
+  spellContext = { type: 'snow', mode: 'carrot', word: snowWord(CARROT_WORD), tries: 0 };
+  openSpellModal(`🥕 ${x.rollTitle}`, x.carrotInstr, '🥕');
+}
+function snowPatchTouch() {
+  const w = snowState(), sw = scene3D.snow, x = sx();
+  setupSnow(); snowSync();
+  if (!w.crystal || !snowPartTwo()) { explainSnowPatch(); return; }
+  if (snowBuilt(w)) { snowmanTouch(); return; }
+  if (w.stack >= 3) { if (!w.nose) openCarrotWord(); return; }
+  if (sw.roll) { if (sw.roll.big) openSnowRollWord(sw.roll.k); else { toast(`⛄ ${x.rollStart}`, 3000); speak(x.rollStart, 1); } return; }
+  sw.startRoll(w.stack);
+  sfxCrunch();
+  toast(`⛄ ${x.rollStart}`, 3500); speak(x.rollStart, 1);
+  newsTarget = null; updateMapPins();
+}
+function explainSnowPatch() {
+  const w = snowState(), x = sx();
+  const msg = !w.crystal ? x.patchFight : x.patchLater;
+  playTone(520, 0.1, 'triangle', 0.06); playTone(660, 0.12, 'triangle', 0.06, 0.1);
+  toast(`⛄ ${msg}`, 6000); speak(msg, 0.95);
+  if (!w.crystal) { newsTarget = { show: 'snowgolem', until: performance.now() + 4 * 60 * 1000 }; updateMapPins(); }
+}
+function snowmanTouch() {
+  const w = snowState(), sw = scene3D.snow, x = sx();
+  if (!snowBuilt(w)) { snowPatchTouch(); return; }
+  sw.dance(2.2); sfxPop(); playTone(660, 0.1, 'triangle', 0.06, 0.12); playTone(880, 0.12, 'triangle', 0.06, 0.24);
+  toast(`⛄ ${x.snowmanDance}`, 3000); speak(x.snowmanDance, 1.05);
+}
+function hatPicker(after) {
+  const x = sx(), box = el('div', 'pet-names');
+  for (const k of HATS) {
+    const b = el('button', 'btn btn-accent btn-small', x.hats[k]);
+    b.type = 'button';
+    b.dataset.hat = k;
+    b.addEventListener('click', () => {
+      const w = snowState();
+      w.hat = k;
+      applySnowLook(); saveGame();
+      box.replaceChildren(el('p', 'spell-success', `${x.hats[k]} ✓`));
+      after?.();
+    });
+    box.append(b);
+  }
+  return box;
+}
+// The snowman is finished (a hat chosen): he dances, and Flocon wants a rematch.
+function snowmanDone() {
+  const w = snowState(), sw = scene3D.snow, x = sx();
+  if (w.doneSaid) return;
+  w.doneSaid = true;
+  if (!w.hat) { w.hat = 'top'; applySnowLook(); }
+  progress.stars += 5; game.starsEarned += 5;
+  sw.dance(3); sfxVictory(); launchConfetti();
+  toast(`⛄ ${x.hatPicked}`, 5000); speak(x.hatPicked, 0.95);
+  if (sw.phase === 'idle' && !w.scarf) sw.setPhase('sleep');
+  if (!w.scarf) queueSnowMsg(`⛄ ${x.revenge}`, undefined, null, 'snowgolem');
+  saveGame(); updateGameUI();
+}
+// After a word of the snow golem: the result shown in the spelling window.
+function snowSpelled(ctx) {
+  const w = snowState(), x = sx(), sw = scene3D.snow;
+  if (ctx.mode === 'hit') {
+    snowWordOpen = false;
+    if (w.hits < HITS_PER_ROUND) { saveGame(); return { text: `❄️ ${x.point}`, say: x.point, after: () => sfxStar() }; }
+    w.hits = 0;
+    const rev = w.revOn, n = rev ? REV_ROUNDS : ROUNDS;
+    if (rev) w.rev++; else w.rounds++;
+    const k = rev ? w.rev : w.rounds;
+    progress.stars += 2; game.starsEarned += 2;
+    if (k < n) { saveGame(); updateGameUI(); return { text: `🏆 ${x.round(k, n)}`, say: x.roundSay(k, n), after: () => { sw.afterDown = 'battle'; sw.fall(); sfxVictory(); launchConfetti(); } }; }
+    if (!rev) {
+      sw.afterDown = 'idle';
+      saveGame(); updateGameUI();
+      return { text: `🏆 ${x.round(k, n)}`, say: x.roundSay(k, n), after: () => { sw.fall(); sfxVictory(); launchConfetti(); setTimeout(() => openCrystalWord(), 3300); } };
+    }
+    w.scarf = true; w.revOn = false;
+    progress.stars += 10; game.starsEarned += 10;
+    applySnowLook(); saveGame(); updateGameUI();
+    return { text: `🧣 ${x.revWon}`, say: x.revWon, after: () => { sw.afterDown = 'idle'; sw.fall(); sfxVictory(); launchConfetti(); setTimeout(launchConfetti, 600); sw.dance(3); } };
+  }
+  if (ctx.mode === 'crystal') {
+    w.crystal = true;
+    game.materials.crystal = (game.materials.crystal ?? 0) + 1;
+    progress.stars += 5; game.starsEarned += 5;
+    saveGame(); updateGameUI(); renderCraftMenu();
+    return { text: `🔮 ${x.crystal}`, say: x.crystalSay, emoji: '🔮', after: () => { sfxVictory(); launchConfetti(); sw.wave(); for (const c of ['#9ad0ff', '#ffffff', '#d8b0ff']) sw.s.particleBurst(sw.s.player.position.clone().setY(sw.s.player.position.y + 2), c, 24); if (snowPartTwo()) setTimeout(() => onSnowPartTwo(true), 1500); } };
+  }
+  if (ctx.mode === 'roll') {
+    w.stack = Math.max(w.stack, ctx.k + 1);
+    sw.placeRoll();
+    saveGame();
+    return { text: `⛄ ${x.placed(ctx.k)}`, say: x.placed(ctx.k), after: () => sfxCrunch() };
+  }
+  // The carrot: the nose, then a hat to choose.
+  w.nose = true;
+  applySnowLook(); saveGame();
+  return { text: `🥕 ${x.carrot}`, say: x.carrot, hats: true, after: () => snowmanDone() };
+}
+function onSnowPartTwo(force = false) {
+  const w = game?.snow;
+  if (!w?.crystal || snowP2Said || (snowBuilt(w) && !force)) return;
+  snowP2Said = true;
+  if (snowBuilt(w)) return;
+  queueSnowMsg(`⛄ ${sx().partTwo}`, undefined, 'pop', 'snowpatch');
+}
+function tickSnow(dt) {
+  if (!game || !scene3D?.snow || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
+  if (game.story?.intro) partState('J7');
+  setupSnow(); snowSync();
+  const sw = scene3D.snow, w = snowState();
+  applySnowLook();
+  if (snowPartTwo()) onSnowPartTwo();
+  const busy = snowBusy();
+  sw.paused = busy;
+  updateSnowButton();
+  if (sw.rollWait && !snowBusy(true) && sw.roll?.big) openSnowRollWord(sw.roll.k);
+  // Rien de muet: standing on the snow patch before it can be used says what it is for.
+  snowPatchCool -= dt;
+  const p = scene3D.player.position;
+  const onPatch = Math.hypot(p.x - PATCH.x, p.z - PATCH.z) < 2.6;
+  snowPatchDwell = onPatch && !busy ? snowPatchDwell + dt : 0;
+  if (snowPatchDwell > 0.8 && snowPatchCool <= 0 && !(w.crystal && snowPartTwo())) { snowPatchCool = 25; snowPatchDwell = 0; explainSnowPatch(); }
+  if (snowMsgs.length && !busy && performance.now() - defiMsgAt > 3800) {
+    defiMsgAt = performance.now();
+    const m = snowMsgs.shift();
+    toast(m.text, 4500);
+    speak(m.say, 0.95);
+    if (m.show) { newsTarget = { show: m.show, until: performance.now() + 4 * 60 * 1000 }; updateMapPins(); }
+    if (m.sfx === 'victory') { sfxVictory(); launchConfetti(); } else if (m.sfx === 'pop') sfxPop();
+  }
+}
+// The journal: the two parts, the rounds won, the snowman and the rematch, written and read.
+function snowLines() {
+  const w = game?.snow, x = sx(), dx = dtx();
+  if (!game || !scene3D?.snow) return [];
+  if (!w?.woke) return [`⛄ ${x.name} : ${x.notYet}`];
+  const two = snowPartTwo();
+  const p1 = snowDone1(w) ? dx.partDone : `: ${dx.partPlay}`;
+  const p2 = !two ? `: ${dx.partLater}` : snowDone2(w) ? dx.partDone : `: ${dx.partOpen}`;
+  const l = [`⛄ ${x.name} — ${dx.part(p1, p2)}`, x.lines1(w.rounds, ROUNDS)];
+  if (two && w.crystal) l.push(x.lines2(w.stack, w.rev, REV_ROUNDS));
+  return l;
+}
+function snowSpeech() {
+  const l = snowLines(), dx = dtx();
+  if (!l.length) return '';
+  if (l.length === 1) return l[0].replace(/^\S+ /, '');
+  const rest = l.slice(1).map((s) => s.replace(/^\S+ /, '').replace(/·/g, '.').replace(/(\d)\/(\d)/g, (lang === 'en' ? '$1 of $2' : '$1 sur $2'))).join('. ');
+  return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${rest}.`;
+}
+
 /* ===== HORSES ===== */
 const horseArmorKind = () => (game?.crafted?.includes('horse_armor_diamond') ? 'diamond' : game?.crafted?.includes('horse_armor_iron') ? 'iron' : null);
 function applyHorses() {
@@ -3724,6 +4095,13 @@ function handleSpellSuccess() {
     speak(r.say, 0.95);
     if (r.emoji) flyItem(r.emoji);
     spellContext.after = r.after;
+  } else if (type === 'snow') {
+    const r = snowSpelled(spellContext);
+    spellResultEl.replaceChildren(el('p', 'spell-success', r.text), ...(r.hats ? [hatPicker()] : []), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
+    spellResultEl.hidden = false;
+    speak(r.say, 0.95);
+    if (r.emoji) flyItem(r.emoji);
+    spellContext.after = r.after;
   } else if (type === 'copper') {
     const r = copperSpelled(spellContext);
     spellResultEl.replaceChildren(el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
@@ -4221,7 +4599,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : obj.kind === 'powerstone' ? '⚡' : obj.kind === 'anvil' ? '🔨' : obj.kind === 'copper' ? '🤖' : obj.kind === 'secretchest' || obj.kind === 'surprisechest' ? '🎁' : obj.kind === 'secretbutton' ? '🔴' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : obj.kind === 'powerstone' ? '⚡' : obj.kind === 'anvil' ? '🔨' : obj.kind === 'copper' ? '🤖' : obj.kind === 'secretchest' || obj.kind === 'surprisechest' ? '🎁' : obj.kind === 'secretbutton' ? '🔴' : obj.kind === 'snowgolem' || obj.kind === 'snowman' || obj.kind === 'snowpatch' ? '⛄' : obj.kind === 'snowpile' ? '❄️' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');
@@ -4730,10 +5108,12 @@ function renderEquipBar() {
 document.addEventListener('keydown', (event) => {
   if (!game || document.body.dataset.screen !== 'game' || !$('#spell-modal').hidden) return;
   if ((event.key === 'f' || event.key === 'F') && !$('#attack-btn').hidden) { attackButton(); return; }
+  if ((event.key === 'f' || event.key === 'F') && !$('#snow-btn').hidden) { snowThrow(); return; }
   if (event.key === 'f' || event.key === 'F' || event.key === 'e' || event.key === 'E') useEquipped();
 });
 $('#use-btn')?.addEventListener('click', useEquipped);
 $('#attack-btn')?.addEventListener('click', (e) => { e.preventDefault(); attackButton(); });
+$('#snow-btn')?.addEventListener('pointerdown', (e) => { e.preventDefault(); snowThrow(); });
 $('#jump-btn')?.addEventListener('pointerdown', (e) => { e.preventDefault(); scene3D?.jump(); });
 $('#continue-btn')?.addEventListener('click', () => { initAudio(); beforePlay(() => continueGame()); });
 

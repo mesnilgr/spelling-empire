@@ -925,7 +925,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 2,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre'], save: save(story(2, 0)) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0)) }, { quality: 0 });
       await g.click('#continue-btn');
       // Alaric presents the release, written and spoken; the newest note comes first.
       const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
@@ -941,7 +941,7 @@ export const SCENARIOS = [
       await g.click('#news-btn');
       await g.page.waitForTimeout(300);
       const journal = await g.page.evaluate(() => [...document.querySelectorAll('#journal-list .journal-item h3')].map((e) => e.textContent));
-      check(journal.length >= 3 && /golem de cuivre/i.test(journal[0]) && journal.some((j) => /pouvoirs/i.test(j)) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
+      check(journal.length >= 3 && /boules de neige/i.test(journal[0]) && journal.some((j) => /golem de cuivre/i.test(j)) && journal.some((j) => /pouvoirs/i.test(j)) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
       await g.click('#journal-close');
       // Iron walks round the square, says hello and offers a flower once a day.
       const walk = await g.page.evaluate(() => { const gl = window.__se.scene.golem, a = gl.mesh.position.clone(); gl.pause = 0; for (let k = 0; k < 150; k++) gl.update(1 / 30, k / 30); return { points: gl.points.length, moved: a.distanceTo(gl.mesh.position) }; });
@@ -974,7 +974,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre'], save: save(story(2, 0)) }, { quality: 0, defis: true });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0)) }, { quality: 0, defis: true });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       let words = 0;
       const spellOne = async () => { const r = await g.spell(); words++; return r; };
@@ -1115,7 +1115,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
       const flame = () => g.page.evaluate(() => { const f = window.__se.flame() ?? {}, fl = window.__se.scene.flame; return { ...f, state: { ...fl.state }, out: fl.starsOut(), part: window.__se.releasePart(3) }; });
@@ -1237,7 +1237,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1409,7 +1409,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.24.0-golem-cuivre'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       await g.page.evaluate(() => window.__se.henDayUse(5)); // J5's Cocotte (on the highest cloud)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1601,7 +1601,8 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', 'prog-pronoms', 'prog-articles'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 }, powers: { awake: true, clouds: [0, 1, 2, 3, 4], rings: [], animals: 0, bounced: [], petCloud: true, cape: false, uses: 3 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', 'prog-pronoms', 'prog-articles', '1.25.0-golem-neige'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 }, powers: { awake: true, clouds: [0, 1, 2, 3, 4], rings: [], animals: 0, bounced: [], petCloud: true, cape: false, uses: 3 } }) }, { quality: 0 });
+      await g.page.evaluate(() => window.__se.henDayUse(6)); // J6's Cocotte (on the moss golem's head)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
@@ -1769,6 +1770,182 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(300);
       const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
       check(/Le petit golem de cuivre — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /Boutons secrets : 3\/3/.test(j2), 'journal : les deux parties faites, 3 boutons sur 3', j2);
+      await g.click('#journal-close');
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Golem de neige, bataille de boules et bonhomme de neige (J7)',
+    quick: true,
+    weight: 4,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', 'prog-pronoms', 'prog-articles'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
+      const nSaid = () => g.page.evaluate(() => window.__spoken.length);
+      const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
+      const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
+      const sn = () => g.page.evaluate(() => JSON.parse(JSON.stringify(window.__se.snow() ?? null)));
+      const phase = () => g.page.evaluate(() => window.__se.scene.snow.phase);
+      const spellOpen = (timeout = 6000) => g.page.waitForFunction(() => !document.querySelector('#spell-modal').hidden && !!window.__se.spell(), null, { timeout }).then(() => true, () => false);
+      const S = await g.page.evaluate(async () => { const m = await import('/snow.js'); return { ARENA: m.ARENA, PATCH: m.PATCH, SNOWMAN: m.SNOWMAN }; });
+      const throwOne = () => g.page.evaluate(async () => {
+        document.querySelector('#snow-btn').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+        // (until the snowball has landed: the test browser can be slow)
+        for (let k = 0; k < 40 && window.__se.scene.snow.flying.some((f) => f.who === 'hero'); k++) await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 150));
+      });
+      // Throw snowballs (picking up snow when empty) until a word opens; returns the word's result.
+      const throwUntilWord = async () => {
+        for (let k = 0; k < 40; k++) {
+          if (await spellOpen(50)) break;
+          const st = await sn();
+          if (st.balls <= 0) { await g.use("i.kind === 'snowpile'"); await g.page.waitForTimeout(150); continue; }
+          if (await phase() !== 'battle') { await g.page.waitForTimeout(400); continue; }
+          await throwOne();
+        }
+        if (!(await spellOpen(3000))) return null;
+        return g.spell();
+      };
+      let words = 0;
+      await g.click('#continue-btn');
+      // Alaric presents J7, written and spoken, with his riddle.
+      const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
+      const card = await g.page.evaluate(() => ({ title: document.querySelector('#news-title').textContent, riddle: document.querySelector('#news-riddle').innerText, said: window.__spoken.join(' | ') }));
+      check(shown && /boules de neige/i.test(card.title) && /golem de neige veut jouer/.test(card.said) && /bonhomme de neige/.test(card.said), 'Alaric présente le golem de neige et le bonhomme de neige (écrit et lu)', JSON.stringify(card));
+      check(/plat préféré du bonhomme de neige/.test(card.riddle) && /plat préféré/.test(card.said), 'la devinette d’Alaric est écrite et lue', card.riddle);
+      await g.page.evaluate(() => document.querySelector('#news-riddle .news-answer').click());
+      await g.page.waitForTimeout(200);
+      check(/bien glacées/.test(await g.page.evaluate(() => window.__spoken.slice(-1)[0])), '« La réponse ? » lit « Les frites… bien glacées ! »');
+      await g.click('#news-show');
+      await g.page.waitForTimeout(900);
+      const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.snow.gobj.worldPos; return { d: q ? Math.hypot(q.x - w.x, q.z - w.z) : 99, z: w.z }; });
+      check(arrow.d < 1 && arrow.z < -45, '« Montre-moi ! » pointe la flèche vers le golem de neige, dans la montagne', JSON.stringify(arrow));
+      // The wow: the heap of snow bursts and Flocon stands up.
+      const t0 = Date.now();
+      check(await phase() === 'sleep', 'Flocon dort : un tas de neige');
+      await g.page.evaluate(([x, z]) => window.__se.scene.teleport(x, z + 3), [S.ARENA.x, S.ARENA.z]);
+      check(await saidLater(/Je suis Flocon, le golem de neige/, 8000) && Date.now() - t0 < 30000, 'waouh : le tas de neige explose, Flocon se lève et dit bonjour, moins de 30 s après « Montre-moi ! »', await said());
+      check(await g.page.waitForFunction(() => window.__se.scene.snow.phase === 'battle', null, { timeout: 5000 }).then(() => true, () => false), 'la bataille commence');
+      check(await saidLater(/Ramasse de la neige dans un tas blanc/, 12000), 'on explique : ramasser de la neige, puis le bouton ❄️ (lu)', await said());
+      check(await g.page.evaluate(() => !document.querySelector('#snow-btn').hidden && document.querySelector('#snow-btn').classList.contains('is-empty')), 'le bouton ❄️ apparaît dans l’arène (vide)');
+      let n0 = await nSaid();
+      await throwOne();
+      check(/Plus de boules/.test(await saidSince(n0)), 'bouton ❄️ sans boule : « Plus de boules ! Ramasse de la neige… » (lu)');
+      // The gag: Flocon's snowball turns the hero into a snowman (Brrr !).
+      await g.page.evaluate(() => { window.__se.scene.snow.dogChance = 0; window.__se.scene.snow.throwT = 0.5; });
+      const hit = await g.page.waitForFunction(() => window.__se.scene.snow.heroHits >= 1 && window.__se.scene.snow.shell.visible, null, { timeout: 12000 }).then(() => true, () => false);
+      check(hit && /Brrr ! Tu es un bonhomme de neige/.test(await said()), 'gag : une boule de Flocon transforme le héros en bonhomme de neige (« Brrr ! », lu)', await said());
+      // Snow from the heap: 5 snowballs.
+      check(await g.use("i.kind === 'snowpile'") === 'ok' && (await sn()).balls === 5 && /5 boules de neige/.test(await said()), 'on touche un tas de neige : 5 boules (lu)');
+      // Flocon steps aside, sometimes.
+      await g.page.evaluate(() => { window.__se.snowDodge = true; });
+      n0 = await nSaid();
+      await throwOne();
+      const dz = await sn();
+      check(dz.hits === 0 && dz.balls === 4 && /Hi hi ! Raté/.test(await saidSince(n0)), 'Flocon fait un pas de côté : « Hi hi ! Raté ! » (lu)', JSON.stringify({ ...dz, said: await saidSince(n0), ph: await phase() }));
+      await g.page.evaluate(() => { window.__se.snowDodge = false; });
+      // Three hits: a word. Six hits: the round.
+      const w1 = await throwUntilWord(); words++;
+      check(w1 && /Un point/.test(w1.result), 'trois boules sur Flocon : un mot, « Un point ! »', w1?.result);
+      const w2 = await throwUntilWord(); words++;
+      check(w2 && /Manche gagnée ! \(1\/3\)/.test(w2.result), 'six boules : « Manche gagnée ! (1/3) »', w2?.result);
+      check(await g.page.waitForFunction(() => window.__se.scene.snow.phase === 'down', null, { timeout: 3000 }).then(() => true, () => false), 'Flocon tombe dans la neige… et se relève');
+      // The dog jumps to catch a snowball.
+      await g.page.evaluate(() => { const s = window.__se.scene; s.snow.dogChance = 1; s.pet.catchUp(); });
+      const dog = await g.page.waitForFunction(() => window.__se.scene.snow.dogCatches >= 1, null, { timeout: 15000 }).then(() => true, () => false);
+      check(dog && /Ouaf ! Ton chien a attrapé la boule/.test(await said()), 'le chien saute et attrape une boule (« Ouaf ! », lu)');
+      await g.page.evaluate(() => { window.__se.scene.snow.dogChance = 0; });
+      for (let k = 0; k < 4; k++) { const r = await throwUntilWord(); if (r) words++; else check(false, `manche : mot ${k + 3}`); }
+      const st1 = await sn();
+      check(st1.rounds === 3, 'trois manches gagnées', JSON.stringify(st1));
+      check(await spellOpen(8000) && await g.page.evaluate(() => window.__se.spell().word.word) === 'cristal', 'Flocon tend un cristal : on épelle CRISTAL');
+      const cr = await g.spell(); words++;
+      const mat = await g.page.evaluate(() => window.__se.game().materials.crystal ?? 0);
+      check(/cristal de glace/.test(cr.result) && mat >= 1 && (await sn()).crystal, 'on gagne un cristal de glace', cr.result);
+      check(/prochain retour, tu construiras ton bonhomme de neige/.test(await said()), '« À ton prochain retour, tu construiras ton bonhomme de neige ! » (lu)');
+      check(words >= 7, `au moins 7 mots en session 1 (${words})`);
+      check(await g.page.waitForFunction(() => window.__se.scene.snow.phase === 'idle', null, { timeout: 6000 }).then(() => true, () => false), 'Flocon reste debout, content');
+      // Rien de muet: the snow patch in front of the cottage explains itself.
+      n0 = await nSaid();
+      await g.page.evaluate(([x, z]) => window.__se.scene.teleport(x + 0.5, z + 0.5), [S.PATCH.x, S.PATCH.z]);
+      check(await g.page.waitForFunction((n) => /Ici, tu construiras ton bonhomme de neige, à ton prochain retour/.test(window.__spoken.slice(n).join(' | ')), n0, { timeout: 6000 }).then(() => true, () => false), 'devant la neige de la chaumière : « Ici, tu construiras ton bonhomme de neige, à ton prochain retour ! » (lu)');
+      // Cocotte disguised as a snowman (journal hint written and read).
+      await g.page.waitForTimeout(300);
+      n0 = await nSaid();
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const jh = await g.page.evaluate((n) => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(n).join(' | ') }), n0);
+      check(/déguisée en petit bonhomme de neige/.test(jh.txt) && /déguisée en petit bonhomme de neige/.test(jh.said), 'journal : l’indice de Cocotte (« déguisée en petit bonhomme de neige ») est écrit et lu', jh.said);
+      check(/Le golem de neige — Partie 1 ✓ · Partie 2 : à ton prochain retour !/.test(jh.txt) && /Manches gagnées : 3\/3/.test(jh.txt), 'journal : « Le golem de neige — Partie 1 ✓ · Partie 2 : à ton prochain retour ! »', jh.txt);
+      check(/Manches gagnées : 3 sur 3/.test(jh.said), 'les manches sont lues', jh.said);
+      await g.click('#journal-close');
+      const hen = await g.page.evaluate(() => { const h = window.__se.scene.cocotte; return { day: window.__se.henRow().day, disguise: !!h.disguise?.visible, d: +Math.hypot(h.mesh.position.x + 14, h.mesh.position.z + 53).toFixed(1) }; });
+      check(hen.day === 7 && hen.disguise && hen.d < 10, 'Cocotte est déguisée en bonhomme de neige, au bord de l’arène', JSON.stringify(hen));
+      check(await g.page.evaluate(() => window.__se.findCocotte()) === 'ok', 'on touche Cocotte');
+      await g.page.waitForTimeout(300);
+      check((await g.page.evaluate(() => window.__se.progress().feathers)).includes(7) && /Cot cot/.test(await said()) && !(await g.page.evaluate(() => window.__se.scene.cocotte.disguise.visible)), 'Cocotte sort de la neige et s’envole : une plume dorée (« Cot cot ! »)');
+      // Session 2: the game is opened again 31 minutes later.
+      await g.page.evaluate(() => { document.body.dataset.screen = 'paused'; });
+      await g.page.waitForTimeout(400);
+      await g.page.evaluate((key) => { const pr = window.__se.progress(); pr.parts.J7.last -= 31 * 60 * 1000; const p = JSON.parse(localStorage.getItem(key)); p.parts.J7.last = pr.parts.J7.last; localStorage.setItem(key, JSON.stringify(p)); }, STORE);
+      await g.page.reload();
+      await g.page.waitForSelector('#loading.is-done', { timeout: 180000 });
+      await g.page.evaluate(() => { window.__se.flashAfter = 1e9; window.__se.noDefis = true; });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      check(await g.page.evaluate(() => window.__se.releasePart(7)) === 2, 'au retour (30 min plus tard), la partie 2 du golem de neige est ouverte');
+      check(await saidLater(/Flocon a laissé de la neige devant ta chaumière/, 15000), '« Flocon a laissé de la neige devant ta chaumière : construis ton bonhomme de neige ! » (lu)', await said());
+      await g.page.waitForTimeout(500);
+      const arrow2 = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.snow.pobj.worldPos; return q ? Math.hypot(q.x - w.x, q.z - w.z) : 99; });
+      check(arrow2 < 1, 'la flèche dorée montre la neige devant la chaumière', String(arrow2));
+      words = 0;
+      // Roll three balls: they grow as the hero walks; a word puts each one in place.
+      const walk = (m) => g.page.evaluate(async ([dist, px, pz]) => {
+        const s = window.__se.scene; let dir = 1, done = 0;
+        while (done < dist) { s.player.position.x += 0.4 * dir; s.player.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2; done += 0.4; if (Math.abs(s.player.position.x - px) > 3.5) dir = -dir; await new Promise((r) => setTimeout(r, 40)); }
+      }, [m, S.PATCH.x, S.PATCH.z]);
+      check(await g.use("i.kind === 'snowpatch'") === 'ok' && await saidLater(/Pousse la boule de neige/, 4000), 'on touche la neige : « Pousse la boule de neige : marche, et elle grossit ! » (lu)');
+      const r0 = await g.page.evaluate(() => window.__se.scene.snow.rollRadius());
+      await walk(4);
+      const r1 = await g.page.evaluate(() => window.__se.scene.snow.rollRadius());
+      check(r1 > r0 + 0.1, `la boule grossit en marchant (${r0.toFixed(2)} → ${r1.toFixed(2)})`);
+      const placed = [/grosse boule du bas est posée/, /boule du milieu est posée/, /tête est posée/];
+      for (let k = 0; k < 3; k++) {
+        await walk(9);
+        if (!(await spellOpen(6000))) { check(false, `boule ${k + 1} : un mot`); continue; }
+        const r = await g.spell(); words++;
+        check(placed[k].test(r.result), `boule ${k + 1} assez grosse : un mot, elle se pose sur le bonhomme`, r.result);
+        await g.page.waitForTimeout(1100);
+      }
+      check(await g.page.evaluate(() => window.__se.scene.snow.state.stack) === 3, 'trois boules empilées devant la chaumière');
+      check(await spellOpen(6000) && await g.page.evaluate(() => window.__se.spell().word.word) === 'carotte', 'il lui faut un nez : on épelle CAROTTE');
+      const ca = await g.spell({ keepOpen: true }); words++;
+      check(/Choisis son chapeau/.test(ca.result) && await g.page.evaluate(() => document.querySelectorAll('#spell-result [data-hat]').length) === 3, 'trois chapeaux à choisir', ca.result);
+      await g.page.evaluate(() => document.querySelector('#spell-result [data-hat="beanie"]').click());
+      await g.click('#spell-continue-btn');
+      await g.page.waitForTimeout(400);
+      const man = await g.page.evaluate(() => { const s = window.__se.scene.snow; return { hat: s.state.hat, vis: s.man.hats.beanie.visible, face: s.man.face.visible }; });
+      check(man.hat === 'beanie' && man.vis && man.face && /Ton bonhomme de neige est fini/.test(await said()), 'le bonhomme de neige a un nez, un bonnet, et il danse (« Ton bonhomme de neige est fini ! », lu)', JSON.stringify(man));
+      // At night, he dances.
+      const dance = await g.page.evaluate(async () => { const s = window.__se.scene; s.dayTime = 320; await new Promise((r) => setTimeout(r, 4000)); return +Math.abs(s.snow.manRig.rotation.y + s.snow.manRig.position.y).toFixed(2); });
+      check(dance > 0.01, 'la nuit, le bonhomme de neige danse devant la chaumière', String(dance));
+      check(await saidLater(/Flocon veut sa revanche/, 15000), '« Flocon veut sa revanche ! » (lu)', await said());
+      await g.page.evaluate(() => { window.__se.scene.dayTime = 60; });
+      // The rematch: Flocon throws faster; two rounds, and a red scarf for the snowman.
+      check(await phase() === 'sleep', 'Flocon attend la revanche (un tas de neige)');
+      await g.page.evaluate(([x, z]) => window.__se.scene.teleport(x, z + 3), [S.ARENA.x, S.ARENA.z]);
+      check(await saidLater(/Revanche ! Cette fois, je lance plus vite/, 8000) && await g.page.evaluate(() => window.__se.scene.snow.fast), 'Revanche ! Flocon lance plus vite (lu)');
+      await g.page.waitForFunction(() => window.__se.scene.snow.phase === 'battle', null, { timeout: 5000 }).catch(() => {});
+      for (let k = 0; k < 4; k++) { const r = await throwUntilWord(); if (r) words++; else check(false, `revanche : mot ${k + 1}`); if (k === 3) check(r && /écharpe rouge/.test(r.result), 'revanche gagnée : une écharpe rouge pour le bonhomme de neige', r?.result); }
+      const st2 = await sn();
+      check(st2.scarf && await g.page.evaluate(() => window.__se.scene.snow.man.scarf.visible), 'le bonhomme de neige porte l’écharpe rouge (à montrer)', JSON.stringify(st2));
+      check(words >= 7, `au moins 7 mots en session 2 (${words})`);
+      await g.page.waitForTimeout(4200);
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
+      check(/Le golem de neige — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /Bonhomme de neige : 3\/3 boules · revanche : 2\/2/.test(j2), 'journal : les deux parties faites, bonhomme 3/3, revanche 2/2', j2);
       await g.click('#journal-close');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();

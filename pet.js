@@ -132,6 +132,8 @@ export class PetManager {
   }
   joy() { this.joyT = 1.2; this.s.particleBurst(this.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), '#ff6b9d', 10); }
   trick() { this.trickT = 1.0; }
+  // A big jump to catch a snowball (J7).
+  leap() { this.leapT = 0.7; }
   // A cuddle: hearts float up and it rolls over happily.
   pat() {
     this.trickT = 1.0; this.joyT = 1.0;
@@ -279,6 +281,7 @@ export class PetManager {
     parts.legs.forEach((l, i) => { l.rotation.x = i % 3 === 0 ? k : -k; });
     let y = 0;
     if (this.joyT > 0) { this.joyT -= dt; y = Math.abs(Math.sin(this.joyT * 9)) * 0.35; }
+    if (this.leapT > 0) { this.leapT -= dt; y = Math.max(y, Math.sin((0.7 - Math.max(0, this.leapT)) / 0.7 * Math.PI) * 1.2); }
     if (this.trickT > 0) { this.trickT -= dt; parts.body.rotation.y = (1 - this.trickT) * Math.PI * 2; } else parts.body.rotation.y = 0;
     // Sitting when it has been still for a while.
     const sit = !moving && this.digging <= 0 && this.still > 1.5 && this.joyT <= 0;

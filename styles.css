@@ -1682,6 +1682,10 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .attack-btn { width: 74px; height: 74px; border-radius: 50%; border: 3px solid #fff; background: radial-gradient(circle at 35% 30%, #ff8a7a, #c8372d); color: #fff; font-size: 2rem; box-shadow: 0 6px 0 #8a1f18, 0 8px 18px rgba(0,0,0,0.35); animation: attack-pulse 1.2s ease-in-out infinite; touch-action: manipulation; }
 .attack-btn[hidden] { display: none; }
 .attack-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #8a1f18; }
+.snow-btn { position: relative; background: radial-gradient(circle at 35% 30%, #d8f0ff, #4a9ad8); box-shadow: 0 6px 0 #2a5a8a, 0 8px 18px rgba(0,0,0,0.35); }
+.snow-btn:active { box-shadow: 0 3px 0 #2a5a8a; }
+.snow-btn.is-empty { filter: grayscale(0.7); opacity: 0.75; animation: none; }
+.snow-count { position: absolute; right: -4px; top: -4px; min-width: 26px; height: 26px; border-radius: 13px; background: #fff; color: #2a5a8a; font-size: 1rem; line-height: 26px; text-align: center; border: 2px solid #2a5a8a; }
 @keyframes attack-pulse { 50% { transform: scale(1.07); } }
 #dash-zombies { width: 22px; height: 22px; }
 

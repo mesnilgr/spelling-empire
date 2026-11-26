@@ -6,6 +6,7 @@ import { ZombieManager } from './zombies.js';
 import { BossManager } from './bosses.js';
 import { CopperWorkshop } from './copper.js';
 import { SurpriseChest } from './surprise.js';
+import { SnowWorld } from './snow.js';
 import { PetManager } from './pet.js';
 import { DECOR } from './decor.js';
 import { PLACES, buildPlace, buildExtras, buildTrails, buildGroves, buildRegionFillers } from './landmarks.js';
@@ -243,6 +244,8 @@ export class GameScene {
     this.copper = new CopperWorkshop(this);
     // The surprise chest (v1.24.3): pops out near the hero every few minutes.
     this.surprise = new SurpriseChest(this);
+    // The snow golem (J7): the snowball arena on the mountain, the snowman in front of the cottage.
+    this.snow = new SnowWorld(this);
     const hen = cocotteToday(Math.max(...NEWS.filter((n) => !n.from).map((n) => n.day)));
     if (hen && !hen.album) this.cocotte = new Cocotte(this, hen);
   }
@@ -2505,7 +2508,7 @@ export class GameScene {
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
     this._tickRegions();
-    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); } this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
+    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); this.snow?.update(dt); } this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

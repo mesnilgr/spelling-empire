@@ -153,4 +153,16 @@ export const NEWS = [
       a: { fr: 'Parce qu’on les entend venir : bong, bong, bong !', en: 'Because you can hear them coming: bong, bong, bong!' },
     },
   },
+  {
+    id: '1.25.0-golem-neige', day: 7, date: '2026-11-26', emoji: '⛄', show: 'snowgolem',
+    title: { fr: 'Bataille de boules de neige !', en: 'Snowball fight!' },
+    text: {
+      fr: 'Dans la montagne, un golem de neige veut jouer : il s’appelle Flocon ! Évite ses boules de neige et renvoie-lui les tiennes avec le bouton ❄️. Ensuite, construis ton propre bonhomme de neige !',
+      en: 'On the mountain, a snow golem wants to play: his name is Flake! Dodge his snowballs and throw yours back with the ❄️ button. Then, build your very own snowman!',
+    },
+    riddle: {
+      q: { fr: 'Quel est le plat préféré du bonhomme de neige ?', en: 'What is a snowman’s favourite food?' },
+      a: { fr: 'Les frites… bien glacées !', en: 'Chilli… very, very chilly!' },
+    },
+  },
 ];

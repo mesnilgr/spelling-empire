@@ -46,6 +46,15 @@ export const COCOTTE = [
       en: 'Cocotte is going for a ride… on the Moss Golem’s head, in the pine forest!',
     },
   },
+  {
+    // `snowman`: disguised as a little snowman, at the edge of the snowball arena (J7). Only her red
+    // comb and her feet stick out; touched, she bursts out of the snow.
+    day: 7, pos: { x: -7.4, z: -50.6 }, ry: -0.9, pose: 'sit', snowman: true,
+    hint: {
+      fr: 'Cocotte s’est déguisée en petit bonhomme de neige, dans la montagne, au bord de la bataille de boules ! Regarde bien : sa crête rouge dépasse.',
+      en: 'Cocotte is dressed up as a little snowman, on the mountain, at the edge of the snowball fight! Look closely: her red comb sticks out.',
+    },
+  },
 ];
 
 // The row for the current release (the highest day not after `maxDay`).
@@ -87,6 +96,21 @@ export function buildCocotte() {
   return mesh;
 }
 
+// Her snowman disguise (J7): two snowballs around her, coal eyes, a carrot, two twigs. Her comb and
+// her feet stick out. One mesh.
+function buildDisguise() {
+  const W = 0xf6f9ff, C = 0x22252b, S = 0x6a4428;
+  const m = new THREE.Mesh(merged([
+    [0.72, 0.56, 0.8, W, 0, 0.5, 0], [0.5, 0.36, 0.5, W, 0, 0.92, 0.18],
+    [0.06, 0.06, 0.03, C, -0.1, 0.98, 0.44], [0.06, 0.06, 0.03, C, 0.1, 0.98, 0.44], [0.08, 0.08, 0.24, 0xff8a2a, 0, 0.9, 0.52],
+    [0.07, 0.07, 0.03, C, 0, 0.6, 0.41], [0.07, 0.07, 0.03, C, 0, 0.42, 0.41],
+    [0.5, 0.05, 0.05, S, -0.55, 0.62, 0], [0.5, 0.05, 0.05, S, 0.55, 0.62, 0],
+  ]), MAT);
+  m.castShadow = true;
+  m.userData.dynamic = true;
+  return m;
+}
+
 export class Cocotte {
   constructor(scene3D, row) {
     this.s = scene3D;
@@ -98,13 +122,18 @@ export class Cocotte {
     this.mesh.position.copy(this.base);
     this.mesh.rotation.y = row.ry ?? 0;
     scene3D.scene.add(this.mesh);
+    if (row.snowman) { this.disguise = buildDisguise(); this.mesh.add(this.disguise); }
     this.obj = scene3D._addInteractable({ kind: 'cocotte', day: row.day, worldPos: this.base.clone(), iconY: 1.3, reach: row.cloud ? 6 : 3.4, hitRadius: 0.9 });
     this.t = Math.random() * 5;
     this.flyT = -1;
   }
   hide() { this.mesh.visible = false; this.obj.active = false; this.obj.iconHolder.visible = false; }
   // "Cot cot!": she spins up into the sky and is gone.
-  flyAway() { this.flyT = 0; this.obj.active = false; }
+  flyAway() {
+    this.flyT = 0; this.obj.active = false;
+    // Out of her snowman disguise: poof!
+    if (this.disguise?.visible) { this.disguise.visible = false; this.s.particleBurst(this.mesh.position.clone().add(new THREE.Vector3(0, 0.6, 0)), '#ffffff', 30); }
+  }
   update(dt) {
     if (!this.mesh.visible) return;
     this.t += dt;

@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.25.0 — J7 : Le golem de neige et la bataille de boules ⛄
+
+- ❄️ **Dans la montagne** (versant ouest, la flèche de « Montre-moi ! » y mène), un tas de neige respire… Quand on approche, il explose dans un nuage de flocons : c’est **Flocon, le golem de neige**, qui veut faire une **bataille de boules de neige** (dit à voix haute).
+- ⛄ **Ses boules ne font jamais mal** : « Pouf ! », le héros devient un bonhomme de neige pendant 2 secondes (« Brrr ! »). On peut les éviter en bougeant.
+- 🎯 **Partie 1** : on ramasse de la neige dans les trois tas blancs (5 boules) et on la renvoie avec le nouveau **bouton ❄️** (touche F au clavier). Parfois Flocon fait un pas de côté (« Hi hi ! Raté ! »). **Un mot toutes les 3 boules qui touchent**, une manche toutes les 6 ; Flocon tombe à la renverse dans la neige et se relève. Après **3 manches**, on épelle CRISTAL : **un cristal de glace**. Le chien saute pour attraper les boules (« Ouaf ! »).
+- ⛄ **Partie 2** (au retour suivant, au moins 30 minutes plus tard, ou après 15 minutes de jeu) : Flocon a laissé de la neige devant la chaumière. On **roule trois boules** qui grossissent en marchant (un mot pour poser chacune), on épelle CAROTTE pour le nez et on **choisit un chapeau** (chapeau haut, seau ou bonnet). **Le bonhomme de neige reste devant la chaumière et danse la nuit** (à montrer !). Puis **la revanche** contre Flocon, qui lance plus vite : 2 manches, et Flocon offre **une écharpe rouge** au bonhomme de neige.
+- 🗣️ Rien de muet : devant la neige de la chaumière avant la partie 2, Alaric explique (écrit et lu) qu’on y construira le bonhomme de neige, et la flèche montre Flocon ; le bouton ❄️ sans boule dit d’aller ramasser de la neige.
+- 🐔 Cocotte s’est **déguisée en petit bonhomme de neige** au bord de la bataille (sa crête rouge dépasse) ; touchée, elle sort de la neige en s’envolant.
+- 📜 Le journal montre les deux parties, les manches gagnées, les boules du bonhomme et la revanche, écrit et lu. Devinette d’Alaric : « Quel est le plat préféré du bonhomme de neige ? »
+
 ## v1.24.3 — Encore plus de surprises 🎁
 
 - 🔴 **Les boutons secrets se touchent** : tant qu'ils ne sont pas tous activés, toucher un groupe de boutons redit l'explication (écrite et lue) et la flèche dorée montre l'enclume (ou Boulon, s'il est à plat). Si Boulon est là, il court appuyer dessus : « Boulon, à toi ! ».

@@ -195,7 +195,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Les golems des boss se réveillent un peu : ils marchent dans leur repaire ! Et tu peux fabriquer ton propre petit golem de cuivre. Il est un peu maladroit… mais il connaît des coffres secrets ! »
   - Devinette : « Pourquoi les golems ne gagnent jamais à cache-cache ? » — « Parce qu'on les entend venir : bong, bong, bong ! »
 
-- [ ] **J7 · jeu. 26 nov. · v1.25.0 — Golem de neige et bataille de boules.**
+- [x] **J7 · jeu. 26 nov. · v1.25.0 — Golem de neige et bataille de boules.** (complète : le golem de neige s’appelle Flocon, son arène est sur le versant ouest de la montagne (x −14, z −53) ; bouton ❄️ ; 3 manches de 6 touches (un mot toutes les 3) + CRISTAL ; partie 2 : la neige et le bonhomme sont devant la chaumière, côté gauche ; revanche en 2 manches, récompense = écharpe rouge pour le bonhomme)
   - Session 1 : dans la montagne, un golem de neige lance des boules (pas de dégâts, juste « Pouf ! ») ; on
     ramasse des boules dans la neige et on les renvoie avec un bouton ; un mot toutes les 3 touches ; 3 manches
     gagnées = un **cristal**.

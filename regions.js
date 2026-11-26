@@ -251,6 +251,8 @@ BRIDGES.coast = { x0: 6.6, x1: 10.2, z: 75 };
 TRAVEL.mountain = { x: -3.6, z: -45.5, back: { x: -1.4, z: -46.5 }, word: { 5: 'm', 6: 'mont', 7: 'montagne' } };
 TRAVEL.coast = { x: 3.6, z: 48.5, back: { x: 1.4, z: 49.5 }, word: { 5: 'p', 6: 'mer', 7: 'plage' } };
 export const SUMMIT = { x: 0, z: -68, level: 4.5, r: 8.5 };
+// The snowball arena of the snow golem (J7), on the western slope: kept clear of rocks and pines.
+export const SNOW_ARENA = { x: -14, z: -53, r: 9 };
 // Stone stairs up the cliff (built by the Stone spell), along z.
 export const STAIRS = { x: 0, z0: -55.2, z1: -60.2, hw: 0.8 };
 export const TOWER = { x: 0, z: -70.5 };
@@ -270,6 +272,7 @@ export function buildMountain(ctx) {
     const x = (rnd() - 0.5) * 70, z = -44 - rnd() * 38;
     if (Math.hypot(x, z) > WORLD_RADIUS - 1 || Math.abs(x) < 3.5 || Math.hypot(x - SUMMIT.x, z - SUMMIT.z) < SUMMIT.r + 1.5) continue;
     if (x > LAVA.x0 - 3 && x < LAVA.x1 + 3 && z > LAVA.z0 - 4 && z < LAVA.z1 + 4) continue; // the lava course
+    if (Math.hypot(x - SNOW_ARENA.x, z - SNOW_ARENA.z) < SNOW_ARENA.r + 1.5) continue; // the snowball arena
     if (rnd() < 0.55) { const s = 0.5 + rnd() * 0.9; rocks.push([x, h(x, z) + s * 0.35, z, s, s * 0.7, s * 0.9, rnd() * 3]); ctx.collidables.push({ x, z, r: s * 0.45 }); }
     else if (spots.length < 40 && !spots.some(([sx, , sz]) => Math.hypot(sx - x, sz - z) < 3)) spots.push([x, h(x, z), z, 0.7 + rnd() * 0.4]);
   }
