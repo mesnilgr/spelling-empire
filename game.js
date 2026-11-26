@@ -790,6 +790,7 @@ function init3DScene() {
   scene3D.onInteractObject = (obj) => interactWith(obj);
   scene3D.minimapCanvas = $('#minimap');
   scene3D.onStep = (surface) => sfxStep(surface);
+  scene3D.isWordOpen = () => !$('#spell-modal').hidden; // the world pauses while a word is spelled
   scene3D.onJump = () => { sfxJump(); defiEvent('jump'); jumpSurprise(); };
   scene3D.onDayPhase = (phase) => {
     $('#hud-time').textContent = phase === 'night' ? '🌙' : '☀️';

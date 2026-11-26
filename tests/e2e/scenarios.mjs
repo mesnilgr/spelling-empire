@@ -1952,6 +1952,40 @@ export const SCENARIOS = [
     },
   },
   {
+    name: 'Pause pendant un mot : le monde s’arrête',
+    quick: true,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1500);
+      const snap = () => g.page.evaluate(() => {
+        const s = window.__se.scene;
+        return { day: s.dayTime, clock: s.clock.elapsedTime, fer: s.golem.mesh.position.toArray(), animals: s.fauna.list.map((a) => a.mesh.position.toArray()) };
+      });
+      const moved = (a, b) => ({ day: Math.abs(a.day - b.day), clock: Math.abs(a.clock - b.clock), fer: Math.hypot(a.fer[0] - b.fer[0], a.fer[2] - b.fer[2]), animals: Math.max(0, ...a.animals.map((p, i) => Math.hypot(p[0] - b.animals[i][0], p[2] - b.animals[i][2]))) });
+      // A surprise word opens (the flash challenge).
+      await g.page.evaluate(() => { window.__se.flashAfter = 0; });
+      const open = await g.page.waitForFunction(() => !document.querySelector('#spell-modal').hidden, null, { timeout: 5000 }).then(() => true, () => false);
+      await g.page.evaluate(() => { window.__se.flashAfter = 1e9; });
+      check(open, 'un mot s’ouvre');
+      await g.page.waitForTimeout(300);
+      const a = await snap();
+      await g.page.waitForTimeout(2000);
+      const b = await snap();
+      const m1 = moved(a, b);
+      check(m1.day === 0 && m1.clock === 0 && m1.fer === 0 && m1.animals === 0, 'pendant le mot, le jeu est en pause : ni le temps, ni Fer, ni les animaux ne bougent', JSON.stringify(m1));
+      await g.spell();
+      await g.page.waitForTimeout(300);
+      const c = await snap();
+      await g.page.waitForTimeout(2000);
+      const d = await snap();
+      const m2 = moved(c, d);
+      check(m2.day > 1 && m2.clock > 1 && (m2.fer > 0.05 || m2.animals > 0.05), 'le mot fini, le monde repart', JSON.stringify(m2));
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
     name: 'Boutons secrets sans le petit golem : le jeu explique (J6)',
     async run(browser, base, check) {
       const g = await openGame(browser, base, { lang: 'fr', age: 7, save: save(story(2, 0)) }, { quality: 0 });

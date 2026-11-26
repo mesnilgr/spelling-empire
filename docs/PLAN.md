@@ -63,6 +63,11 @@ Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
   - Leçon pour la suite : les **parcours en hauteur avec étoiles et anneaux** marchent très bien ; en remettre
     quand une release s'y prête (jamais sans mots : un mot par nuage, un mot par anneau).
 
+- **26 nov., après J7** : « au moment où l’enfant écrit ou épelle un mot, il faut que le jeu se mette en pause » →
+  fait en v1.25.1 : la fenêtre du mot ouverte, le monde 3D est figé (horloge arrêtée, `scene.isWordOpen`). À garder
+  pour toute nouveauté : ne pas utiliser `performance.now()` ni `setTimeout` pour faire bouger le monde, mais `dt`
+  et `clock.elapsedTime` (le test « Pause pendant un mot » le vérifie).
+
 ## Programme de la semaine (contenu choisi par le parent, en parallèle des releases)
 
 `programme.js` (v1.21.1) sert les thèmes aux dates prévues : environ un mot sur deux (pas pour les boss, les

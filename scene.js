@@ -2490,8 +2490,13 @@ export class GameScene {
   _animate() {
     this.animationId = requestAnimationFrame(() => this._animate());
     const rawDt = this.clock.getDelta();
-    const dt = Math.min(rawDt, 0.05);
     if (this.mode === 'paused') return; // a page covers the world: don't spend battery
+    // While a word is being spelled, the world is on pause (parents' request after J7): nothing
+    // moves, no timer runs (the clock stands still), only the picture and the sparkles go on.
+    const frozen = this.mode === 'play' && !!this.isWordOpen?.();
+    if (frozen) this.clock.elapsedTime -= rawDt;
+    this.frozen = frozen;
+    const realDt = Math.min(rawDt, 0.05), dt = frozen ? 0 : realDt;
     if (this.fpsEl) {
       this._fps.n++;
       const now = performance.now();
@@ -2558,15 +2563,15 @@ export class GameScene {
       this.boat.rotation.y = elapsed * 0.15;
     }
 
-    // Update particles
+    // Update particles (they keep sparkling during the pause)
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       const ud = p.userData;
-      p.position.x += ud.vx * dt;
-      p.position.y += ud.vy * dt;
-      p.position.z += ud.vz * dt;
-      ud.vy -= 6 * dt;
-      ud.life -= ud.decay * dt;
+      p.position.x += ud.vx * realDt;
+      p.position.y += ud.vy * realDt;
+      p.position.z += ud.vz * realDt;
+      ud.vy -= 6 * realDt;
+      ud.life -= ud.decay * realDt;
       p.material.opacity = Math.max(0, ud.life);
       p.scale.setScalar(Math.max(0.01, ud.life));
       if (ud.life <= 0) {

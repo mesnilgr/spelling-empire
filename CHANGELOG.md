@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.25.1 — Pause pendant les mots ⏸️
+
+- ⏸️ **Quand l’enfant écrit ou épelle un mot, tout le jeu se met en pause** (demande des parents) : les boules de neige restent suspendues en l’air, Flocon, Boulon, Fer, les animaux, les zombies et les boss s’arrêtent, le jour et la nuit aussi, ainsi que tous les compte à rebours. Le monde repart dès que la fenêtre du mot se ferme. Seules les petites étincelles continuent de briller.
+
 ## v1.25.0 — J7 : Le golem de neige et la bataille de boules ⛄
 
 - ❄️ **Dans la montagne** (versant ouest, la flèche de « Montre-moi ! » y mène), un tas de neige respire… Quand on approche, il explose dans un nuage de flocons : c’est **Flocon, le golem de neige**, qui veut faire une **bataille de boules de neige** (dit à voix haute).
