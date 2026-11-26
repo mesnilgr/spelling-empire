@@ -784,13 +784,13 @@ function init3DScene() {
   scene3D.onDance = () => { [523, 659, 784, 659, 523, 784].forEach((f, i) => playTone(f, 0.12, 'triangle', 0.05, i * 0.16)); const sp = scene3D.getPlayerScreenPosition(); if (sp) showFloatingText(sp.x, sp.y - 50, '♪ ♫ ♪', '#ffe08a'); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, streak: () => streak, copper: () => game?.copper, snow: () => game?.snow, henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, streak: () => streak, copper: () => game?.copper, snow: () => game?.snow, henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), worldPaused: () => worldPaused(), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
   scene3D.minimapCanvas = $('#minimap');
   scene3D.onStep = (surface) => sfxStep(surface);
-  scene3D.isWordOpen = () => !$('#spell-modal').hidden; // the world pauses while a word is spelled
+  scene3D.isWordOpen = worldPaused; // the world pauses while a word is spelled (and while a window locks the hero)
   scene3D.onJump = () => { sfxJump(); defiEvent('jump'); jumpSurprise(); };
   scene3D.onDayPhase = (phase) => {
     $('#hud-time').textContent = phase === 'night' ? '🌙' : '☀️';
@@ -1248,7 +1248,22 @@ function updateMapPins() {
   if (p) pins.push({ x: p.x, z: p.z, text: '⭐', quest: true });
   scene3D.mapPins = pins;
 }
-setInterval(() => { updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum(); tickPowers(0.3); tickCopper(0.3); tickSnow(0.3); tickSurprise(0.3); if (scene3D) scene3D.inputLocked = !$('#spell-modal').hidden || !$('#dialog').hidden || !$('#news-modal').hidden || !$('#collect-modal').hidden; tickNews(); }, 300);
+// The world pauses while a word is spelled (scene.isWordOpen stops the 3D clock), and also while a window
+// that locks the hero is open (story, Alaric's card, journal, quest, travel, spell book…): before, the
+// hero could not move there but zombies could still reach him.
+let pauseOverlays = null;
+function worldPaused() {
+  pauseOverlays ??= ['spell-modal', 'dialog', 'news-modal', 'journal-modal', 'quest-modal', 'travel-modal', 'grimoire-modal', 'collect-modal', 'name-modal', 'age-modal', 'end-modal']
+    .map((id) => document.getElementById(id)).filter(Boolean);
+  return pauseOverlays.some((e) => !e.hidden);
+}
+setInterval(() => {
+  updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum();
+  // The game-side timers (power, copper golem, snowball fight, surprise) wait during the pause too.
+  if (!worldPaused()) { tickPowers(0.3); tickCopper(0.3); tickSnow(0.3); tickSurprise(0.3); }
+  if (scene3D) scene3D.inputLocked = worldPaused();
+  tickNews();
+}, 300);
 
 /* ===== FLASH CHALLENGE: never more than 2 minutes of play without a word ===== */
 const FLASH_AFTER = 120; // seconds of play

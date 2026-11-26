@@ -2513,7 +2513,11 @@ export class GameScene {
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
     this._tickRegions();
-    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); this.snow?.update(dt); } this.bosses?.update(dt, elapsed); if (this.mode === 'play') this.pet?.update(dt, elapsed); if (this.mode === 'play') this.zombies?.update(dt, elapsed);
+    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); }
+    // Whatever can hurt the hero is not run at all during the pause: with dt = 0 nothing moves, but a
+    // zombie, a boss or a snowball already touching the hero would still hit him.
+    if (!frozen) { if (this.mode === 'play') { this.snow?.update(dt); this.zombies?.update(dt, elapsed); } this.bosses?.update(dt, elapsed); }
+    if (this.mode === 'play') this.pet?.update(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
       const bb = this.bobber;

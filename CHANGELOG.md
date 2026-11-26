@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.25.2 — La pause pendant un mot, sans trou
+
+- 🧟 **Un zombie collé au héros au moment où le mot s'ouvre ne peut plus le toucher** : pendant la pause, les zombies, les boss et les boules de neige ne sont plus du tout calculés (avant, ils ne bougeaient plus mais un zombie déjà au contact pouvait encore frapper).
+- ⏳ Les minuteries du jeu (pouvoirs, petit golem de cuivre, bataille de boules, surprises) attendent aussi pendant un mot.
+- 🪟 La pause vaut aussi quand une fenêtre bloque le héros : histoire, carte d'Alaric, journal, quêtes, voyage, grimoire (avant, le héros ne pouvait plus bouger mais les zombies pouvaient encore l'atteindre). Le héros est bloqué dès l'image suivante.
+
 ## v1.25.1 — Pause pendant les mots ⏸️
 
 - ⏸️ **Quand l’enfant écrit ou épelle un mot, tout le jeu se met en pause** (demande des parents) : les boules de neige restent suspendues en l’air, Flocon, Boulon, Fer, les animaux, les zombies et les boss s’arrêtent, le jour et la nuit aussi, ainsi que tous les compte à rebours. Le monde repart dès que la fenêtre du mot se ferme. Seules les petites étincelles continuent de briller.

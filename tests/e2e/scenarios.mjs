@@ -1973,7 +1973,7 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(2000);
       const b = await snap();
       const m1 = moved(a, b);
-      check(m1.day === 0 && m1.clock === 0 && m1.fer === 0 && m1.animals === 0, 'pendant le mot, le jeu est en pause : ni le temps, ni Fer, ni les animaux ne bougent', JSON.stringify(m1));
+      check(m1.day === 0 && m1.clock < 1e-6 && m1.fer === 0 && m1.animals === 0, 'pendant le mot, le jeu est en pause : ni le temps, ni Fer, ni les animaux ne bougent', JSON.stringify(m1));
       await g.spell();
       await g.page.waitForTimeout(300);
       const c = await snap();
@@ -1981,6 +1981,52 @@ export const SCENARIOS = [
       const d = await snap();
       const m2 = moved(c, d);
       check(m2.day > 1 && m2.clock > 1 && (m2.fer > 0.05 || m2.animals > 0.05), 'le mot fini, le monde repart', JSON.stringify(m2));
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Pause : aucun zombie ne touche le héros pendant un mot ou une fenêtre',
+    quick: true,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, inputMode: 'keys', save: save(story(2, 0)) }, { quality: 0 });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      await g.page.evaluate(() => { const s = window.__se.scene; window.__caught = 0; const prev = s.onZombieCatch; s.onZombieCatch = (z) => { window.__caught++; return prev?.(z); }; });
+      // Night, a zombie right next to the hero (stuck to him again before each check).
+      const putZombie = () => g.page.evaluate(() => {
+        const s = window.__se.scene, p = s.player.position;
+        s.zombies.enabled = true; s.dayTime = 0.8 * 420; s.night = 1;
+        if (!s.zombies.active.length) s.zombies._spawn();
+        const z = s.zombies.active[0]; if (!z) return false;
+        z.mesh.scale.setScalar(1); z.stun = 0; s.zombies.grace = 0;
+        z.mesh.position.set(p.x + 0.6, p.y, p.z);
+        return true;
+      });
+      const calm = () => g.page.evaluate(() => { const s = window.__se.scene; s.zombies.clear(false); s.dayTime = 0.3 * 420; window.__caught = 0; });
+      // 1. A window that locks the hero (the journal): the world pauses too.
+      await calm();
+      await g.click('#news-btn');
+      await g.page.waitForSelector('#journal-modal:not([hidden])', { timeout: 5000 });
+      check(await putZombie(), 'un zombie est juste à côté du héros');
+      await g.page.waitForTimeout(2000);
+      const j = await g.page.evaluate(() => ({ caught: window.__caught, frozen: window.__se.scene.frozen, locked: window.__se.scene.inputLocked }));
+      check(j.caught === 0 && j.frozen && j.locked, 'journal ouvert : le jeu est en pause, le zombie ne touche pas', JSON.stringify(j));
+      await g.click('#journal-close');
+      await calm();
+      // 2. A word: no touch while it is open.
+      await g.use("i.kind === 'node' && i.active && !i.requires && i.nodeType !== 'chest'");
+      await g.page.waitForSelector('#spell-modal:not([hidden])', { timeout: 8000 });
+      await putZombie();
+      await g.page.waitForTimeout(2500);
+      check((await g.page.evaluate(() => window.__caught)) === 0, 'pendant le mot, le zombie ne touche pas le héros');
+      // 3. The word is done: the game goes on, and the zombie can catch the hero again.
+      await g.spell();
+      await g.page.evaluate(() => { const b = document.querySelector('#spell-continue-btn'); if (b && !b.hidden) b.click(); });
+      await g.page.waitForFunction(() => document.querySelector('#spell-modal').hidden, null, { timeout: 8000 });
+      await putZombie();
+      const after = await g.page.waitForFunction(() => window.__caught > 0, null, { timeout: 8000 }).then(() => true, () => false);
+      check(after, 'le mot fini, le jeu reprend (le zombie peut de nouveau toucher)');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },

@@ -67,6 +67,9 @@ Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
   fait en v1.25.1 : la fenêtre du mot ouverte, le monde 3D est figé (horloge arrêtée, `scene.isWordOpen`). À garder
   pour toute nouveauté : ne pas utiliser `performance.now()` ni `setTimeout` pour faire bouger le monde, mais `dt`
   et `clock.elapsedTime` (le test « Pause pendant un mot » le vérifie).
+  v1.25.2 : la pause vaut aussi pour les fenêtres qui bloquent le héros (`worldPaused()` dans game.js) ; tout ce
+  qui peut toucher le héros (zombies, boss, boules de neige, et tout nouveau danger) se met à jour dans le bloc
+  `if (!frozen)` de `_animate`, pas seulement avec `dt` ; les minuteries côté jeu attendent `!worldPaused()`.
 
 ## Programme de la semaine (contenu choisi par le parent, en parallèle des releases)
 
