@@ -8,6 +8,7 @@ import { CopperWorkshop } from './copper.js';
 import { SurpriseChest } from './surprise.js';
 import { SnowWorld } from './snow.js';
 import { MineCart } from './mine.js';
+import { WorldManager } from './worlds.js';
 import { PetManager } from './pet.js';
 import { DECOR } from './decor.js';
 import { PLACES, buildPlace, buildExtras, buildTrails, buildGroves, buildRegionFillers } from './landmarks.js';
@@ -247,8 +248,10 @@ export class GameScene {
     this.surprise = new SurpriseChest(this);
     // The snow golem (J7): the snowball arena on the mountain, the snowman in front of the cottage.
     this.snow = new SnowWorld(this);
-    // The mine cart (J8): the station by the old mine, line 1 to the diamonds, line 2 to the crystal cave.
+    // The mine cart (J8): the station by the old mine; the mine itself is a world of its own (v1.26.1).
     this.mine = new MineCart(this);
+    // Loadable worlds (v1.26.1): the mine first, the fire world later.
+    this.worlds = new WorldManager(this);
     const hen = cocotteToday(Math.max(...NEWS.filter((n) => !n.from).map((n) => n.day)));
     if (hen && !hen.album) this.cocotte = new Cocotte(this, hen);
   }
@@ -949,6 +952,7 @@ export class GameScene {
     }
   }
   teleport(x, z, ry = 0, up = undefined) {
+    if (this.worlds?.current) this.worlds.leave(); // (leaving puts the hero back at the station first)
     if (this.mine?.riding) this.mine.stop(); // (finish() leaves the cart before teleporting)
     if (this.horses?.riding) { this.horses.dismount(); this.onDismount?.(); }
     this.autoWalk = null;
@@ -2106,6 +2110,7 @@ export class GameScene {
 
   // Back to the fountain, with the companions.
   resetPosition() {
+    if (this.worlds?.current) this.worlds.leave();
     this.autoWalk = null;
     this.playerVY = 0;
     this.player.position.set(0, 0, 4.2);
@@ -2256,7 +2261,29 @@ export class GameScene {
   // ===== INTERACTION =====
 
   isAvailable(obj) {
-    return obj.active && (!obj.nightOnly || this.night > 0.5);
+    return obj.active && (!obj.nightOnly || this.night > 0.5) && (obj.world ?? 'island') === this.worldId;
+  }
+  // Which world the hero is in ('island', or a loaded world like 'mine').
+  get worldId() { return this.worlds?.id ?? 'island'; }
+  // What carries the hero right now (the mine cart, on the island or in the mine), if anything.
+  get rider() {
+    const w = this.worlds?.current;
+    if (w?.riding) return w;
+    return this.mine?.riding ? this.mine : null;
+  }
+  // A world's own things to touch go away with it.
+  removeInteractable(obj) {
+    const i = this.interactables.indexOf(obj);
+    if (i >= 0) this.interactables.splice(i, 1);
+    for (const o of [obj.iconHolder, obj.hit]) { if (o?.parent) o.parent.remove(o); }
+    obj.hit?.geometry.dispose(); obj.hit?.material.dispose();
+    obj.labelEl?.remove();
+    if (this.nearbyInteractable === obj) this.nearbyInteractable = null;
+  }
+  // The camera straight behind the hero, at once (back from a world).
+  snapCamera() {
+    this.camTarget.set(this.player.position.x, this.player.position.y + 0.6, this.player.position.z);
+    this._updateCamera(5);
   }
 
   _updateInteractables() {
@@ -2264,7 +2291,9 @@ export class GameScene {
     const t = this.clock.elapsedTime;
     let minDist = Infinity;
     const p = this.player.position;
+    const wid = this.worldId;
     for (const obj of this.interactables) {
+      if ((obj.world ?? 'island') !== wid) { if (obj.labelEl) obj.labelEl.style.display = 'none'; continue; }
       if (obj.nightOnly) {
         const show = obj.active && this.night > 0.5;
         obj.block.visible = show;
@@ -2513,14 +2542,20 @@ export class GameScene {
     this.quality?.tick(rawDt);
     const elapsed = this.clock.elapsedTime;
 
-    this._updateDayNight(dt);
-    this._tickMagic(dt, elapsed);
-    this._tickStory(dt, elapsed);
-    this._tickRegions();
-    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); this.mine?.update(dt); }
-    // Whatever can hurt the hero is not run at all during the pause: with dt = 0 nothing moves, but a
-    // zombie, a boss or a snowball already touching the hero would still hit him.
-    if (!frozen) { if (this.mode === 'play') { this.snow?.update(dt); this.zombies?.update(dt, elapsed); } this.bosses?.update(dt, elapsed); }
+    // In a loaded world (the mine), the island is set aside: none of its systems run (no zombies, no
+    // day and night, no regions), the world runs instead. The title screen always shows the island.
+    if (this.mode !== 'play' && this.worlds?.current) this.worlds.leave();
+    const world = this.worlds?.current ?? null;
+    if (!world) {
+      this._updateDayNight(dt);
+      this._tickMagic(dt, elapsed);
+      this._tickStory(dt, elapsed);
+      this._tickRegions();
+      this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); this.mine?.update(dt); }
+      // Whatever can hurt the hero is not run at all during the pause: with dt = 0 nothing moves, but a
+      // zombie, a boss or a snowball already touching the hero would still hit him.
+      if (!frozen) { if (this.mode === 'play') { this.snow?.update(dt); this.zombies?.update(dt, elapsed); } this.bosses?.update(dt, elapsed); }
+    } else if (this.mode === 'play') world.update(dt, elapsed);
     if (this.mode === 'play') this.pet?.update(dt, elapsed);
     if (this.tweens?.length) this.tweens = this.tweens.filter((f) => f(elapsed));
     if (this.bobber) {
@@ -2530,23 +2565,24 @@ export class GameScene {
     }
     if (this.mode === 'play') {
       // In the mine cart (J8) the cart carries the hero (nobody moves while a word is open: dt = 0).
-      if (this.mine?.riding) this.mine.rideStep(dt); else this._updatePlayer(dt);
-      this._updateCamera(dt);
+      const rider = this.rider;
+      if (rider) rider.rideStep(dt); else this._updatePlayer(dt);
+      if (world?.updateCamera) world.updateCamera(dt); else this._updateCamera(dt);
     } else {
       // Title screen: slow orbit around the village at dusk.
       const a = elapsed * 0.05;
       this.camera.position.set(Math.sin(a) * 27, 16, Math.cos(a) * 27);
       this.camera.lookAt(0, 1.5, 0);
     }
-    if (this.mode === 'play' && this.minimapCanvas && (this._mapT = (this._mapT ?? 0) + dt) > 0.12) {
+    if (!world && this.mode === 'play' && this.minimapCanvas && (this._mapT = (this._mapT ?? 0) + dt) > 0.12) {
       this._mapT = 0;
       this.drawMinimap(this.minimapCanvas);
     }
-    this._updateCutaway(dt);
+    if (!world) this._updateCutaway(dt);
     this._updateInteractables();
 
     // NPC idle bob
-    this.village?.update(elapsed);
+    if (!world) this.village?.update(elapsed);
     // Character limbs (walk cycle, idle, item actions).
     for (const ch of this.characters ?? []) animateCharacter(ch, dt, elapsed);
     this._tickIdleDance(dt);
@@ -2555,8 +2591,8 @@ export class GameScene {
       const n = Math.sin(elapsed * fl.speed + fl.phase);
       fl.mesh.scale.y = fl.base.y * (1 + n * 0.2);
     }
-    const torchAnchor = this.heldItem?.userData.light;
-    if (torchAnchor) {
+    const torchAnchor = world ? null : this.heldItem?.userData.light;
+    if (world) { /* the world drives the lamp (the mine cart's headlamp) */ } else if (torchAnchor) {
       torchAnchor.getWorldPosition(this.torchLight.position);
       const magic = torchAnchor.userData.color;
       this.torchLight.color.setHex(magic ?? 0xff9a40);
@@ -2597,11 +2633,11 @@ export class GameScene {
       fl.mesh.scale.set(fl.base.x * (1 - n * 0.06), fl.base.y * sy, fl.base.z * (1 - n * 0.06));
       fl.mesh.position.y = fl.y0 + (sy - 1) * fl.h * 0.5;
     }
-    for (const l of this.kit.lights) {
+    if (!world) for (const l of this.kit.lights) {
       const n = Math.sin(elapsed * l.speed + l.phase) * 0.6 + Math.sin(elapsed * l.speed * 2.3 + l.phase) * 0.4;
       l.current = l.base * (1 + n * l.amp) * (l.houseFactor ?? 1) * (l.light.userData.night ? (this.night ?? 0) : 1);
     }
-    this.lightPool.update(this.kit.lights, this.camTarget);
+    this.lightPool.update(world ? world.lights : this.kit.lights, this.camTarget);
 
     // Water shimmer
     for (const m of this.waterMats) m.opacity = 0.65 + Math.sin(elapsed * 2) * 0.08;

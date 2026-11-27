@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.26.1 — Le monde de la mine ⛏️ (orthographe seulement)
+
+- 🌍 **Des mondes qui se chargent** (demande du parent) : un lieu de l’île peut ouvrir un monde à part. Le premier, c’est **la mine** : on touche le wagonnet, il roule jusque dans l’entrée de la mine (« Tut-tut ! En voiture, on descend dans la mine ! »), puis un écran **« On descend dans la mine… »** (écrit et lu) pendant le chargement. L’île est mise de côté (rien n’y bouge, pas de zombies), et elle revient telle quelle au retour.
+- ⛏️ **Sous la terre** : des tunnels de roche avec des cadres en bois et des lanternes, des champignons qui brillent, des cristaux dans les murs, l’écho des gouttes d’eau. Le wagonnet roule tout seul, le héros debout dedans et le chien devant, les oreilles au vent ; la vue est plus large que sur l’île. Le 📯 fait « tut-tut »… avec l’écho des tunnels.
+- 🚧 **Orthographe seulement** : plus d’aiguillages où l’on choisit le mot bien écrit entre deux panneaux (c’était de la lecture). À la place, **des barrières** : le wagonnet s’arrête, « Une barrière ! Épelle le mot pour l’ouvrir. » (écrit et lu), et le mot juste lève la barre rouge et blanche, le cadenas doré saute, le wagonnet repart. Le monde est en pause pendant le mot.
+- 💎 **Ligne 1** : 3 barrières, **les chauves-souris** qui s’envolent autour du wagonnet (« Hiii ! Hiii ! », juste pour rire), une descente (« Wiii ! »), un pont au-dessus du **lac souterrain qui brille**, puis **la grotte aux diamants** : un mot, et le wagon se remplit de diamants. **Le monte-charge** ramène le wagonnet à la gare. Trois voyages = le casque de mineur (comme avant).
+- 🔮 **Ligne 2** (partie 2) : une barrière, puis **le grand saut au ralenti au-dessus d’un gouffre** plein de cristaux (vu de côté), des pépites d’or à toucher (même en plein saut), une deuxième barrière, et **la grotte de cristal**. Trois voyages = le wagonnet doré (comme avant).
+- 📏 Chaque voyage, c’est 4 vrais mots à écrire en partie 1 (3 barrières + le trésor) et 3 en partie 2. Dans la mine : environ 45 appels de dessin et 10 000 triangles (bien sous le budget de l’iPad) ; le monde est libéré de la mémoire en sortant.
+- 📝 Le plan suit la même règle : J9 n’a plus de wagonnet chronométré, et les indices de la chasse au trésor (J10) sont dits à voix haute par le perroquet. Le Monde de feu (J23) utilisera le même système de mondes.
+
 ## v1.26.0 — J8 : Le wagonnet de la mine 🛒
 
 - 🛒 **À côté de la mine abandonnée**, une petite gare et un wagonnet (la flèche de « Montre-moi ! » y mène). On le touche : « Tut-tut ! Le wagonnet de la mine se réveille ! En voiture, accroche-toi bien ! » (dit à voix haute), confettis, et c’est parti sur des rails en bois qui montent et descendent autour du campement. **Le chien saute dans le wagon**, devant le héros, les oreilles au vent. Le bouton **📯** fait « tut-tut » pendant le trajet (et le chien aboie).

@@ -166,11 +166,12 @@ export const NEWS = [
     },
   },
   {
-    id: '1.26.0-wagonnet', day: 8, date: '2026-11-27', emoji: '🛒', show: 'minecart',
+    // (v1.26.1: the mine became a world of its own, with barriers to spell; a new id so the card shows again.)
+    id: '1.26.1-wagonnet', day: 8, date: '2026-11-27', emoji: '🛒', show: 'minecart',
     title: { fr: 'Le wagonnet de la mine', en: 'The mine cart' },
     text: {
-      fr: 'Monte dans le wagonnet de la mine ! À chaque aiguillage, choisis le mot bien écrit : la bonne voie mène au trésor de diamants. Attention aux chauves-souris… et accroche-toi bien !',
-      en: 'Get in the mine cart! At each set of points, choose the word that is spelled right: the right track leads to the diamond treasure. Watch out for the bats… and hold on tight!',
+      fr: 'Monte dans le wagonnet : il t’emmène sous la terre, dans la mine ! Il roule tout seul ; devant chaque barrière, épelle le mot pour l’ouvrir. Au bout, le trésor de diamants ! Attention aux chauves-souris… et accroche-toi bien !',
+      en: 'Get in the mine cart: it takes you down under the ground, into the mine! It rides on its own; at each barrier, spell the word to open it. At the end, the diamond treasure! Watch out for the bats… and hold on tight!',
     },
     riddle: {
       q: { fr: 'Qu’est-ce qui a des dents mais ne mord jamais ?', en: 'What has teeth but never bites?' },

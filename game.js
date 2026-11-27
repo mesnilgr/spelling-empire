@@ -23,7 +23,8 @@ import { PTX, CLOUDS, RINGS, POWER_TIME, GLIDE_TIME, ANIMALS_GOAL, POWER_KINDS }
 import { CTX, BUTTON_SPOTS, spotsOfPart, COPPER_LIFE, WIND_EVERY, SHINE_WORD } from './copper.js';
 import { STX, SURPRISE_EVERY, rollSurprise } from './surprise.js';
 import { SX, PILES, PATCH, SNOWMAN, HITS_PER_WORD, HITS_PER_ROUND, ROUNDS, REV_ROUNDS, PILE_BALLS, HATS, CARROT_WORD, CRYSTAL_WORD } from './snow.js';
-import { MX, RIDES1, RIDES2, GATE as MINE_GATE, misspell } from './mine.js';
+import { MX, RIDES1, RIDES2, GATE as MINE_GATE } from './mine.js';
+import { MineWorld } from './mineworld.js';
 import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themesFor, themeWords, themeDay, upcomingThemes } from './programme.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
@@ -779,13 +780,13 @@ function init3DScene() {
   scene3D.onObsidian = (n) => { if (n) { sfxCraft(); toast(t.obsidianMade, 4000); speak(t.obsidianMade.replace(/^\S+ /, ''), 0.95); } };
   scene3D.onMeatPickup = onMeatPickup;
   scene3D.onZombieBurnt = onZombieBurnt;
-  scene3D.canBeAttacked = () => !!game && document.body.dataset.screen === 'game' && $('#spell-modal').hidden && $('#dialog').hidden && $('#travel-modal').hidden && $('#quest-modal')?.hidden !== false && !knocking && !scene3D.mine?.riding;
+  scene3D.canBeAttacked = () => !!game && document.body.dataset.screen === 'game' && $('#spell-modal').hidden && $('#dialog').hidden && $('#travel-modal').hidden && $('#quest-modal')?.hidden !== false && !knocking && !scene3D.rider && scene3D.worldId === 'island';
   scene3D.zombies.enabled = progress.zombies !== false;
   scene3D.onLavaPillar = (role) => { if (game) onLavaPillar(role); };
   scene3D.onDance = () => { [523, 659, 784, 659, 523, 784].forEach((f, i) => playTone(f, 0.12, 'triangle', 0.05, i * 0.16)); const sp = scene3D.getPlayerScreenPosition(); if (sp) showFloatingText(sp.x, sp.y - 50, '♪ ♫ ♪', '#ffe08a'); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, streak: () => streak, copper: () => game?.copper, snow: () => game?.snow, mine: () => game?.mine, mineChoice: () => mineChoice, henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), worldPaused: () => worldPaused(), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, streak: () => streak, copper: () => game?.copper, snow: () => game?.snow, mine: () => game?.mine, mineWorld: () => mineWorld(), mineBoard: (l) => mineBoard(l), henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), worldPaused: () => worldPaused(), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -1120,7 +1121,8 @@ function openSpellModal(title, instruction, emoji) {
   updateSpellAttempts();
   $('#spell-modal').hidden = false;
   setSpellLocked(false);
-  speak(golden ? `${goldTxt().say} ${word.say ?? word.word}` : word.say ?? word.word, 0.9);
+  const lead = spellContext.lead ? `${spellContext.lead} ` : '';
+  speak(golden ? `${goldTxt().say} ${word.say ?? word.word}` : `${lead}${word.say ?? word.word}`, 0.9);
 }
 
 /* ===== STORY ===== */
@@ -1259,7 +1261,7 @@ function updateMapPins() {
 // hero could not move there but zombies could still reach him.
 let pauseOverlays = null;
 function worldPaused() {
-  pauseOverlays ??= ['spell-modal', 'dialog', 'news-modal', 'journal-modal', 'quest-modal', 'travel-modal', 'grimoire-modal', 'mine-choice', 'collect-modal', 'name-modal', 'age-modal', 'end-modal']
+  pauseOverlays ??= ['spell-modal', 'dialog', 'news-modal', 'journal-modal', 'quest-modal', 'travel-modal', 'grimoire-modal', 'mine-choice', 'collect-modal', 'name-modal', 'age-modal', 'end-modal', 'world-loading']
     .map((id) => document.getElementById(id)).filter(Boolean);
   return pauseOverlays.some((e) => !e.hidden);
 }
@@ -3225,25 +3227,31 @@ function snowSpeech() {
   return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${rest}.`;
 }
 
-/* ===== THE MINE CART (J8) ===== */
-// Session 1: by the old mine, the mine cart waits at its station. Line 1: at each of the three points
-// the cart stops and the child picks the word spelled right between two signs; the right track goes
-// on, the wrong one is a detour into the bats' cave ("Hiii!") and back to the points. At the end, the
-// diamond cave: a word fills the cart with diamonds. Three trips win the miner's hard hat (costume).
-// Session 2: line 2 to the crystal cave, a big jump over a ravine in slow motion, gold nuggets to
-// touch on the way, a word at the cave for a crystal; three trips turn the cart into gold. The dog
-// rides along, ears in the wind; the 📯 button goes "tut-tut".
+/* ===== THE MINE CART (J8, the mine world since v1.26.1) ===== */
+// By the old mine, the cart waits at its station. Touch it: it rolls into the mouth of the mine, and the
+// mine is loaded as a world of its own (worlds.js, mineworld.js) behind a "Loading…" card, written and
+// read. Down there the cart rides on its own and stops at barriers: spelling the word lifts the bar
+// (spelling only, the parent's request: no more choosing between two signs). Line 1: three barriers,
+// the bats, the lake, the diamond cave (a word fills the cart with diamonds); three trips win the
+// miner's hard hat. Line 2 (session 2): the big jump in slow motion, gold nuggets to touch, two
+// barriers, the crystal cave; three trips turn the cart into gold. The lift takes the cart back up to
+// the station. The dog rides along, ears in the wind; the 📯 button goes "tut-tut" (with an echo
+// down in the mine).
 const mx = () => MX[lang] ?? MX.fr;
-function mineState() { return game ? (game.mine ??= { woke: false, rides1: 0, helmet: false, rides2: 0, gold: false, nuggets: 0, bats: 0, picks: 0, horns: 0 }) : null; }
+function mineState() { return game ? (game.mine ??= { woke: false, rides1: 0, helmet: false, rides2: 0, gold: false, nuggets: 0, bats: 0, gates: 0, horns: 0 }) : null; }
 const minePartTwo = () => releasePart(8) === 2;
 const mineDone1 = (w = game?.mine) => !!w?.helmet;
 const mineDone2 = (w = game?.mine) => !!w?.gold;
-let mineMsgs = [], mineGame = null, mineP2Said = false, mineSaidAt = {}, mineChoice = null, mineRideNugs = 0, mineEndWait = 0, mineGateDwell = 0, mineGateCool = 0;
+// The mine world, while the hero is down there.
+const mineWorld = () => (scene3D?.worlds?.current?.id === 'mine' ? scene3D.worlds.current : null);
+let mineMsgs = [], mineGame = null, mineP2Said = false, mineSaidAt = {}, mineRideNugs = 0, mineEndWait = 0, mineBarrierWait = 0, mineGateDwell = 0, mineGateCool = 0, mineLoading = false, mineBarrierSaid = false, mineJustDone = false;
 function queueMineMsg(text, say = text.replace(/^\S+ /, ''), sfx = null, show = null) { mineMsgs.push({ text, say, sfx, show }); }
 function mineOnce(key, ms) { const n = performance.now(); if (n - (mineSaidAt[key] ?? -1e9) < ms) return false; mineSaidAt[key] = n; return true; }
-function sfxHorn() { playTone(392, 0.16, 'square', 0.06); playTone(330, 0.24, 'square', 0.06, 0.2); playTone(784, 0.16, 'triangle', 0.04); playTone(660, 0.24, 'triangle', 0.04, 0.2); }
+function sfxHorn(vol = 1, delay = 0) { playTone(392, 0.16, 'square', 0.06 * vol, delay); playTone(330, 0.24, 'square', 0.06 * vol, delay + 0.2); playTone(784, 0.16, 'triangle', 0.04 * vol, delay); playTone(660, 0.24, 'triangle', 0.04 * vol, delay + 0.2); }
 function sfxBats() { for (let i = 0; i < 6; i++) playTone(2400 + (i % 3) * 400, 0.07, 'sine', 0.05, i * 0.11, 3200 + (i % 2) * 500); playNoise({ type: 'highpass', freq: 2500, q: 0.6, volume: 0.06, duration: 0.5 }); }
 function sfxClunk() { playNoise({ type: 'lowpass', freq: 400, q: 1.2, volume: 0.18, duration: 0.12 }); playTone(1500, 0.05, 'square', 0.05, 0.08); }
+function sfxDrip() { const f = 1700 + Math.random() * 900; playTone(f, 0.05, 'sine', 0.05, 0, f * 1.6); playTone(f * 0.9, 0.05, 'sine', 0.018, 0.22, f * 1.4); }
+function sfxLift() { playNoise({ type: 'lowpass', freq: 300, q: 0.8, volume: 0.12, duration: 1.4 }); for (let i = 0; i < 5; i++) playTone(220 + i * 30, 0.08, 'square', 0.025, i * 0.28); }
 function mineFloat(pos, text, color = '#ffffff', dy = 2) {
   const sp = scene3D?.worldToScreen(pos.clone().setY(pos.y + dy));
   if (sp) showFloatingText(sp.x, sp.y, text, color);
@@ -3256,65 +3264,36 @@ function applyMineLook() {
   const open = mineDone1(w) && minePartTwo();
   if (m.gateOpen !== open) m.setGate(open);
 }
-function setupMine() {
-  const m = scene3D?.mine;
-  if (!m || m.wired) return;
-  m.wired = true;
-  m.onFork = (k) => openMineChoice(k);
-  m.onBats = () => {
-    const w = mineState(), x = mx();
-    w.bats++;
-    sfxBats(); setTimeout(sfxBats, 700);
-    mineFloat(m.cart.position, `🦇 ${x.batFloat}`, '#d8b0ff', 2.6);
-    speak(x.bats, 1.05);
-    if (scene3D.pet?.tamed) setTimeout(sfxBark, 900);
-    saveGame();
-  };
-  m.onBack = () => openMineChoice(mineChoice?.k ?? 0, true);
-  m.onEnd = (line) => openMineEndWord(line);
-  m.onJump = () => {
-    const x = mx();
-    sfxWhoosh(); launchConfetti();
-    mineFloat(m.cart.position, `🤩 ${x.jumpFloat}`, '#ffd34a', 3);
-    for (const c of ['#c08aff', '#5af0e6', '#ffd34a']) scene3D.particleBurst(m.cart.position.clone().setY(m.cart.position.y + 1), c, 20);
-    speak(x.jump, 1.05);
-  };
-  m.onLand = () => { sfxStomp(); scene3D.particleBurst(m.cart.position.clone(), '#c8b090', 20); };
-  m.onFinish = (r) => {
-    $('#horn-btn').hidden = true;
-    const w = mineState();
-    if (r?.line === 0 && w.rides1 < RIDES1) queueMineMsg(`🛒 ${mx().station}`);
-    saveGame();
-  };
-}
 function mineBusy(spellOnly = false) {
-  if (!$('#spell-modal').hidden || spellContext || !$('#mine-choice').hidden) return true;
+  if (!$('#spell-modal').hidden || spellContext || !$('#mine-choice').hidden || !$('#world-loading').hidden) return true;
   if (spellOnly) return false;
   return !$('#dialog').hidden || !$('#news-modal').hidden || !$('#journal-modal').hidden || !$('#collect-modal').hidden || !$('#travel-modal').hidden || $('#quest-modal')?.hidden === false || knocking || bossFight;
 }
 function mineSync() {
   const m = scene3D?.mine;
   if (!m || mineGame === game) return;
-  mineGame = game; mineP2Said = false; mineMsgs = []; mineChoice = null;
+  mineGame = game; mineP2Said = false; mineMsgs = []; mineLoading = false;
   $('#mine-choice').hidden = true;
+  if (mineWorld()) scene3D.worlds.leave();
   m.stop();
   applyMineLook();
 }
 // Touch the cart: aboard! (part 2: which line?)
 function mineCartTouch() {
-  const w = mineState(), m = scene3D.mine, x = mx();
-  setupMine(); mineSync();
-  if (m.riding) return;
+  const w = mineState(), m = scene3D.mine;
+  mineSync();
+  if (m.riding || mineLoading || mineWorld()) return;
   if (mineDone1(w) && minePartTwo()) { openLinePicker(); return; }
   mineBoard(0);
 }
 function mineBoard(line) {
   const w = mineState(), m = scene3D.mine, x = mx();
+  if (m.riding || mineLoading || mineWorld()) return;
   if (scene3D.horses?.riding) { scene3D.horses.dismount(); scene3D.onDismount?.(); }
   const first = !w.woke;
   w.woke = true;
-  mineRideNugs = 0;
-  m.start(line);
+  mineRideNugs = 0; mineJustDone = false;
+  mineLoading = true;
   sfxHorn(); sfxPowerUp();
   $('#horn-btn').hidden = false;
   newsTarget = null; updateMapPins();
@@ -3322,16 +3301,13 @@ function mineBoard(line) {
   const say = first ? x.wake : x.board;
   toast(`🛒 ${say}`, 3500); speak(say, 1.0);
   if (first) { launchConfetti(); scene3D.screenShake?.(0.2); }
-  if (scene3D.pet?.tamed && mineOnce('dog', 8 * 60 * 1000)) setTimeout(() => { sfxBark(); queueMineMsg(`🐶 ${x.dog}`); }, 1600);
-  if (line === 1 && mineOnce('nughint', 5 * 60 * 1000)) queueMineMsg(`✨ ${x.nuggetHint}`);
+  m.rollIn(() => enterMine(line, first));
   saveGame();
 }
 function openLinePicker() {
   const x = mx();
   $('#mine-choice-title').textContent = `🛒 ${x.pickLine}`;
   $('#mine-choice-instr').textContent = '';
-  $('#mine-choice-pic').hidden = true;
-  $('#mine-choice-listen').hidden = true;
   const opts = [[0, x.line1], [1, x.line2]].map(([line, label]) => {
     const b = el('button', 'btn btn-accent mine-opt is-line', label);
     b.type = 'button'; b.dataset.line = String(line);
@@ -3343,86 +3319,127 @@ function openLinePicker() {
   later.addEventListener('click', () => { $('#mine-choice').hidden = true; stopSpeaking(); });
   opts.push(later);
   $('#mine-choice-opts').replaceChildren(...opts);
-  mineChoice = null;
   $('#mine-choice').hidden = false;
   speak(x.pickSay, 0.95);
 }
-// The points: two signs, one word spelled right. Back from the bats' cave: the same two signs, the
-// wrong one crossed out.
-function openMineChoice(k, again = false) {
-  const x = mx();
-  if (!again || !mineChoice) {
-    const word = pickWord(levelAt(0), { programme: false });
-    const wrong = misspell(word.word, lang);
-    mineChoice = { k, word, opts: Math.random() < 0.5 ? [word.word, wrong] : [wrong, word.word], bat: null };
-  }
-  const c = mineChoice, letter = c.word.word.length === 1;
-  $('#mine-choice-title').textContent = `🔀 ${x.forkTitle}`;
-  $('#mine-choice-instr').textContent = letter ? x.forkInstrLetter : x.forkInstr;
-  const pic = c.word.pic ?? WORD_EMOJI[lang]?.[c.word.word];
-  $('#mine-choice-pic').textContent = c.word.blank ? c.word.blank.replace('___', '…') : (pic ?? '');
-  $('#mine-choice-pic').hidden = !pic && !c.word.blank;
-  $('#mine-choice-listen').hidden = false;
-  const arrows = ['⬅️ ', ' ➡️'];
-  $('#mine-choice-opts').replaceChildren(...c.opts.map((o, i) => {
-    const b = el('button', `btn btn-accent mine-opt${c.bat === o ? ' is-bat' : ''}`, i === 0 ? `${arrows[0]}${o}` : `${o}${arrows[1]}`);
-    b.type = 'button'; b.dataset.word = o;
-    if (c.bat === o) { b.disabled = true; b.textContent = `🦇 ${o}`; }
-    b.addEventListener('click', () => mineChoose(o));
-    return b;
-  }));
-  $('#mine-choice').hidden = false;
-  playSinceWord = 0;
-  const say = c.word.say ?? c.word.word;
-  speak(again ? `${x.again} ${letter ? x.forkSayLetter(say) : x.forkSay(say)}` : letter ? x.forkSayLetter(say) : x.forkSay(say), 0.92);
+// The loading card between the island and a world: written and read, the world waits behind it.
+let worldLoadingAt = 0;
+function showWorldLoading(text, emoji) {
+  $('#world-loading-emoji').textContent = emoji;
+  $('#world-loading-text').textContent = text;
+  $('#world-loading').hidden = false;
+  worldLoadingAt = performance.now();
+  speak(text, 0.95);
 }
-function mineChoose(opt) {
-  const c = mineChoice, m = scene3D?.mine, w = mineState(), x = mx();
-  if (!c || !m?.ride || m.ride.stage !== 'fork') return;
-  $('#mine-choice').hidden = true;
-  stopSpeaking();
+function hideWorldLoading(minMs, after) {
+  setTimeout(() => { $('#world-loading').hidden = true; after?.(); }, Math.max(0, minMs - (performance.now() - worldLoadingAt)));
+}
+// Two frames so the card is drawn before the (quick, but all at once) building of the world.
+const afterPaint = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
+function enterMine(line, first) {
+  const x = mx();
+  showWorldLoading(x.loading, '⛏️');
+  afterPaint(() => {
+    if (!game || !scene3D) { mineLoading = false; $('#world-loading').hidden = true; return; }
+    const mw = new MineWorld(scene3D, { line, gold: !!game.mine?.gold });
+    wireMineWorld(mw);
+    scene3D.worlds.enter(mw);
+    scene3D.mine.park();
+    mineBarrierSaid = false;
+    hideWorldLoading(1500, () => {
+      mineLoading = false;
+      const say = first ? x.inMineFirst : line === 1 ? x.inMine2 : x.inMine;
+      toast(`⛏️ ${say}`, 4500); speak(say, 1.0);
+      if (scene3D.pet?.tamed && mineOnce('dog', 8 * 60 * 1000)) setTimeout(() => { sfxBark(); queueMineMsg(`🐶 ${x.dog}`); }, 2600);
+      if (line === 1 && mineOnce('nughint', 5 * 60 * 1000)) queueMineMsg(`✨ ${x.nuggetHint}`);
+    });
+  });
+}
+function wireMineWorld(mw) {
+  const x = mx(), sparkle = (p, cols, n = 20) => { for (const c of cols) scene3D.particleBurst(p.clone().setY(p.y + 1.2), c, n); };
+  mw.onBarrier = (k) => openMineBarrier(k);
+  mw.onBats = () => {
+    const w = mineState();
+    w.bats++;
+    sfxBats(); setTimeout(sfxBats, 700);
+    mineFloat(mw.cart.position, `🦇 ${x.batFloat}`, '#d8b0ff', 2.6);
+    speak(x.bats, 1.05);
+    if (scene3D.pet?.tamed) setTimeout(sfxBark, 900);
+  };
+  mw.onDescent = () => { sfxWhoosh(); speak(x.descent, 1.1); };
+  mw.onLake = () => { [1319, 1568, 2093].forEach((f, i) => playTone(f, 0.18, 'sine', 0.05, i * 0.12)); speak(x.lake, 1.0); };
+  mw.onJump = () => {
+    sfxWhoosh(); launchConfetti();
+    mineFloat(mw.cart.position, `🤩 ${x.jumpFloat}`, '#ffd34a', 3);
+    sparkle(mw.cart.position, ['#c08aff', '#5af0e6', '#ffd34a']);
+    speak(x.jump, 1.05);
+  };
+  mw.onLand = () => { sfxStomp(); scene3D.particleBurst(mw.cart.position.clone(), '#c8b090', 20); };
+  mw.onEnd = (line) => openMineEndWord(line);
+  mw.onLift = () => { sfxLift(); speak(x.lift, 1.0); };
+  mw.onExit = () => exitMine();
+  mw.onDrip = () => sfxDrip();
+  // However the mine is left (the lift, the 🏠 button, a new game), the cart is back at the station.
+  mw.onLeave = () => {
+    mineLoading = false;
+    scene3D.mine.finish();
+    $('#horn-btn').hidden = true;
+    if (spellContext?.type === 'minebarrier') { spellContext = null; $('#spell-modal').hidden = true; }
+  };
+}
+function exitMine() {
+  const x = mx();
+  if (!mineWorld()) return;
+  showWorldLoading(x.loadingBack, '🛒');
+  afterPaint(() => {
+    if (mineWorld()) scene3D.worlds.leave();
+    saveGame();
+    hideWorldLoading(1100, () => { if (!mineJustDone) queueMineMsg(`🛒 ${x.station}`); mineJustDone = false; });
+  });
+}
+// A barrier: the cart stops, a word lifts the bar.
+function openMineBarrier(k) {
+  const x = mx();
+  if (!mineWorld()) return;
+  if (spellContext || !$('#spell-modal').hidden || !$('#world-loading').hidden) { setTimeout(() => openMineBarrier(k), 800); return; }
+  mineBarrierWait = 0;
   sfxClunk();
-  const ok = opt === c.word.word;
-  if (ok) {
-    w.picks++;
-    progress.stars += 1; game.starsEarned += 1;
-    sfxStar();
-    const pos = scene3D.getPlayerScreenPosition?.();
-    if (pos) showFloatingText(pos.x, pos.y - 40, `✅ ${c.word.word} +1 ★`, '#ffc233');
-    speak(x.good[Math.floor(Math.random() * x.good.length)], 1.05);
-    mineChoice = null;
-    updateGameUI();
-  } else {
-    c.bat = opt;
-    playSinceWord = 0;
-  }
-  m.choose(ok);
+  spellContext = { type: 'minebarrier', k, word: pickWord(levelAt(0)), tries: 0, lead: mineBarrierSaid ? x.barrierLeadShort : x.barrierLead };
+  mineBarrierSaid = true;
+  openSpellModal(`🚧 ${x.barrierTitle}`, x.barrierInstr, '🔒');
+}
+function mineBarrierSpelled() {
+  const w = mineState(), x = mx();
+  w.gates = (w.gates ?? 0) + 1;
+  const say = x.open[Math.floor(Math.random() * x.open.length)];
   saveGame();
+  return { text: `🔓 ${say}`, say, emoji: '🔓', after: () => { sfxClunk(); sfxStar(); mineWorld()?.openBarrier(); } };
 }
 function openMineEndWord(line) {
   const x = mx();
-  if (spellContext || !$('#spell-modal').hidden) { setTimeout(() => openMineEndWord(line), 800); return; }
+  if (!mineWorld()) return;
+  if (spellContext || !$('#spell-modal').hidden || !$('#world-loading').hidden) { setTimeout(() => openMineEndWord(line), 800); return; }
   mineEndWait = 0;
   spellContext = { type: 'minecart', line, word: pickWord(levelAt(0)), tries: 0 };
   if (line === 0) openSpellModal(`💎 ${x.treasureTitle}`, x.treasureInstr, '💎');
   else openSpellModal(`🔮 ${x.crystalTitle}`, x.crystalInstr, '🔮');
 }
-// After the word at the end of the line: diamonds (line 1) or a crystal (line 2).
+// After the word at the cave: diamonds (line 1) or a crystal (line 2); then on to the lift.
 function mineSpelled(ctx) {
-  const w = mineState(), x = mx(), m = scene3D.mine;
-  const back = () => setTimeout(() => m.leaveEnd(), 400);
-  const sparkle = (cols) => { const p = m.cart.position.clone(); p.y += 1.4; for (const c of cols) scene3D.particleBurst(p, c, 24); };
+  const w = mineState(), x = mx(), mw = mineWorld();
+  const back = (ms = 400) => setTimeout(() => mineWorld()?.leaveEnd(), ms);
+  const sparkle = (cols) => { if (!mw) return; const p = mw.cart.position.clone(); p.y += 1.4; for (const c of cols) scene3D.particleBurst(p, c, 24); };
   if (ctx.line === 0) {
     w.rides1++;
     game.materials.diamond = (game.materials.diamond ?? 0) + 1;
     progress.stars += 3; game.starsEarned += 3;
     if (w.rides1 >= RIDES1 && !w.helmet) {
-      w.helmet = true;
+      w.helmet = true; mineJustDone = true;
       progress.stars += 10; game.starsEarned += 10;
       unlockCostume('miner');
       costumeState().current = 'miner'; applyCostume();
       saveGame(); saveProgress(); updateGameUI(); renderCraftMenu();
-      return { text: `⛏️ ${x.helmet}`, say: x.helmetSay, emoji: '💎', after: () => { sfxVictory(); launchConfetti(); setTimeout(launchConfetti, 500); sparkle(['#ffd34a', '#5af0e6', '#ffffff']); back(); if (minePartTwo()) setTimeout(() => onMinePartTwo(true), 2500); } };
+      return { text: `⛏️ ${x.helmet}`, say: x.helmetSay, emoji: '💎', after: () => { sfxVictory(); launchConfetti(); setTimeout(launchConfetti, 500); sparkle(['#ffd34a', '#5af0e6', '#ffffff']); back(); if (minePartTwo()) setTimeout(() => onMinePartTwo(true), 9000); } };
     }
     saveGame(); updateGameUI(); renderCraftMenu();
     return { text: `💎 ${x.treasure(Math.min(w.rides1, RIDES1), RIDES1)}`, say: x.treasure(Math.min(w.rides1, RIDES1), RIDES1), emoji: '💎', after: () => { sfxVictory(); sparkle(['#5af0e6', '#9af8ff']); back(); } };
@@ -3433,34 +3450,35 @@ function mineSpelled(ctx) {
   progress.stars += 3; game.starsEarned += 3;
   const k = Math.min(w.rides2, RIDES2), got = mineRideNugs;
   if (w.rides2 >= RIDES2 && !w.gold) {
-    w.gold = true;
+    w.gold = true; mineJustDone = true;
     progress.stars += 10; game.starsEarned += 10;
     applyMineLook();
     saveGame(); updateGameUI(); renderCraftMenu();
-    return { text: `✨ ${x.gold}`, say: x.gold, emoji: '🔮', after: () => { sfxVictory(); launchConfetti(); setTimeout(launchConfetti, 600); sparkle(['#ffd34a', '#fff3a0', '#ffffff']); setTimeout(() => { m.leaveEnd(); queueMineMsg(`🛒 ${x.back}`); }, 900); } };
+    return { text: `✨ ${x.gold}`, say: x.gold, emoji: '🔮', after: () => { sfxVictory(); launchConfetti(); setTimeout(launchConfetti, 600); sparkle(['#ffd34a', '#fff3a0', '#ffffff']); back(700); } };
   }
   saveGame(); updateGameUI(); renderCraftMenu();
-  return { text: `🔮 ${x.crystal(k, RIDES2, got)}`, say: x.crystal(k, RIDES2, got), emoji: '🔮', after: () => { sfxVictory(); sparkle(['#ff8ae0', '#c08aff']); setTimeout(() => { m.leaveEnd(); queueMineMsg(`🛒 ${x.back}`); }, 700); } };
+  return { text: `🔮 ${x.crystal(k, RIDES2, got)}`, say: x.crystal(k, RIDES2, got), emoji: '🔮', after: () => { sfxVictory(); sparkle(['#ff8ae0', '#c08aff']); back(); } };
 }
 function nuggetTouch(obj) {
-  const m = scene3D.mine, x = mx();
-  if (!m.takeNugget(obj.nugget)) return;
+  const mw = mineWorld(), x = mx();
+  if (!mw?.takeNugget(obj.nugget)) return;
   mineRideNugs++;
   progress.stars += 1; game.starsEarned += 1;
   sfxStar(); playTone(1568, 0.1, 'triangle', 0.06, 0.08);
-  mineFloat(m._nugPos(m.lines[1].nuggets[obj.nugget]), `✨ ${x.nugget}`, '#ffd34a', 0.4);
+  mineFloat(mw.nuggetPos(obj.nugget), `✨ ${x.nugget}`, '#ffd34a', 0.4);
   if (mineOnce('nug', 7000)) speak(x.nugget, 1.1);
   updateGameUI(); saveGame();
 }
 function mineHorn() {
-  const m = scene3D?.mine, w = mineState();
-  if (!m?.riding) return;
+  const mw = mineWorld(), r = mw ?? (scene3D?.mine?.riding ? scene3D.mine : null), w = mineState();
+  if (!r) return;
   w.horns++;
   sfxHorn();
-  mineFloat(m.cart.position, `📯 ${mx().horn}`, '#ffd34a', 2.4);
+  if (mw) { sfxHorn(0.45, 0.42); sfxHorn(0.2, 0.84); } // the echo of the tunnels
+  mineFloat(r.cart.position, `📯 ${mx().horn}`, '#ffd34a', 2.4);
   if (scene3D.pet?.tamed && Math.random() < 0.6) { setTimeout(sfxBark, 350); scene3D.pet.joy(); }
 }
-// Rien de muet: the barrier of line 2 says when it opens, and where to go first.
+// Rien de muet: the sign of line 2 says when it opens, and where to go first.
 function explainMineGate() {
   const w = mineState(), x = mx();
   const open = mineDone1(w) && minePartTwo();
@@ -3469,9 +3487,9 @@ function explainMineGate() {
   newsTarget = { show: 'minecart', until: performance.now() + 4 * 60 * 1000 }; updateMapPins();
 }
 function mineGateTouch() {
-  setupMine(); mineSync();
+  mineSync();
   const w = mineState();
-  if (mineDone1(w) && minePartTwo() && !scene3D.mine.riding) { mineBoard(1); return; }
+  if (mineDone1(w) && minePartTwo() && !scene3D.mine.riding && !mineWorld()) { mineBoard(1); return; }
   explainMineGate();
 }
 function onMinePartTwo(force = false) {
@@ -3483,19 +3501,18 @@ function onMinePartTwo(force = false) {
 function tickMine(dt) {
   if (!game || !scene3D?.mine || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
   if (game.story?.intro) partState('J8');
-  setupMine(); mineSync();
-  const m = scene3D.mine, w = mineState();
+  mineSync();
+  const m = scene3D.mine, w = mineState(), mw = mineWorld();
   applyMineLook();
   if (minePartTwo()) onMinePartTwo();
   const busy = mineBusy();
-  // A word at the end of the line that was left without an answer comes back.
-  if (m.ride?.stage === 'end' && !busy) { mineEndWait += dt; if (mineEndWait > 6) openMineEndWord(m.ride.line); } else mineEndWait = 0;
-  if (m.ride?.stage === 'fork' && $('#mine-choice').hidden && !busy && !mineChoice) openMineChoice(m.ride.stop);
-  else if (m.ride?.stage === 'fork' && $('#mine-choice').hidden && !busy && mineChoice) openMineChoice(mineChoice.k, true);
-  $('#horn-btn').hidden = !m.riding;
+  // A word at a barrier or at the cave that was left without an answer comes back.
+  if (mw?.ride?.stage === 'barrier' && !busy) { mineBarrierWait += dt; if (mineBarrierWait > 6) openMineBarrier(mw.stops[mw.ride.k].k); } else mineBarrierWait = 0;
+  if (mw?.ride?.stage === 'end' && !busy) { mineEndWait += dt; if (mineEndWait > 6) openMineEndWord(mw.line); } else mineEndWait = 0;
+  $('#horn-btn').hidden = !(m.riding || mw);
   mineGateCool -= dt;
   const p = scene3D.player.position;
-  const atGate = !m.riding && Math.hypot(p.x - MINE_GATE.x, p.z - MINE_GATE.z) < 1.8;
+  const atGate = !mw && !m.riding && Math.hypot(p.x - MINE_GATE.x, p.z - MINE_GATE.z) < 1.8;
   mineGateDwell = atGate && !busy ? mineGateDwell + dt : 0;
   if (mineGateDwell > 0.8 && mineGateCool <= 0 && !(mineDone1(w) && minePartTwo())) { mineGateCool = 25; mineGateDwell = 0; explainMineGate(); }
   if (mineMsgs.length && !busy && performance.now() - defiMsgAt > 3800) {
@@ -4424,6 +4441,13 @@ function handleSpellSuccess() {
   } else if (type === 'snow') {
     const r = snowSpelled(spellContext);
     spellResultEl.replaceChildren(el('p', 'spell-success', r.text), ...(r.hats ? [hatPicker()] : []), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
+    spellResultEl.hidden = false;
+    speak(r.say, 0.95);
+    if (r.emoji) flyItem(r.emoji);
+    spellContext.after = r.after;
+  } else if (type === 'minebarrier') {
+    const r = mineBarrierSpelled(spellContext);
+    spellResultEl.replaceChildren(el('p', 'spell-success', praise(firstTry)), el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
     spellResultEl.hidden = false;
     speak(r.say, 0.95);
     if (r.emoji) flyItem(r.emoji);
@@ -5448,7 +5472,6 @@ $('#use-btn')?.addEventListener('click', useEquipped);
 $('#attack-btn')?.addEventListener('click', (e) => { e.preventDefault(); attackButton(); });
 $('#snow-btn')?.addEventListener('pointerdown', (e) => { e.preventDefault(); snowThrow(); });
 $('#horn-btn')?.addEventListener('pointerdown', (e) => { e.preventDefault(); mineHorn(); });
-$('#mine-choice-listen')?.addEventListener('click', () => { if (mineChoice) speak(mineChoice.word.say ?? mineChoice.word.word, 0.85); });
 $('#jump-btn')?.addEventListener('pointerdown', (e) => { e.preventDefault(); scene3D?.jump(); });
 $('#continue-btn')?.addEventListener('click', () => { initAudio(); beforePlay(() => continueGame()); });
 

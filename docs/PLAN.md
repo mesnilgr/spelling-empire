@@ -228,20 +228,25 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
 
 ### Semaine 2 — Aventures, phrases et hiver
 
-- [x] **J8 · ven. 27 nov. · v1.26.0 — Wagonnet de la mine.** *Refaite en v1.26.1 (demande du parent) : la gare
-  est l'entrée d'un vrai **monde de la mine**, chargé à part (système de mondes) ; le wagonnet roule dans les
-  tunnels et s'arrête devant des **barrières qu'on ouvre en épelant un mot** (plus de choix entre deux panneaux).* (complète : la gare est à côté de la mine, côté campement (x −45, z −41) ; ligne 1 en boucle autour du campement, 3 aiguillages (deux panneaux, un bien écrit, un avec une faute) + mot des diamants, 3 voyages = costume Mineur (casque à lampe) ; partie 2 : ligne 2 avec pont, grand saut au ralenti **au-dessus de la rivière** (à la place du ravin), 2 aiguillages, pépites à toucher, mot de la grotte de cristal, 3 voyages = wagonnet doré ; bouton 📯)
-  - Session 1 : trajet en wagonnet depuis la mine abandonnée (rails, tunnels) ; à chaque aiguillage, choisir le
-    mot bien écrit entre deux ; la bonne voie mène aux diamants.
+- [x] **J8 · ven. 27 nov. · v1.26.0 → v1.26.1 — Wagonnet de la mine.** *Refaite en v1.26.1 (demande du parent) :
+  la gare est l'entrée d'un vrai **monde de la mine**, chargé à part (système de mondes) ; le wagonnet roule dans
+  les tunnels et s'arrête devant des **barrières qu'on ouvre en épelant un mot** (plus de choix entre deux
+  panneaux).* (complète : gare à côté de la mine, côté campement (x −45, z −41), le wagonnet roule dans l'entrée
+  de la mine puis écran « On descend dans la mine… » (écrit et lu) ; ligne 1 : 3 barrières + mot des diamants,
+  chauves-souris, descente, pont sur le lac souterrain, monte-charge du retour ; 3 voyages = costume Mineur
+  (casque à lampe) ; partie 2 : ligne 2 avec barrière, grand saut au ralenti **au-dessus d'un gouffre**, pépites
+  à toucher, 2e barrière, mot de la grotte de cristal ; 3 voyages = wagonnet doré ; bouton 📯 avec écho)
+  - Session 1 : la gare près de la mine abandonnée ; le wagonnet descend dans la mine (monde chargé à part) ;
+    devant chaque barrière, épeler le mot pour l'ouvrir ; au bout, la grotte aux diamants.
   - Session 2 : une deuxième ligne s'ouvre vers la **grotte de cristal**, avec un grand saut au-dessus d'un
-    ravin ; on attrape des pépites en les touchant pendant le trajet.
-  - Plus fun : la mauvaise voie n'est pas une punition : détour par la grotte des chauves-souris qui crient
-    « Hiii ! », puis retour à l'aiguillage ; ralenti pendant le grand saut ; le chien monte dans le wagon,
-    oreilles au vent ; klaxon « tut-tut » à toucher.
-  - Cocotte : dans un wagonnet abandonné au fond de la mine.
-  - Réduite : rail droit, 3 aiguillages ; la ligne 2 est la même avec d'autres mots et des pépites.
-  - S'appuie sur : mine abandonnée, diamants, chien.
-  - Texte lu : « Monte dans le wagonnet de la mine ! À chaque aiguillage, choisis le mot bien écrit : la bonne voie mène au trésor de diamants. Accroche-toi bien ! »
+    gouffre ; on attrape des pépites en les touchant pendant le trajet.
+  - Plus fun : les chauves-souris crient « Hiii ! » autour du wagonnet (un gag, pas une punition) ; le lac
+    souterrain qui brille ; ralenti pendant le grand saut ; le wagon se remplit de diamants ; le chien monte dans
+    le wagon, oreilles au vent ; klaxon « tut-tut » (avec l'écho des tunnels).
+  - Cocotte : dans un vieux wagonnet abandonné à côté de l'entrée de la mine.
+  - Réduite : ligne 1 seule (3 barrières) ; la ligne 2 est la même avec d'autres mots et des pépites.
+  - S'appuie sur : mine abandonnée, diamants, chien, système de mondes (`worlds.js`, `mineworld.js`).
+  - Texte lu : « Monte dans le wagonnet : il t'emmène sous la terre, dans la mine ! Il roule tout seul ; devant chaque barrière, épelle le mot pour l'ouvrir. Au bout, le trésor de diamants ! Attention aux chauves-souris… et accroche-toi bien ! »
   - Devinette : « Qu'est-ce qui a des dents mais ne mord jamais ? » — « Un peigne ! »
 
 - [ ] **J9 · sam. 28 nov. · v1.27.0 — Chronos et records.**
