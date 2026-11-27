@@ -9,6 +9,7 @@ import { SurpriseChest } from './surprise.js';
 import { SnowWorld } from './snow.js';
 import { MineCart } from './mine.js';
 import { WorldManager } from './worlds.js';
+import { MoonRocket } from './moon.js';
 import { PetManager } from './pet.js';
 import { DECOR } from './decor.js';
 import { PLACES, buildPlace, buildExtras, buildTrails, buildGroves, buildRegionFillers } from './landmarks.js';
@@ -252,6 +253,8 @@ export class GameScene {
     this.mine = new MineCart(this);
     // Loadable worlds (v1.26.1): the mine first, the fire world later.
     this.worlds = new WorldManager(this);
+    // The rocket to the Moon (v1.26.3), on its launch pad next to the mage's tower.
+    this.rocket = new MoonRocket(this);
     const hen = cocotteToday(Math.max(...NEWS.filter((n) => !n.from).map((n) => n.day)));
     if (hen && !hen.album) this.cocotte = new Cocotte(this, hen);
   }
@@ -954,6 +957,7 @@ export class GameScene {
   teleport(x, z, ry = 0, up = undefined) {
     if (this.worlds?.current) this.worlds.leave(); // (leaving puts the hero back at the station first)
     if (this.mine?.riding) this.mine.stop(); // (finish() leaves the cart before teleporting)
+    if (this.rocket?.riding) this.rocket.stop();
     if (this.horses?.riding) { this.horses.dismount(); this.onDismount?.(); }
     this.autoWalk = null;
     this.playerVY = 0;
@@ -2032,7 +2036,7 @@ export class GameScene {
     // Gravity, jumping and stepping up terraces.
     {
       const p = this.player.position;
-      this.playerVY = (this.playerVY ?? 0) - 24 * dt;
+      this.playerVY = (this.playerVY ?? 0) - (this.worlds?.current?.gravity ?? 24) * dt; // (the Moon: much less)
       if (this.power === 'glide' && this.playerVY < -2.4) this.playerVY = -2.4; // gliding (J5)
       p.y += this.playerVY * dt;
       // The clouds (J5) carry the hero only from above (groundAt with the hero's height).
@@ -2048,8 +2052,8 @@ export class GameScene {
       if (this.onGround) this.lastGroundAt = this.clock.elapsedTime;
     }
 
-    // Companions follow
-    for (const c of this.companions) {
+    // Companions follow (they stay on the island while the hero is in a world)
+    if (!this.worlds?.current) for (const c of this.companions) {
       c.target.copy(this.player.position).add(c.offset);
       const dx = c.target.x - c.mesh.position.x;
       const dz = c.target.z - c.mesh.position.z;
@@ -2085,6 +2089,8 @@ export class GameScene {
 
   // Player-only blocking: obstacles plus terrain steps too high to walk up.
   _blocked(x, z, y, stuck = false) {
+    const wd = this.worlds?.current;
+    if (wd) return wd.blocked ? wd.blocked(x, z, y) : true;
     if (Math.hypot(x, z) > WORLD_RADIUS) return true; // edge of the world
     if (this.marshMist && x > MIST_X - 1.2 && x < MIST_X + 6) return true; // the mist (Wind spell)
     // High up in the sky (clouds, gliding), trees and walls are far below.
@@ -2103,6 +2109,8 @@ export class GameScene {
     return null;
   }
   groundAt(x, z, y) {
+    const wd = this.worlds?.current;
+    if (wd?.groundAt) return wd.groundAt(x, z); // a world one walks in (the Moon) has its own ground
     const w = this._walkwayAt(x, z, y);
     const t = this.terrain.heightAt(x, z);
     return w ? Math.max(t, w.y(x, z)) : t;
@@ -2122,7 +2130,7 @@ export class GameScene {
   jump() {
     // A little forgiveness: a jump still works just after walking off an edge.
     if (!this.onGround && this.clock.elapsedTime - (this.lastGroundAt ?? -9) > 0.18) return false;
-    this.playerVY = this.horses?.riding ? RIDE.jump : this.power === 'jump' || this.power === 'glide' ? 15 : this.power === 'giant' ? 10.5 : 8.2;
+    this.playerVY = (this.horses?.riding ? RIDE.jump : this.power === 'jump' || this.power === 'glide' ? 15 : this.power === 'giant' ? 10.5 : 8.2) * (this.worlds?.current?.jumpK ?? 1);
     this.onGround = false;
     this.onJump?.();
     return true;
@@ -2170,8 +2178,10 @@ export class GameScene {
     const tz = h ? lerp(p.z, h.center.z, 0.55 * f) : p.z;
     // Portrait screens see less width: step back a little.
     const portrait = this.camera.aspect < 1 ? 1.3 : 1;
-    const dist = lerp(19, h ? Math.max(h.w, h.d) * 1.15 + 1.5 : 16, f) * portrait;
-    const elev = lerp(0.92, 0.98, f);
+    // A world one walks in may ask for a lower camera (the Moon: to see the black sky and the island).
+    const wc = this.worlds?.current;
+    const dist = (wc?.camDist ?? lerp(19, h ? Math.max(h.w, h.d) * 1.15 + 1.5 : 16, f)) * portrait;
+    const elev = wc?.camElev ?? lerp(0.92, 0.98, f);
     const k = 1 - Math.pow(0.001, dt);
     this.camTarget.x += (tx - this.camTarget.x) * k;
     this.camTarget.z += (tz - this.camTarget.z) * k;
@@ -2181,7 +2191,7 @@ export class GameScene {
     // Height above the hero, and always well above the ground under the camera and on the way to
     // the hero (near the edge of the world the hills used to swallow the camera).
     let gy = Math.max(0, this.camTarget.y - 0.6) + Math.sin(elev) * dist;
-    if (!h) for (const k2 of [1, 0.7, 0.45]) gy = Math.max(gy, this.groundAt(lerp(this.camTarget.x, gx, k2), lerp(this.camTarget.z, gz, k2)) + 3 + 6 * k2);
+    if (!h) for (const k2 of [1, 0.7, 0.45]) gy = Math.max(gy, this.groundAt(lerp(this.camTarget.x, gx, k2), lerp(this.camTarget.z, gz, k2)) + (wc ? 1.6 : 3 + 6 * k2)); // (a world's low camera only keeps clear of the ground)
     const goal = new THREE.Vector3(gx, gy, gz);
     this.camera.position.lerp(goal, k);
 
@@ -2191,7 +2201,8 @@ export class GameScene {
       this.shakeIntensity *= this.shakeDecay;
     }
 
-    this.camera.lookAt(this.camTarget);
+    if (wc?.camLookUp) this.camera.lookAt((this._lookTmp ??= new THREE.Vector3()).copy(this.camTarget).setY(this.camTarget.y + wc.camLookUp));
+    else this.camera.lookAt(this.camTarget);
   }
 
   // ===== CUTAWAY =====
@@ -2269,7 +2280,8 @@ export class GameScene {
   get rider() {
     const w = this.worlds?.current;
     if (w?.riding) return w;
-    return this.mine?.riding ? this.mine : null;
+    if (this.mine?.riding) return this.mine;
+    return this.rocket?.riding ? this.rocket : null;
   }
   // A world's own things to touch go away with it.
   removeInteractable(obj) {
@@ -2551,7 +2563,7 @@ export class GameScene {
       this._tickMagic(dt, elapsed);
       this._tickStory(dt, elapsed);
       this._tickRegions();
-      this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); this.mine?.update(dt); }
+      this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); this.mine?.update(dt); this.rocket?.update(dt); }
       // Whatever can hurt the hero is not run at all during the pause: with dt = 0 nothing moves, but a
       // zombie, a boss or a snowball already touching the hero would still hit him.
       if (!frozen) { if (this.mode === 'play') { this.snow?.update(dt); this.zombies?.update(dt, elapsed); } this.bosses?.update(dt, elapsed); }

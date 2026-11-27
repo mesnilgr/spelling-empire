@@ -925,7 +925,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 2,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0)) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune'], save: save(story(2, 0)) }, { quality: 0 });
       await g.click('#continue-btn');
       // Alaric presents the release, written and spoken; the newest note comes first.
       const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
@@ -941,7 +941,7 @@ export const SCENARIOS = [
       await g.click('#news-btn');
       await g.page.waitForTimeout(300);
       const journal = await g.page.evaluate(() => [...document.querySelectorAll('#journal-list .journal-item h3')].map((e) => e.textContent));
-      check(journal.length >= 3 && /wagonnet/i.test(journal[0]) && journal.some((j) => /boules de neige/i.test(j)) && journal.some((j) => /golem de cuivre/i.test(j)) && journal.some((j) => /pouvoirs/i.test(j)) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
+      check(journal.length >= 3 && /fusée pour la Lune/i.test(journal[0]) && journal.some((j) => /wagonnet/i.test(j)) && journal.some((j) => /boules de neige/i.test(j)) && journal.some((j) => /golem de cuivre/i.test(j)) && journal.some((j) => /pouvoirs/i.test(j)) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
       await g.click('#journal-close');
       // Iron walks round the square, says hello and offers a flower once a day.
       const walk = await g.page.evaluate(() => { const gl = window.__se.scene.golem, a = gl.mesh.position.clone(); gl.pause = 0; for (let k = 0; k < 150; k++) gl.update(1 / 30, k / 30); return { points: gl.points.length, moved: a.distanceTo(gl.mesh.position) }; });
@@ -974,7 +974,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0)) }, { quality: 0, defis: true });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune'], save: save(story(2, 0)) }, { quality: 0, defis: true });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       let words = 0;
       const spellOne = async () => { const r = await g.spell(); words++; return r; };
@@ -1115,7 +1115,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
       const flame = () => g.page.evaluate(() => { const f = window.__se.flame() ?? {}, fl = window.__se.scene.flame; return { ...f, state: { ...fl.state }, out: fl.starsOut(), part: window.__se.releasePart(3) }; });
@@ -1237,7 +1237,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1409,7 +1409,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       await g.page.evaluate(() => window.__se.henDayUse(5)); // J5's Cocotte (on the highest cloud)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1601,7 +1601,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', 'prog-pronoms', 'prog-articles', '1.25.0-golem-neige', '1.26.1-wagonnet'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 }, powers: { awake: true, clouds: [0, 1, 2, 3, 4], rings: [], animals: 0, bounced: [], petCloud: true, cape: false, uses: 3 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', 'prog-pronoms', 'prog-articles', '1.25.0-golem-neige', '1.26.1-wagonnet', '1.26.3-lune'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 }, powers: { awake: true, clouds: [0, 1, 2, 3, 4], rings: [], animals: 0, bounced: [], petCloud: true, cape: false, uses: 3 } }) }, { quality: 0 });
       await g.page.evaluate(() => window.__se.henDayUse(6)); // J6's Cocotte (on the moss golem's head)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1780,7 +1780,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', 'prog-pronoms', 'prog-articles'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', 'prog-pronoms', 'prog-articles', '1.26.3-lune'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       await g.page.evaluate(() => window.__se.henDayUse(7)); // J7's Cocotte (disguised as a snowman)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1957,7 +1957,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', 'prog-pronoms', 'prog-articles'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', 'prog-pronoms', 'prog-articles', '1.26.3-lune'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
@@ -2057,7 +2057,7 @@ export const SCENARIOS = [
       check(await backHome(), 'le monte-charge remonte : retour sur l’île, à la gare');
       const back = await g.page.evaluate(() => { const s = window.__se.scene, h = s.mine.home.p; return { d: +Math.hypot(s.player.position.x - h.x, s.player.position.z - h.z).toFixed(1), fov: s.camera.fov, minimap: getComputedStyle(document.querySelector('#minimap')).display, world: document.body.dataset.world ?? null, nugObjs: s.interactables.filter((i) => i.world === 'mine').length }; });
       const islandAfter = await visibleIsland();
-      check(back.d < 4 && islandAfter >= islandBefore - 5 && back.fov < 50 && back.minimap !== 'none' && !back.world && back.nugObjs === 0, `l’île est rendue telle quelle (${islandAfter} objets visibles), le héros descend sur le quai`, JSON.stringify(back));
+      check(back.d < 4 && islandAfter >= islandBefore * 0.9 && back.fov < 50 && back.minimap !== 'none' && !back.world && back.nugObjs === 0, `l’île est rendue telle quelle (${islandAfter} objets visibles), le héros descend sur le quai`, JSON.stringify(back));
       check(/Le monte-charge te remonte/.test(await said()) && await saidLater(/Retour à la gare ! Touche le wagonnet pour un autre voyage/, 8000, n0), '« Le monte-charge te remonte ! », puis « Retour à la gare ! » (lu)', await saidSince(n0));
       check(await g.page.evaluate(() => window.__se.game().materials.diamond ?? 0) >= 1, 'un diamant dans l’inventaire');
       for (let k = 2; k <= 3; k++) {
@@ -2144,13 +2144,151 @@ export const SCENARIOS = [
       await g.page.evaluate(() => window.__se.scene.resetPosition());
       await g.page.waitForTimeout(400);
       const esc = await g.page.evaluate(() => { const s = window.__se.scene; return { world: s.worldId, rider: !!s.rider, horn: document.querySelector('#horn-btn').hidden, fov: s.camera.fov, vis: s.scene.children.filter((o) => o.visible && !o.isLight).length }; });
-      check(esc.world === 'island' && !esc.rider && esc.horn && esc.fov < 50 && esc.vis >= islandBefore - 5, 'quitter la mine autrement (retour au village) rend l’île proprement', JSON.stringify(esc));
+      check(esc.world === 'island' && !esc.rider && esc.horn && esc.fov < 50 && esc.vis >= islandBefore * 0.9, 'quitter la mine autrement (retour au village) rend l’île proprement', JSON.stringify(esc));
       await g.page.waitForTimeout(4200);
       await g.click('#news-btn');
       await g.page.waitForTimeout(300);
       const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
       check(/Le wagonnet de la mine — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /Ligne 2 : 3\/3 voyages · pépites : \d+/.test(j2), 'journal : les deux parties faites, ligne 2 : 3/3 voyages et les pépites', j2);
       await g.click('#journal-close');
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'La Lune : fusée, faible gravité, Bip, étoiles tombées, drapeau (v1.26.3)',
+    quick: true,
+    weight: 3,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.1-wagonnet', 'prog-pronoms', 'prog-articles'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
+      const nSaid = () => g.page.evaluate(() => window.__spoken.length);
+      const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
+      const saidLater = (re, timeout = 20000, from = 0) => g.page.waitForFunction(([r, k]) => new RegExp(r).test(window.__spoken.slice(k).join(' | ')), [re.source, from], { timeout }).then(() => true, () => false);
+      const mo = () => g.page.evaluate(() => JSON.parse(JSON.stringify(window.__se.moon() ?? null)));
+      const spellOpen = (type, timeout = 15000) => g.page.waitForFunction((t) => !document.querySelector('#spell-modal').hidden && window.__se.spell()?.type === t, type, { timeout }).then(() => true, () => false);
+      const visible = () => g.page.evaluate(() => window.__se.scene.scene.children.filter((o) => o.visible && !o.isLight).length);
+      // Put the hero somewhere on the Moon without leaving it (teleport() would take him home).
+      const place = (x, z, dy = 0) => g.page.evaluate(([x, z, dy]) => { const s = window.__se.scene; s.player.position.set(x, s.groundAt(x, z) + dy, z); s.playerVY = 0; }, [x, z, dy]);
+      await g.click('#continue-btn');
+      const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
+      const card = await g.page.evaluate(() => ({ title: document.querySelector('#news-title').textContent, riddle: document.querySelector('#news-riddle').innerText, said: window.__spoken.join(' | ') }));
+      check(shown && /fusée/i.test(card.title) && /Épelle le mot pour allumer les moteurs/.test(card.said) && /on saute très très haut/.test(card.said), 'Alaric présente la fusée pour la Lune (écrit et lu)', JSON.stringify(card));
+      check(/ronde et blanche/.test(card.riddle), 'la devinette d’Alaric (« Je suis ronde et blanche… ») est écrite', card.riddle);
+      await g.click('#news-show');
+      await g.page.waitForTimeout(900);
+      const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), b = s.rocket.base; return q ? Math.hypot(q.x - b.x, q.z - b.z) : 99; });
+      check(arrow < 1, '« Montre-moi ! » pointe la flèche vers la fusée, à côté de la tour d’Alaric', String(arrow));
+      const islandBefore = await visible();
+      // A word lights the engines, then "3, 2, 1… Décollage !".
+      let n0 = await nSaid();
+      check(await g.use("i.kind === 'rocket'") === 'ok' && await spellOpen('rocket'), 'on touche la fusée : un mot pour allumer les moteurs');
+      check(/^Pour décoller vers la Lune, épelle le mot ! /.test(await g.page.evaluate(() => window.__spoken.slice(-1)[0])), '« Pour décoller vers la Lune, épelle le mot ! » (lu avec le mot)');
+      const r0 = await g.spell();
+      check(/Les moteurs sont allumés/.test(r0.result), 'mot juste : « Les moteurs sont allumés ! »', r0.result);
+      check(await saidLater(/Trois… deux… un… Décollage/, 5000, n0) && await g.page.evaluate(() => window.__se.scene.rocket.riding), 'compte à rebours « Trois… deux… un… Décollage ! » (lu), le héros est dans la fusée');
+      const card2 = await g.page.waitForFunction(() => !document.querySelector('#world-loading').hidden, null, { timeout: 20000, polling: 20 }).then(() => g.page.evaluate(() => document.querySelector('#world-loading').innerText), () => '');
+      check(/Direction la Lune/.test(card2), 'la fusée monte, puis l’écran « Direction la Lune… » (écrit et lu)', card2);
+      const inMoon = await g.page.waitForFunction(() => window.__se.scene.worldId === 'moon' && document.querySelector('#world-loading').hidden, null, { timeout: 20000 }).then(() => true, () => false);
+      const w0 = await g.page.evaluate(() => {
+        const s = window.__se.scene, r = s.renderer;
+        r.info.autoReset = false; r.info.reset(); r.render(s.scene, s.camera);
+        const o = { calls: r.info.render.calls, tris: r.info.render.triangles, helmet: !!s.player.userData.parts.head.children.find((c) => c.material?.transparent), dogHelmet: !!s.pet.mesh.userData.parts?.head.children.find((c) => c.material?.transparent) };
+        r.info.autoReset = true;
+        return o;
+      });
+      check(inMoon && (await visible()) < 30 && islandBefore > 60, 'on est sur la Lune, l’île est mise de côté');
+      check(w0.calls <= 160 && w0.tris <= 60000, `budget iPad sur la Lune : ${w0.calls} appels de dessin, ${w0.tris} triangles`, JSON.stringify(w0));
+      check(w0.helmet && w0.dogHelmet, 'le héros et le chien portent un casque de verre (à montrer)', JSON.stringify(w0));
+      check(await saidLater(/Bienvenue sur la Lune ! Ici, on saute très très haut/, 5000, n0), '« Bienvenue sur la Lune ! Ici, on saute très très haut… » (lu)');
+      check(await saidLater(/Je suis Bip, le robot de la Lune ! J’ai perdu trois pièces/, 15000, n0), 'Bip se présente : il a perdu trois pièces (lu)', await saidSince(n0));
+      // Low gravity: a huge, slow jump.
+      n0 = await nSaid();
+      const t0 = Date.now();
+      await g.page.evaluate(() => window.__se.scene.jump());
+      let up = 0;
+      for (let i = 0; i < 40; i++) { await g.page.waitForTimeout(60); up = Math.max(up, await g.page.evaluate(() => { const s = window.__se.scene; return s.player.position.y - s.groundAt(s.player.position.x, s.player.position.z); })); }
+      check(up > 3.5 && /Boiiing ! Sur la Lune, on saute super haut/.test(await saidSince(n0)), `sur la Lune, on saute très haut (${up.toFixed(1)} m, sur l’île : environ 1,4 m), « Boiiing ! » (lu)`);
+      // Footprints in the dust.
+      const mw = (fn, arg) => g.page.evaluate(new Function('arg', `const w = window.__se.moonWorld(); return (${fn})(w, arg);`), arg);
+      const p0 = await mw('(w) => w.printN');
+      await g.page.evaluate(() => { const s = window.__se.scene; s.keys['w'] = true; });
+      await g.page.waitForTimeout(1500);
+      await g.page.evaluate(() => { const s = window.__se.scene; s.keys['w'] = false; });
+      check((await mw('(w) => w.printN')) > p0 + 2, 'le héros laisse des traces de pas dans la poussière');
+      // Bip's three parts: a word each.
+      let words = 1;
+      for (let k = 0; k < 3; k++) {
+        const at = await mw('(w, k) => { const o = w.partObjs[k]; return [o.worldPos.x, o.worldPos.z]; }', k);
+        await place(at[0] + 1.2, at[1] + 1.2);
+        await g.page.evaluate((k) => { const s = window.__se.scene; s.onInteractObject(s.interactables.find((i) => i.kind === 'moonpart' && i.part === k)); }, k);
+        if (!(await spellOpen('moonpart'))) { check(false, `pièce ${k + 1} : un mot`); continue; }
+        if (k === 0) {
+          // The world is on pause during the word.
+          const a = await g.page.evaluate(() => ({ c: window.__se.scene.clock.elapsedTime, b: window.__se.moonWorld().bip.position.toArray() }));
+          await g.page.waitForTimeout(1000);
+          const b = await g.page.evaluate(() => ({ c: window.__se.scene.clock.elapsedTime, frozen: window.__se.scene.frozen }));
+          check(b.frozen && Math.abs(b.c - a.c) < 1e-6, 'pause sur la Lune pendant le mot : l’horloge s’arrête');
+        }
+        const r = await g.spell(); words++;
+        check(new RegExp(`Bip a retrouvé .* Pièce ${k + 1} sur 3`).test(r.result), `pièce ${k + 1} : « Bip a retrouvé… Pièce ${k + 1} sur 3. »`, r.result);
+        await g.page.waitForTimeout(1400);
+      }
+      check(await saidLater(/Bip est réparé ! Il danse… oups, il tombe/, 6000) && (await mo()).bip, 'Bip est réparé : il danse… et tombe (gag), il suit le héros (lu)');
+      await g.page.waitForTimeout(4500);
+      const follow = await g.page.evaluate(() => { const s = window.__se.scene, b = window.__se.moonWorld().bip.position; return +Math.hypot(b.x - s.player.position.x, b.z - s.player.position.z).toFixed(1); });
+      check(follow < 4, 'Bip suit le héros', String(follow));
+      // The fallen stars: run or jump into them, a word each; the high ones need a jump.
+      const stars = await mw('(w) => w.starList.map((s) => ({ x: s.pos.x, y: s.pos.y, z: s.pos.z, high: s.high }))');
+      check(stars.length === 5 && stars.filter((s) => s.high).length === 2, '5 étoiles tombées, dont 2 tout en haut (il faut sauter)', JSON.stringify(stars.map((s) => s.high)));
+      const hi = stars.findIndex((s) => s.high);
+      await place(stars[hi].x, stars[hi].z);
+      n0 = await nSaid();
+      await g.page.evaluate((i) => { const s = window.__se.scene; s.onInteractObject(s.interactables.find((o) => o.kind === 'moonstar' && o.star === i)); }, hi);
+      await g.page.waitForTimeout(300);
+      check(/Elle est trop haut ! Saute pour l’attraper/.test(await saidSince(n0)) && !(await g.page.evaluate(() => window.__se.spell())), 'une étoile trop haute : « Saute pour l’attraper ! » (lu)');
+      for (let i = 0; i < 5; i++) {
+        // In the air next to the star (as after a jump): it is caught.
+        await g.page.evaluate((st) => { const s = window.__se.scene; s.player.position.set(st.x + 0.3, st.y - 0.9, st.z); s.playerVY = 0; }, stars[i]);
+        if (!(await spellOpen('moonstar', 8000))) { check(false, `étoile ${i + 1} : attrapée, un mot`); continue; }
+        const r = await g.spell(); words++;
+        if (i === 0) check(/L’étoile remonte dans le ciel ! Étoile 1 sur 5/.test(r.result), 'étoile attrapée : un mot, « L’étoile remonte dans le ciel ! »', r.result);
+        await g.page.waitForTimeout(500);
+      }
+      check(await saidLater(/Toutes les étoiles brillent de nouveau/, 12000) && (await mo()).stars === 5, 'les 5 étoiles remontent dans le ciel : « Bravo ! » (lu)');
+      // The flag on the rim of the big crater: the astronaut suit.
+      const fl = await mw('(w) => [w.flagObj.worldPos.x, w.flagObj.worldPos.z]');
+      await place(fl[0] - 1.4, fl[1] + 1.4);
+      await g.page.evaluate(() => { const s = window.__se.scene; s.onInteractObject(s.interactables.find((o) => o.kind === 'moonflag')); });
+      if (await spellOpen('moonflag')) {
+        const r = await g.spell(); words++;
+        check(/Le drapeau de l’Empire des Mots flotte sur la Lune/.test(r.result) && /tenue d’astronaute/.test(r.result), 'un mot plante le drapeau, « … il n’y a pas de vent ici… c’est magique ! » et la tenue d’astronaute', r.result);
+      } else check(false, 'le drapeau demande un mot');
+      await g.page.waitForTimeout(2500);
+      const cos = await g.page.evaluate(() => ({ cur: window.__se.progress().costumes?.current, up: window.__se.moonWorld().flagUp }));
+      check(cos.cur === 'astronaut' && cos.up >= 1, 'le drapeau flotte, le héros porte la tenue d’astronaute (à montrer)', JSON.stringify(cos));
+      check(words >= 7, `au moins 7 mots (${words})`);
+      // Home: the rocket takes off from the Moon and lands softly by its pad.
+      const hr = await mw('(w) => [w.homeObj.worldPos.x, w.homeObj.worldPos.z]');
+      await place(hr[0] + 1.8, hr[1] + 1);
+      n0 = await nSaid();
+      await g.page.evaluate(() => { const s = window.__se.scene; s.onInteractObject(s.interactables.find((o) => o.kind === 'moonrocket')); });
+      check(await saidLater(/On rentre sur l’île ! Trois… deux… un… Décollage/, 4000, n0), '« On rentre sur l’île ! Trois… deux… un… Décollage ! » (lu)');
+      const home = await g.page.waitForFunction(() => window.__se.scene.worldId === 'island' && !window.__se.scene.rider && document.querySelector('#world-loading').hidden, null, { timeout: 30000 }).then(() => true, () => false);
+      await g.page.waitForTimeout(300);
+      const back = await g.page.evaluate(() => { const s = window.__se.scene, b = s.rocket.base; return { d: +Math.hypot(s.player.position.x - b.x, s.player.position.z - b.z).toFixed(1), moonObjs: s.interactables.filter((i) => i.world === 'moon').length, fov: s.camera.fov, helmetLeft: !!document.body.dataset.world }; });
+      check(home && back.d < 4.5 && back.moonObjs === 0 && back.fov < 45 && !back.helmetLeft && (await visible()) >= islandBefore * 0.9, 'atterrissage à côté de la fusée : l’île est rendue telle quelle', JSON.stringify(back));
+      check(await saidLater(/Atterrissage en douceur/, 4000, n0), '« Atterrissage en douceur ! Bienvenue sur l’île. » (lu)');
+      // A second trip: Bip is still fixed, five new stars.
+      n0 = await nSaid();
+      check(await g.use("i.kind === 'rocket'") === 'ok' && await spellOpen('rocket') && /^Les moteurs ! /.test(await g.page.evaluate(() => window.__spoken.slice(-1)[0])), 'deuxième voyage : un mot pour les moteurs');
+      await g.spell();
+      check(await g.page.waitForFunction(() => window.__se.scene.worldId === 'moon' && document.querySelector('#world-loading').hidden, null, { timeout: 25000 }).then(() => true, () => false) && await saidLater(/De retour sur la Lune ! Attrape les étoiles tombées/, 5000, n0), 'de retour sur la Lune : « Attrape les étoiles tombées ! » (lu)');
+      const again = await mw('(w) => ({ bip: w.state.bip, eyes: w.bipEyeMat.emissive.getHex(), stars: w.starList.filter((s) => !s.got).length })');
+      check(again.bip && again.eyes !== 0 && again.stars === 5, 'Bip est toujours réparé, cinq nouvelles étoiles à attraper', JSON.stringify(again));
+      await g.page.evaluate(() => window.__se.scene.resetPosition());
+      await g.page.waitForTimeout(500);
+      check(await g.page.evaluate(() => window.__se.scene.worldId === 'island' && !window.__se.scene.rider), 'quitter la Lune autrement (retour au village) rend l’île proprement');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },

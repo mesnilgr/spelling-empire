@@ -254,6 +254,12 @@ export function createBlockyCharacter(specOrName) {
       part(headPivot, 0.6, 0.2, 0.6, hm, 0, 0.58, 0);
       part(headPivot, 0.68, 0.05, 0.68, hm, 0, 0.48, 0);
       part(headPivot, 0.16, 0.16, 0.08, lambert({ color: 0xfff2a0, emissive: 0xffd040, emissiveIntensity: 1.2 }), 0, 0.57, 0.32);
+    } else if (kind === 'astro') {
+      // The astronaut's helmet (the Moon, v1.26.3): a glass cube round the head on a white collar.
+      part(headPivot, 0.66, 0.08, 0.66, lambert({ color: 0xf2f2f4 }), 0, -0.03, 0);
+      const glass = part(headPivot, 0.7, 0.7, 0.7, lambert({ color: 0xbfe6ff, transparent: true, opacity: 0.28, roughness: 0.05, depthWrite: false }), 0, 0.27, 0);
+      glass.castShadow = false;
+      part(headPivot, 0.14, 0.08, 0.06, lambert({ color: 0x4a8af0 }), 0.22, 0.6, 0.3);
     } else if (kind === 'crown') {
       const gold = lambert({ color: 0xf2c84b, metalness: 0.6, roughness: 0.3, emissive: 0x6a4a10, emissiveIntensity: 0.3 });
       part(headPivot, 0.54, 0.1, 0.54, gold, 0, 0.55, 0);
@@ -376,5 +382,6 @@ export const COSTUMES = [
   { id: 'cloudhero', price: 70, emoji: '🦸', name: { fr: 'Héros des nuages', en: 'Cloud Hero' }, spec: { ...HERO, shirt: 0x4aa8f0, trim: 0xffffff, pants: 0x2a4f9a, shoes: 0xf2f2f2, cape: 0xf2c84b } },
   { id: 'copper', price: 75, emoji: '🤖', name: { fr: 'Chevalier de cuivre', en: 'Copper Knight' }, spec: { ...HERO, shirt: 0xd27a3c, trim: 0x3ab89a, pants: 0x8a4a22, shoes: 0x5a3a20, cape: 0x3ab89a, helmet: 0xe08a4a } },
   { id: 'miner', price: 65, emoji: '⛏️', name: { fr: 'Mineur', en: 'Miner' }, spec: { ...HERO, shirt: 0xe8862a, trim: 0xf2d24a, pants: 0x3a4a6a, shoes: 0x4a3020, cape: null, hat: { type: 'miner', color: 0xf2c84b } } },
+  { id: 'astronaut', price: 85, emoji: '🧑‍🚀', name: { fr: 'Astronaute', en: 'Astronaut' }, spec: { ...HERO, shirt: 0xf2f2f4, trim: 0x4a8af0, pants: 0xe2e2e8, shoes: 0x8a909a, cape: null, hat: { type: 'astro' } } },
   { id: 'king', price: 80, emoji: '👑', name: { fr: 'Roi', en: 'Royal' }, spec: { ...HERO, shirt: 0xa8302a, trim: 0xf2c84b, pants: 0x3a2a5a, cape: 0x6a2a9a, hat: { type: 'crown' } } },
 ];

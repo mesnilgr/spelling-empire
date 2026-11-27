@@ -49,6 +49,7 @@ export class WorldManager {
     s.ambient.intensity = e.ambient; s.ambient.color.setHex(e.ambientColor ?? 0xffffff);
     s.hemi.intensity = e.hemi; s.hemi.color.setHex(e.hemiSky ?? 0xffffff); s.hemi.groundColor.setHex(e.hemiGround ?? 0x444444);
     s.sun.intensity = e.sun ?? 0;
+    if (e.sunColor) s.sun.color.setHex(e.sunColor);
     if (e.fov) { s.camera.fov = e.fov; s.camera.updateProjectionMatrix(); }
     for (const l of s.lightPool?.lights ?? []) l.intensity = 0;
     s.torchLight.intensity = 0;

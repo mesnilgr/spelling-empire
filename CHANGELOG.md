@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.26.3 — La Lune 🌙
+
+- 🚀 **À côté de la tour d’Alaric, une fusée** sur son pas de tir (la flèche de « Montre-moi ! » y mène). On la touche : « Pour décoller vers la Lune, épelle le mot ! ». Le mot juste allume les moteurs, puis le compte à rebours « Trois… deux… un… Décollage ! » (grands chiffres, bips, grondement, dit à voix haute) ; la fusée part avec le héros et le chien dedans, puis l’écran « Direction la Lune… ».
+- 🌙 **La Lune est un monde où l’on marche** : de la poussière grise pleine de cratères, un ciel noir rempli d’étoiles et **notre planète** qui se lève au-dessus de l’horizon. **Faible gravité** : on saute à 4,5 m de haut, tout doucement (« Boiiing ! »). Le héros laisse des **traces de pas**. Le héros et le chien portent un **casque de verre** (à montrer).
+- 🤖 **Bip, le petit robot de la Lune**, a perdu son antenne, sa roue et son panneau solaire au fond de trois cratères (elles brillent) : un mot chacune. Réparé, Bip danse… et tombe à la renverse (« Oups ! »), puis il suit le héros partout en sautillant.
+- ⭐ **Cinq étoiles tombées** flottent ici et là, deux tout en haut : il faut sauter pour les attraper (« Saute pour l’attraper ! »). Un mot renvoie chaque étoile dans le ciel. Elles changent de place à chaque voyage.
+- 🚩 Au bord du grand cratère, un mot plante **le drapeau de l’Empire des Mots**, qui flotte… alors qu’il n’y a pas de vent sur la Lune (« Chut, c’est magique ! ») : **la tenue d’astronaute** (nouveau costume, mis tout de suite).
+- 🏠 La fusée « Rentrer » ramène le héros : compte à rebours, « Retour sur l’île… », et la fusée redescend du ciel sur son pas de tir (« Atterrissage en douceur ! »). 10 mots au premier voyage, 6 aux suivants. Sur la Lune : environ 50 appels de dessin, 15 000 triangles.
+- 📝 Le plan accueille les autres mondes choisis par le parent : le récif sous la mer (J10), les îles dans les nuages en deltaplane (J13), le jardin géant (J17), le pôle Nord en traîneau (J20) et le monde de lave (le Monde de feu, J23 à J25).
+
 ## v1.26.2 — Un vrai deltaplane 🪂
 
 - 🪂 **Le deltaplane est 2,4 fois plus grand** (« trop petit », dit le parent) : une aile arc-en-ciel d’environ 4,5 m d’envergure, bien au-dessus du héros, un peu transparente pour qu’on le voie encore dessous.

@@ -178,4 +178,17 @@ export const NEWS = [
       a: { fr: 'Un peigne !', en: 'A comb!' },
     },
   },
+  {
+    // v1.26.3: a bonus world, the parent's pick (the Moon).
+    id: '1.26.3-lune', day: 8, date: '2026-11-27', emoji: '🚀', show: 'rocket',
+    title: { fr: 'La fusée pour la Lune', en: 'The rocket to the Moon' },
+    text: {
+      fr: 'À côté de la tour d’Alaric, une fusée attend ! Épelle le mot pour allumer les moteurs : trois, deux, un… Décollage ! Sur la Lune, on saute très très haut. Aide Bip, le petit robot, attrape les étoiles tombées et plante le drapeau de l’Empire !',
+      en: 'Next to Alaric’s tower, a rocket is waiting! Spell the word to start the engines: three, two, one… Lift-off! On the Moon, you jump really, really high. Help Bip the little robot, catch the fallen stars and plant the flag of the Empire!',
+    },
+    riddle: {
+      q: { fr: 'Je suis ronde et blanche, je brille la nuit, mais je ne suis pas une lampe. Qui suis-je ?', en: 'I am round and white, I shine at night, but I am not a lamp. What am I?' },
+      a: { fr: 'La Lune !', en: 'The Moon!' },
+    },
+  },
 ];

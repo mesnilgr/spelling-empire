@@ -25,6 +25,7 @@ import { STX, SURPRISE_EVERY, rollSurprise } from './surprise.js';
 import { SX, PILES, PATCH, SNOWMAN, HITS_PER_WORD, HITS_PER_ROUND, ROUNDS, REV_ROUNDS, PILE_BALLS, HATS, CARROT_WORD, CRYSTAL_WORD } from './snow.js';
 import { MX, RIDES1, RIDES2, GATE as MINE_GATE } from './mine.js';
 import { MineWorld } from './mineworld.js';
+import { LX, MoonWorld, PARTS, STARS } from './moon.js';
 import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themesFor, themeWords, themeDay, upcomingThemes } from './programme.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
@@ -786,7 +787,7 @@ function init3DScene() {
   scene3D.onDance = () => { [523, 659, 784, 659, 523, 784].forEach((f, i) => playTone(f, 0.12, 'triangle', 0.05, i * 0.16)); const sp = scene3D.getPlayerScreenPosition(); if (sp) showFloatingText(sp.x, sp.y - 50, '♪ ♫ ♪', '#ffe08a'); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, streak: () => streak, copper: () => game?.copper, snow: () => game?.snow, mine: () => game?.mine, mineWorld: () => mineWorld(), mineBoard: (l) => mineBoard(l), henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), worldPaused: () => worldPaused(), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, streak: () => streak, copper: () => game?.copper, snow: () => game?.snow, mine: () => game?.mine, mineWorld: () => mineWorld(), mineBoard: (l) => mineBoard(l), moon: () => game?.moon, moonWorld: () => moonWorld(), henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), worldPaused: () => worldPaused(), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -811,7 +812,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand', 'powerstone', 'anvil', 'copper', 'secretchest', 'secretbutton', 'surprisechest', 'snowgolem', 'snowpile', 'snowpatch', 'snowman', 'minecart', 'minegate', 'nugget'].includes(obj.kind)) continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand', 'powerstone', 'anvil', 'copper', 'secretchest', 'secretbutton', 'surprisechest', 'snowgolem', 'snowpile', 'snowpatch', 'snowman', 'minecart', 'minegate', 'nugget', 'rocket', 'moonrocket', 'bip', 'moonpart', 'moonstar', 'moonflag'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -861,6 +862,7 @@ function saveGame() {
     copper: game.copper ?? null,
     snow: game.snow ?? null,
     mine: game.mine ?? null,
+    moon: game.moon ?? null,
     album: game.album ?? null,
     heartsFrom: game.heartsFrom ?? [],
     savedAt: Date.now(),
@@ -897,6 +899,7 @@ function continueGame() {
     copper: s.copper ? JSON.parse(JSON.stringify(s.copper)) : null,
     snow: s.snow ? JSON.parse(JSON.stringify(s.snow)) : null,
     mine: s.mine ? JSON.parse(JSON.stringify(s.mine)) : null,
+    moon: s.moon ? JSON.parse(JSON.stringify(s.moon)) : null,
     album: s.album ? JSON.parse(JSON.stringify(s.album)) : null,
     heartsFrom: [...(s.heartsFrom ?? [])],
   });
@@ -1013,6 +1016,12 @@ function interactWith(obj) {
   if (obj.kind === 'minecart') { mineCartTouch(); return; }
   if (obj.kind === 'minegate') { mineGateTouch(); return; }
   if (obj.kind === 'nugget') { nuggetTouch(obj); return; }
+  if (obj.kind === 'rocket') { rocketTouch(); return; }
+  if (obj.kind === 'moonrocket') { goHome(); return; }
+  if (obj.kind === 'bip') { bipTalk(); return; }
+  if (obj.kind === 'moonpart') { openMoonPart(obj.part); return; }
+  if (obj.kind === 'moonstar') { starTap(obj.star); return; }
+  if (obj.kind === 'moonflag') { openMoonFlag(); return; }
   if (obj.kind === 'npc' && obj.npcId === 'mage' && storyAt('talkMage')) { playScene('mage1', () => { advanceStory('talkMage'); toast('🔮 ' + t.grimoireTitle + ' !'); }); return; }
   if (obj.kind === 'npc' && (obj.npcId === 'forester' || obj.npcId === 'fisher')) {
     const id = obj.npcId;
@@ -1268,7 +1277,7 @@ function worldPaused() {
 setInterval(() => {
   updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum();
   // The game-side timers (power, copper golem, snowball fight, surprise) wait during the pause too.
-  if (!worldPaused()) { tickPowers(0.3); tickCopper(0.3); tickSnow(0.3); tickSurprise(0.3); tickMine(0.3); }
+  if (!worldPaused()) { tickPowers(0.3); tickCopper(0.3); tickSnow(0.3); tickSurprise(0.3); tickMine(0.3); tickMoon(); }
   if (scene3D) scene3D.inputLocked = worldPaused();
   tickNews();
 }, 300);
@@ -3544,6 +3553,211 @@ function mineSpeech() {
   return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${rest}.`;
 }
 
+/* ===== THE MOON (v1.26.3) ===== */
+// Next to the mage's tower, a rocket on its launch pad. A word lights the engines, "3, 2, 1…
+// Décollage !", and the Moon is loaded as a world of its own (moon.js): low gravity (huge jumps),
+// footprints, the island in the black sky. Bip the Moon robot lost three parts in three craters (a word
+// each); fallen stars float here and there, some so high you must jump (a word sends each back to the
+// sky); a word plants the flag on the rim of the big crater (the astronaut suit). The rocket takes the
+// hero home and lands softly on its pad. Spelling only; everything said aloud.
+const lx = () => LX[lang] ?? LX.fr;
+function moonState() { return game ? (game.moon ??= { visits: 0, parts: [false, false, false], bip: false, flag: false, stars: 0, jumps: 0, launches: 0 }) : null; }
+const moonWorld = () => (scene3D?.worlds?.current?.id === 'moon' ? scene3D.worlds.current : null);
+let moonMsgs = [], moonLoading = false, moonHome = false, moonVisitStars = 0, moonSaidAt = {}, moonGame = null;
+function queueMoonMsg(text, say = text.replace(/^\S+ /, ''), sfx = null) { moonMsgs.push({ text, say, sfx }); }
+function moonOnce(key, ms) { const n = performance.now(); if (n - (moonSaidAt[key] ?? -1e9) < ms) return false; moonSaidAt[key] = n; return true; }
+function sfxMoonBoing() { playTone(196, 0.3, 'sine', 0.09, 0, 523); playTone(294, 0.22, 'triangle', 0.04, 0.06, 784); }
+function sfxCountBeep(hi) { playTone(hi ? 1320 : 880, hi ? 0.3 : 0.14, 'square', 0.05); }
+function sfxLaunch() { playNoise({ type: 'lowpass', freq: 160, q: 0.7, volume: 0.22, duration: 2.6 }); playTone(55, 2.4, 'sawtooth', 0.04, 0.8, 90); }
+function sfxRobot() { [1568, 2093, 1760, 2349].forEach((f, i) => playTone(f, 0.07, 'square', 0.03, i * 0.09)); }
+function sfxStarUp() { [1568, 2093, 2637, 3136].forEach((f, i) => playTone(f, 0.12, 'sine', 0.05, i * 0.07)); }
+function applyMoonLook() {
+  const r = scene3D?.rocket, x = lx();
+  if (r && r.obj.labelText !== x.rocket) { r.obj.labelText = x.rocket; scene3D.setSpotMaterial(r.obj, 'talk', x.rocket); }
+}
+function moonSync() {
+  if (!scene3D?.rocket || moonGame === game) return;
+  moonGame = game; moonMsgs = []; moonLoading = false; moonHome = false;
+  if (moonWorld()) scene3D.worlds.leave();
+  scene3D.rocket.stop();
+  applyMoonLook();
+}
+// Touch the rocket: a word lights the engines.
+function rocketTouch() {
+  moonSync();
+  const r = scene3D.rocket, x = lx(), w = moonState();
+  if (r.riding || moonLoading || scene3D.worlds.current || spellContext || !$('#spell-modal').hidden) return;
+  if (scene3D.horses?.riding) { scene3D.horses.dismount(); scene3D.onDismount?.(); }
+  spellContext = { type: 'rocket', word: pickWord(levelAt(0)), tries: 0, lead: w.launches ? x.launchLeadShort : x.launchLead };
+  openSpellModal(`🚀 ${x.launchTitle}`, x.launchInstr, '🚀');
+}
+// "3, 2, 1… Décollage !": big numbers, beeps, the rumble, said aloud.
+function countdown(sayText) {
+  speak(sayText, 0.85);
+  sfxLaunch();
+  ['3', '2', '1', `🚀 ${lx().launchTitle}`].forEach((n, i) => setTimeout(() => {
+    sfxCountBeep(i === 3);
+    const p = scene3D?.getPlayerScreenPosition?.();
+    if (p) showFloatingText(p.x, p.y - 140, n, '#ffd34a');
+  }, 400 + i * 900));
+}
+function startLaunch() {
+  const w = moonState(), r = scene3D.rocket;
+  if (r.riding || moonLoading || scene3D.worlds.current) return;
+  w.launches++;
+  moonLoading = true;
+  newsTarget = null; updateMapPins();
+  playSinceWord = 0;
+  countdown(lx().countSay);
+  r.launch(() => enterMoon());
+  saveGame();
+}
+function enterMoon() {
+  const x = lx(), w = moonState();
+  showWorldLoading(x.loading, '🚀');
+  afterPaint(() => {
+    if (!game || !scene3D) { moonLoading = false; $('#world-loading').hidden = true; return; }
+    const first = !w.visits;
+    w.visits++;
+    moonVisitStars = 0;
+    const mw = new MoonWorld(scene3D, { state: w, helmet: costumeState().current !== 'astronaut' });
+    scene3D.worlds.enter(mw);
+    wireMoonWorld(mw);
+    scene3D.rocket.park();
+    saveGame();
+    hideWorldLoading(1500, () => {
+      moonLoading = false;
+      const say = first ? x.arriveFirst : x.arrive;
+      toast(`🌙 ${say}`, 5000); speak(say, 0.95);
+      defiMsgAt = performance.now() + 3500;
+      if (!w.bip) { const n = w.parts.filter((p) => !p).length; queueMoonMsg(`🤖 ${n === PARTS ? x.bipHello : x.bipWait(n)}`, undefined, 'bip'); }
+    });
+  });
+}
+function wireMoonWorld(mw) {
+  const x = lx(), w = moonState();
+  for (const [o, label] of [[mw.homeObj, x.home], [mw.bipObj, x.bip], [mw.flagObj, x.flag]]) { o.labelText = label; scene3D.setSpotMaterial(o, 'talk', label); }
+  mw.onJump = () => {
+    w.jumps++;
+    sfxMoonBoing();
+    if (moonOnce('jump', 10 * 60 * 1000)) { toast(`🌙 ${x.jumpFirst}`, 3500); speak(x.jumpFirst, 1.05); }
+  };
+  mw.onStar = (i) => openMoonStar(i);
+  mw.onBipFall = () => { sfxStomp(); mineFloat(mw.bip.position, '🤖 Oups !', '#9af8ff', 1.6); };
+  mw.onEdge = () => { if (moonOnce('edge', 20000)) { toast(`🌙 ${x.hint}`, 3500); speak(x.hint, 1.0); } };
+  // However the Moon is left (the rocket, the 🏠 button, a new game), the hero comes back to the pad.
+  mw.onLeave = () => {
+    moonLoading = false;
+    if (spellContext && ['moonpart', 'moonstar', 'moonflag'].includes(spellContext.type)) { spellContext = null; $('#spell-modal').hidden = true; }
+    if (moonHome) { moonHome = false; scene3D.rocket.landBack(); } else scene3D.rocket.finish();
+  };
+}
+function goHome() {
+  const mw = moonWorld();
+  if (!mw || mw.lift || moonLoading) return;
+  moonLoading = true;
+  countdown(lx().homeSay);
+  mw.liftOff(() => exitMoon());
+}
+function exitMoon() {
+  const x = lx();
+  if (!moonWorld()) return;
+  showWorldLoading(x.loadingBack, '🌍');
+  afterPaint(() => {
+    moonHome = true;
+    scene3D.rocket.onLanded = () => { scene3D.rocket.onLanded = null; toast(`🚀 ${x.landed}`, 3500); speak(x.landed, 1.0); };
+    if (moonWorld()) scene3D.worlds.leave();
+    saveGame();
+    hideWorldLoading(1100);
+  });
+}
+function bipTalk() {
+  const mw = moonWorld(), w = moonState(), x = lx();
+  if (!mw) return;
+  sfxRobot();
+  const n = w.parts.filter((p) => !p).length;
+  const say = !w.bip ? (n === PARTS ? x.bipHello : x.bipWait(n)) : x.bipHappy[Math.floor(Math.random() * x.bipHappy.length)];
+  toast(`🤖 ${say}`, 4500); speak(say, 1.0);
+  if (w.bip) mw.bipHop += 1.5;
+}
+function moonBusy() { return mineBusy(true) || !!moonWorld()?.lift; }
+function openMoonPart(k) {
+  const x = lx(), w = moonState();
+  if (!moonWorld() || w.parts[k] || moonBusy()) return;
+  spellContext = { type: 'moonpart', part: k, word: pickWord(levelAt(0)), tries: 0 };
+  openSpellModal(`${x.partEmoji[k]} ${x.partTitle}`, x.partInstr, x.partEmoji[k]);
+}
+function starTap(i) {
+  const mw = moonWorld(), x = lx();
+  const st = mw?.starList[i];
+  if (!st || st.got || st.pending) return;
+  if (st.pos.y - (scene3D.player.position.y + 0.9) > 1.6) { if (moonOnce('starjump', 6000)) { toast(`⭐ ${x.starJump}`, 3500); speak(x.starJump, 1.0); } return; }
+  st.pending = true;
+  openMoonStar(i);
+}
+function openMoonStar(i) {
+  const x = lx(), mw = moonWorld();
+  const st = mw?.starList[i];
+  if (!st || st.got) return;
+  if (moonBusy()) { setTimeout(() => openMoonStar(i), 800); return; }
+  spellContext = { type: 'moonstar', star: i, word: pickWord(levelAt(0)), tries: 0 };
+  openSpellModal(`⭐ ${x.starTitle}`, x.starInstr, '⭐');
+}
+function openMoonFlag() {
+  const x = lx(), w = moonState();
+  if (!moonWorld() || moonBusy()) return;
+  if (w.flag) { toast(`🚩 ${x.flagAgain}`, 3500); speak(x.flagAgain, 1.0); return; }
+  spellContext = { type: 'moonflag', word: pickWord(levelAt(0)), tries: 0 };
+  openSpellModal(`🚩 ${x.flagTitle}`, x.flagInstr, '🚩');
+}
+// After a word: the engines, a part for Bip, a star back to the sky, the flag.
+function moonSpelled(ctx) {
+  const x = lx(), w = moonState(), mw = moonWorld();
+  if (ctx.type === 'rocket') return { text: `🚀 ${x.engines}`, say: x.engines, emoji: '🚀', after: () => startLaunch() };
+  if (ctx.type === 'moonpart') {
+    const k = ctx.part;
+    w.parts[k] = true;
+    progress.stars += 2; game.starsEarned += 2;
+    const n = w.parts.filter(Boolean).length, done = n >= PARTS && !w.bip;
+    if (done) w.bip = true;
+    saveGame(); updateGameUI();
+    const say = x.partGot(x.partNames[k], n, PARTS);
+    return { text: `${x.partEmoji[k]} ${say}`, say, emoji: x.partEmoji[k], after: () => {
+      sfxStar(); mw?.givePart(k);
+      if (done) setTimeout(() => { mw?.fixBip(); sfxRobot(); setTimeout(sfxRobot, 400); launchConfetti(); toast(`🤖 ${x.bipFixed}`, 5000); speak(x.bipFixed, 1.0); }, 1300);
+    } };
+  }
+  if (ctx.type === 'moonstar') {
+    w.stars++; moonVisitStars++;
+    progress.stars += 2; game.starsEarned += 2;
+    saveGame(); updateGameUI();
+    const k = moonVisitStars, say = x.starGot(Math.min(k, STARS), STARS);
+    return { text: `⭐ ${say}`, say, emoji: '⭐', after: () => {
+      sfxStarUp(); mw?.sendStar(ctx.star);
+      if (k === STARS) queueMoonMsg(`✨ ${x.starsAll}`, undefined, 'victory');
+    } };
+  }
+  // The flag.
+  w.flag = true;
+  progress.stars += 10; game.starsEarned += 10;
+  unlockCostume('astronaut');
+  costumeState().current = 'astronaut'; applyCostume();
+  saveGame(); saveProgress(); updateGameUI(); renderCraftMenu();
+  return { text: `🚩 ${x.flagDone}`, say: x.flagDone, emoji: '🧑‍🚀', after: () => { mw?.plantFlag(); sfxVictory(); launchConfetti(); setTimeout(launchConfetti, 500); } };
+}
+function tickMoon() {
+  if (!game || !scene3D?.rocket || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
+  moonSync();
+  applyMoonLook();
+  if (moonMsgs.length && !mineBusy() && performance.now() - defiMsgAt > 3800) {
+    defiMsgAt = performance.now();
+    const m = moonMsgs.shift();
+    toast(m.text, 5000);
+    speak(m.say, 0.95);
+    if (m.sfx === 'victory') { sfxVictory(); launchConfetti(); } else if (m.sfx === 'bip') sfxRobot();
+  }
+}
+
 /* ===== HORSES ===== */
 const horseArmorKind = () => (game?.crafted?.includes('horse_armor_diamond') ? 'diamond' : game?.crafted?.includes('horse_armor_iron') ? 'iron' : null);
 function applyHorses() {
@@ -4445,6 +4659,13 @@ function handleSpellSuccess() {
     speak(r.say, 0.95);
     if (r.emoji) flyItem(r.emoji);
     spellContext.after = r.after;
+  } else if (['rocket', 'moonpart', 'moonstar', 'moonflag'].includes(type)) {
+    const r = moonSpelled(spellContext);
+    spellResultEl.replaceChildren(el('p', 'spell-success', praise(firstTry)), el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
+    spellResultEl.hidden = false;
+    speak(r.say, 0.95);
+    if (r.emoji) flyItem(r.emoji);
+    spellContext.after = r.after;
   } else if (type === 'minebarrier') {
     const r = mineBarrierSpelled(spellContext);
     spellResultEl.replaceChildren(el('p', 'spell-success', praise(firstTry)), el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
@@ -4956,7 +5177,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : obj.kind === 'powerstone' ? '⚡' : obj.kind === 'anvil' ? '🔨' : obj.kind === 'copper' ? '🤖' : obj.kind === 'secretchest' || obj.kind === 'surprisechest' ? '🎁' : obj.kind === 'secretbutton' ? '🔴' : obj.kind === 'snowgolem' || obj.kind === 'snowman' || obj.kind === 'snowpatch' ? '⛄' : obj.kind === 'snowpile' ? '❄️' : obj.kind === 'minecart' ? '🛒' : obj.kind === 'minegate' ? '🔮' : obj.kind === 'nugget' ? '✨' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : obj.kind === 'powerstone' ? '⚡' : obj.kind === 'anvil' ? '🔨' : obj.kind === 'copper' ? '🤖' : obj.kind === 'secretchest' || obj.kind === 'surprisechest' ? '🎁' : obj.kind === 'secretbutton' ? '🔴' : obj.kind === 'snowgolem' || obj.kind === 'snowman' || obj.kind === 'snowpatch' ? '⛄' : obj.kind === 'snowpile' ? '❄️' : obj.kind === 'minecart' ? '🛒' : obj.kind === 'minegate' ? '🔮' : obj.kind === 'nugget' ? '✨' : obj.kind === 'rocket' || obj.kind === 'moonrocket' ? '🚀' : obj.kind === 'bip' ? '🤖' : obj.kind === 'moonpart' ? '🔧' : obj.kind === 'moonstar' ? '⭐' : obj.kind === 'moonflag' ? '🚩' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');

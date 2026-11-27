@@ -56,8 +56,16 @@ Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
 - **Les mondes** (v1.26.1, `worlds.js`) : un lieu peut ouvrir un monde à part, chargé derrière un écran
   « Chargement… » (lu à voix haute) : l'île est cachée et figée, le monde a sa lumière, son brouillard et ses
   bruitages (jamais de musique), et il est libéré en sortant (mémoire de l'iPad).
-  Premier monde : la mine (wagonnet). Prochains : le Monde de feu (J23). Un monde garde le budget iPad
-  (≤ 860 appels de dessin) et la pause pendant un mot.
+  Un monde garde le budget iPad (≤ 860 appels de dessin, viser ≤ 160), la pause pendant un mot, et
+  l'orthographe seulement. Un monde où l'on marche donne son sol, ses murs et sa gravité (`groundAt`, `blocked`,
+  `gravity`) et peut demander une caméra plus basse. Les mondes, choisis par le parent le 27 nov. :
+  1. **La mine** (J8, v1.26.1) : le wagonnet, les barrières à épeler.
+  2. **La Lune** (bonus v1.26.3, fait) : fusée, faible gravité, Bip le robot, étoiles tombées, drapeau.
+  3. **Le récif sous la mer** (J10, partie 2) : la cloche de plongée, les huîtres à perles, le coffre englouti.
+  4. **Les îles dans les nuages** (J13, partie 2) : Zéphyr y emmène l'enfant, ponts arc-en-ciel, deltaplane.
+  5. **Le jardin géant** (J17, partie 2) : une potion rétrécit le héros dans son propre potager.
+  6. **Le pôle Nord en traîneau** (J20, partie 2) : porter la lettre au Père Noël, des cadeaux dans les cheminées.
+  7. **Le monde de lave** (J23–J25, le Monde de feu) : radeau de basalte sur la rivière de lave, forteresse, dragon.
 
 ## Retours du parent (à intégrer dans les releases indiquées)
 
@@ -249,6 +257,15 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Monte dans le wagonnet : il t'emmène sous la terre, dans la mine ! Il roule tout seul ; devant chaque barrière, épelle le mot pour l'ouvrir. Au bout, le trésor de diamants ! Attention aux chauves-souris… et accroche-toi bien ! »
   - Devinette : « Qu'est-ce qui a des dents mais ne mord jamais ? » — « Un peigne ! »
 
+- [x] **Bonus · ven. 27 nov. · v1.26.3 — La Lune 🌙.** (demande du parent, premier monde où l'on marche : la fusée
+  sur son pas de tir à côté de la tour d'Alaric (x 19,5, z −0,5) ; un mot allume les moteurs, « 3, 2, 1…
+  Décollage ! », écran « Direction la Lune… » ; sur la Lune : faible gravité (sauts d'environ 4,5 m), traces de
+  pas, ciel noir étoilé, notre planète au-dessus de l'horizon, casques de verre pour le héros et le chien ; Bip le
+  robot a perdu 3 pièces au fond de 3 cratères (un mot chacune), il danse, tombe (gag) puis suit le héros ;
+  5 étoiles tombées par voyage dont 2 tout en haut (il faut sauter), un mot chacune ; le drapeau de l'Empire au
+  bord du grand cratère (un mot, tenue d'astronaute) ; retour en fusée, atterrissage en douceur. 10 mots au
+  premier voyage, 6 aux suivants.)
+
 - [ ] **J9 · sam. 28 nov. · v1.27.0 — Chronos et records.**
   - Session 1 : parcours de lave chronométré (le wagonnet de la mine roule tout seul : pas de chrono dessus) ;
     départ « 3, 2, 1… » puis un mot de départ (personne ne bouge pendant le mot) ; médailles bronze / argent / or
@@ -270,14 +287,19 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Session 1 : dans l'épave, la carte du pirate ; indices 1 à 3 **dits à voix haute par le perroquet**, avec
     l'image du lieu (orthographe seulement : rien à lire pour avancer), qui mènent de lieu en lieu ; à chaque lieu,
     épeler le mot de l'indice pour trouver le morceau de carte suivant.
-  - Session 2 : indices 4 à 6 jusqu'à la grande croix ; on creuse en épelant CREUSE ; dans le grand coffre, de l'or
-    et un **bandeau de pirate pour le chien**. L'ordre des lieux change chaque jour : la chasse se rejoue.
+  - Session 2 : indices 4 à 6 ; le dernier dit que la croix est… **sous la mer**. Depuis le ponton, une **cloche de
+    plongée** descend dans le monde **du récif** (chargé à part, `worlds.js`) : poissons, coraux, une tortue
+    géante qui nage à côté ; chaque **huître géante** s'ouvre sur une perle quand on épelle son mot (3 huîtres) ;
+    au fond, le **coffre englouti** (un mot) : de l'or et un **bandeau de pirate pour le chien**. La cloche
+    remonte. L'ordre des lieux et des huîtres change chaque jour : la chasse se rejoue.
   - Plus fun : un **perroquet pirate** se pose sur ton épaule et répète en criant le dernier mot épelé
-    (« COFFRE ! COFFRE ! ») ; le chien creuse avec toi.
+    (« COFFRE ! COFFRE ! ») ; sous la mer, **une baleine passe au-dessus de la cloche** (le moment waouh) et le
+    perroquet porte un tuba ; le chien fait des bulles.
   - Cocotte : sur l'épave, avec un chapeau de pirate.
-  - Réduite : 3 indices par session, sans perroquet.
-  - S'appuie sur : épave, lieux, chien.
-  - Texte lu : « Le pirate a laissé une carte au trésor ! Écoute bien chaque indice du perroquet : il te dira où aller ensuite. Au bout, un coffre plein d'or… et un perroquet bavard ! »
+  - Réduite : 3 indices en session 1 ; en session 2, la cloche descend tout droit vers 3 huîtres et le coffre
+    (sans tortue ni baleine), perroquet en option.
+  - S'appuie sur : épave, ponton, lieux, chien, système de mondes (comme la mine et la Lune).
+  - Texte lu : « Le pirate a laissé une carte au trésor ! Écoute bien chaque indice du perroquet : il te dira où aller ensuite. Au bout… il faudra plonger sous la mer pour trouver le coffre ! »
   - Devinette : « Pourquoi les pirates ont-ils du mal à finir l'alphabet ? » — « Parce qu'ils restent bloqués sur le R : Arrr ! »
 
 - [ ] **J11 · lun. 30 nov. · v1.29.0 — Mini-phrases défi.**
@@ -319,18 +341,21 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
     petites ailes rondes, très gentil ; pas une copie d'un dragon connu). Défi : 3 mini-phrases d'affilée
     (personne ne bouge pendant les phrases). Récompense : **45 secondes de vol** sur le dos de Zéphyr, l'enfant
     dirige avec le joystick, et attrape des **étoiles filantes** en vol.
-  - Session 2 : à la fin du vol, Zéphyr fait un looping et **l'enfant saute** : chute avec la caméra qui recule,
-    une petite cape s'ouvre, atterrissage en douceur avec un « pouf » de poussière. Un deuxième parcours de vol
-    (au-dessus de la forêt et de la rivière) se débloque. Le vol est une **méga récompense, une fois par
-    session** (le défi mini-phrase au hasard continue en plus).
+  - Session 2 : Zéphyr monte plus haut, jusqu'aux **îles dans les nuages** (un monde chargé à part, `worlds.js`) :
+    des îles flottantes, de l'herbe très verte, des moutons-nuages. On y saute du dos de Zéphyr et on vole d'île
+    en île **en deltaplane** à travers des anneaux ; sur chaque île, un mot fait apparaître un **pont
+    arc-en-ciel** vers la suivante (3 ponts), et la dernière île garde un coffre de nuage. Retour : Zéphyr
+    redescend, looping, l'enfant saute, le deltaplane s'ouvre, atterrissage en douceur avec un « pouf ». Le vol
+    reste une **méga récompense, une fois par session** (le défi mini-phrase au hasard continue en plus).
   - iPad : vol à hauteur moyenne, brume au loin et distance d'affichage réduite pendant le vol ; le test
     « Fluidité iPad » mesure aussi une image en plein vol.
   - Plus fun : le rugissement de Zéphyr est un tout petit « couic » ; ses ailes soufflent les feuilles des arbres ;
     le chien court vers le point d'atterrissage en aboyant.
   - Cocotte : dans le nid, assise sur un « œuf »… qui est une pierre ronde.
-  - Réduite : vol sur un parcours fixe (sans joystick), saut avec atterrissage automatique.
-  - S'appuie sur : J11 (mini-phrases), montagne, J5 (planer).
-  - Texte lu : « Au sommet de la montagne vit Zéphyr, le dragon des nuages ! Écris trois mini-phrases et il t'emmènera voler au-dessus de l'île… Accroche-toi : à la fin, il faut sauter ! »
+  - Réduite : vol sur un parcours fixe (sans joystick), saut avec atterrissage automatique ; les îles dans les
+    nuages en session 2 avec 2 ponts arc-en-ciel et sans anneaux.
+  - S'appuie sur : J11 (mini-phrases), montagne, J5 (planer), le deltaplane (v1.26.2), système de mondes.
+  - Texte lu : « Au sommet de la montagne vit Zéphyr, le dragon des nuages ! Écris trois mini-phrases et il t'emmènera voler au-dessus de l'île… et même jusqu'aux îles dans les nuages ! Accroche-toi : à la fin, il faut sauter ! »
   - Devinette : « Je vole sans ailes et je pleure sans yeux. Qui suis-je ? » — « Un nuage ! »
 
 - [ ] **J14 · jeu. 3 déc. · v1.32.0 — Laine et couleurs.**
@@ -384,14 +409,19 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
 - [ ] **J17 · dim. 6 déc. · v1.35.0 — Le potager.**
   - Session 1 : des carrés de potager devant la chaumière ; graines de carotte, pomme de terre et citrouille ;
     planter, puis arroser en épelant EAU ; les légumes poussent pendant le jeu (environ 10 min).
-  - Session 2 : la **récolte** ; une graine sur dix donne un **légume géant** ; replanter ; donner une carotte au
-    cheval ; la nuit, les citrouilles deviennent des lanternes rigolotes.
+  - Session 2 : la **récolte** ; une graine sur dix donne un **légume géant** ; donner une carotte au cheval. Puis
+    une **potion de rapetissement** (un mot) : le héros devient minuscule et entre dans **le jardin géant** (un
+    monde chargé à part, `worlds.js`) : les brins d'herbe sont des arbres, les gouttes de rosée des bulles où l'on
+    se voit, une fourmi porte une miette ; on monte sur **un escargot** (monture lente et rigolote) ; 3 graines
+    perdues à rendre aux fourmis (un mot chacune) ; la potion inverse pour grandir (un mot).
   - Plus fun : un **lapin gourmand** vient grignoter : on le chasse en épelant OUSTE ; arroser fait un petit
-    arc-en-ciel ; on peut sauter sur la citrouille géante.
+    arc-en-ciel ; dans le jardin géant, le chien est énorme à côté du héros minuscule et lui lèche la tête
+    (le moment waouh) ; la citrouille est une montagne.
   - Cocotte : entre les citrouilles.
-  - Réduite : carottes seulement (géantes possibles), lapin en session 2.
-  - S'appuie sur : chaumière, chevaux, J12.
-  - Texte lu : « Ton potager t'attend devant la maison ! Plante des graines, arrose-les, et reviens les récolter quand elles ont poussé. Attention au lapin gourmand ! »
+  - Réduite : carottes seulement (géantes possibles) ; en session 2, le jardin géant avec 3 graines et sans
+    escargot ; lapin en option.
+  - S'appuie sur : chaumière, chevaux, J12, système de mondes (marche comme sur la Lune).
+  - Texte lu : « Ton potager t'attend devant la maison ! Plante des graines, arrose-les, et reviens les récolter. Et avec la potion de rapetissement, tu pourras te promener dans ton jardin… tout petit ! »
   - Devinette : « Pourquoi les carottes sont-elles bonnes pour les yeux ? » — « As-tu déjà vu un lapin avec des lunettes ? »
 
 - [ ] **J18 · lun. 7 déc. · v1.36.0 — La cuisine.**
@@ -425,14 +455,17 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
 - [ ] **J20 · mer. 9 déc. · v1.38.0 — Lettres et facteur.**
   - Session 1 : un sac de facteur ; écrire une courte lettre (phrase dictée, niveau adapté à l'âge) et la porter à
     Fer, au boulanger ou au golem de neige.
-  - Session 2 : un **pigeon voyageur** apporte les réponses (chacun répond avec sa personnalité) ; un colis à
-    livrer à cheval en moins de 2 minutes ; on écrit une **lettre au Père Noël** (réponse à la fête, J30).
+  - Session 2 : un **pigeon voyageur** apporte les réponses (chacun répond avec sa personnalité) ; on écrit une
+    **lettre au Père Noël** et on la lui porte **en traîneau au pôle Nord** (un monde chargé à part, `worlds.js`,
+    comme le wagonnet : le traîneau tiré par des rennes avance tout seul au-dessus des villages enneigés) ; à
+    chaque cheminée, épeler le cadeau à livrer (vélo, ballon, poupée… avec l'image : 4 cheminées) ; le Père Noël
+    garde la lettre (sa réponse arrive à la fête, J30).
   - Plus fun : Fer écrit comme un robot (« BIP. MERCI. FLEUR. BIP. ») ; le golem de neige envoie une lettre gelée
-    qu'il faut réchauffer près de Flammèche.
+    qu'il faut réchauffer près de Flammèche ; un renne éternue des flocons ; le chien porte un bonnet de lutin.
   - Cocotte : dans la boîte aux lettres.
-  - Réduite : une lettre par session, réponse au retour.
-  - S'appuie sur : J1, J3, J7, chevaux.
-  - Texte lu : « Tu deviens le facteur du village ! Écris une petite lettre, porte-la à son destinataire… et attends que le pigeon t'apporte sa réponse ! »
+  - Réduite : une lettre par session, réponse au retour ; le traîneau avec 3 cheminées sur un trajet court.
+  - S'appuie sur : J1, J3, J7, J8 (trajet du wagonnet), système de mondes.
+  - Texte lu : « Tu deviens le facteur du village ! Écris une petite lettre, porte-la à son destinataire… et la lettre au Père Noël, tu la porteras en traîneau, jusqu'au pôle Nord ! »
   - Devinette : « Qu'est-ce qui commence par E, finit par E, et ne contient qu'une seule lettre ? » — « Une enveloppe ! »
 
 - [ ] **J21 · jeu. 10 déc. · v1.39.0 — Le sapin du village.**
@@ -463,17 +496,19 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Texte lu : « Aujourd'hui, c'est la journée des farces ! Regarde bien les moutons et Fer… Et lance-toi dans le grand rallye de l'Empire pour gagner ton diplôme ! »
   - Devinette : « Qu'est-ce qui devient de plus en plus mouillé quand il sèche ? » — « Une serviette ! »
 
-- [ ] **J23 · sam. 12 déc. · v1.41.0 — Le Monde de feu.**
-  - Session 1 : le portail mène à un **monde séparé, chargé avec le système de mondes** (`worlds.js`, comme la
-    mine en v1.26.1) : sol rouge, rivières de lave,
-    pierre lumineuse, champignons géants ; ramasser 5 pierres lumineuses (un mot chacune).
+- [ ] **J23 · sam. 12 déc. · v1.41.0 — Le Monde de feu (le monde de lave).**
+  - Session 1 : le portail mène au **monde de lave**, un **monde séparé, chargé avec le système de mondes**
+    (`worlds.js`, comme la mine et la Lune ; le 6e monde demandé par le parent) : sol rouge, rivières et
+    cascades de lave, volcans qui crachent des étincelles, pierre lumineuse, champignons géants ; un **radeau de
+    basalte** descend la grande rivière de lave tout seul (comme le wagonnet) et s'arrête devant des **geysers de
+    lave** qu'on calme en épelant un mot ; puis ramasser 5 pierres lumineuses (un mot chacune).
   - Session 2 : la **forteresse** et son coffre ; traverser des rivières de lave en les transformant en obsidienne ;
     portail de retour ; la pierre lumineuse devient une lampe dans la chaumière.
   - Plus fun : le passage du portail fait un tourbillon violet (« Wouuuch ! ») ; de petits **cubes de magma**
     rebondissent partout comme des balles (« Boing ! ») ; le chien porte des petites bottes anti-feu.
   - Cocotte : dans le Monde de feu, avec des lunettes de soleil.
-  - Réduite : une île rouge + coffre en session 1, forteresse simple en session 2.
-  - S'appuie sur : portail, seau de lave, obsidienne.
+  - Réduite : une île rouge + le radeau (3 geysers) + coffre en session 1, forteresse simple en session 2.
+  - S'appuie sur : portail, seau de lave, obsidienne, système de mondes, J8 (trajet du wagonnet).
   - Texte lu : « Le portail s'ouvre sur un monde de flammes : le Monde de feu ! Rivières de lave et pierres qui brillent… Explore-le, mais garde ton seau près de toi ! »
   - Devinette : « Qu'est-ce qui est rouge, très chaud, et fait glouglou ? » — « Une rivière de lave qui a soif ! »
 
