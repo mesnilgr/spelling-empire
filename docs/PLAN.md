@@ -6,8 +6,11 @@ Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
 ## Règles pour chaque release
 
 1. Chaque release s'appuie sur les précédentes (réutiliser chien, chevaux, boss, lieux, fabrication…).
-2. Les mots restent au centre : chaque nouveauté contient un moment d'orthographe ou de lecture. Ne jamais
+2. Les mots restent au centre : chaque nouveauté contient un moment d'orthographe. Ne jamais
    contourner « un mot au moins toutes les 2 minutes » ni « personne ne bouge pendant un mot ».
+   **Orthographe seulement** (demande du parent, 27 nov.) : pas de mécanique de lecture comme « choisir le mot
+   bien écrit entre deux panneaux » ou « lire un indice » ; l'enfant **écrit** le mot. Les consignes, les indices
+   et les histoires sont dits à voix haute (et écrits pour les parents), jamais à déchiffrer pour avancer.
 3. **Présentation à l'écrit et à l'oral** : ajouter à la fin de `news.js` une entrée par nouveauté
    (`id` = version + suffixe, `day`, `date`, `emoji`, `show` = ce que vise « Montre-moi ! », `title` et `text`
    en fr et en). Le texte = le « texte lu » ci-dessous (2–3 phrases simples pour 5–8 ans).
@@ -50,6 +53,11 @@ Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
 - **La devinette d'Alaric** : chaque carte « Quoi de neuf » finit par une devinette (champ `riddle` fr/en dans
   `news.js`) ; bouton « La réponse ? » qui l'affiche et la lit. Ajouté en J2.
 - **Le journal 📜** garde les cartes, les deux parties du jour et l'indice de Cocotte.
+- **Les mondes** (v1.26.1, `worlds.js`) : un lieu peut ouvrir un monde à part, chargé derrière un écran
+  « Chargement… » (lu à voix haute) : l'île est cachée et figée, le monde a sa lumière, son brouillard et sa
+  musique d'ambiance… sans musique (bruitages seulement), et il est libéré en sortant (mémoire de l'iPad).
+  Premier monde : la mine (wagonnet). Prochains : le Monde de feu (J23). Un monde garde le budget iPad
+  (≤ 860 appels de dessin) et la pause pendant un mot.
 
 ## Retours du parent (à intégrer dans les releases indiquées)
 
@@ -220,7 +228,9 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
 
 ### Semaine 2 — Aventures, phrases et hiver
 
-- [x] **J8 · ven. 27 nov. · v1.26.0 — Wagonnet de la mine.** (complète : la gare est à côté de la mine, côté campement (x −45, z −41) ; ligne 1 en boucle autour du campement, 3 aiguillages (deux panneaux, un bien écrit, un avec une faute) + mot des diamants, 3 voyages = costume Mineur (casque à lampe) ; partie 2 : ligne 2 avec pont, grand saut au ralenti **au-dessus de la rivière** (à la place du ravin), 2 aiguillages, pépites à toucher, mot de la grotte de cristal, 3 voyages = wagonnet doré ; bouton 📯)
+- [x] **J8 · ven. 27 nov. · v1.26.0 — Wagonnet de la mine.** *Refaite en v1.26.1 (demande du parent) : la gare
+  est l'entrée d'un vrai **monde de la mine**, chargé à part (système de mondes) ; le wagonnet roule dans les
+  tunnels et s'arrête devant des **barrières qu'on ouvre en épelant un mot** (plus de choix entre deux panneaux).* (complète : la gare est à côté de la mine, côté campement (x −45, z −41) ; ligne 1 en boucle autour du campement, 3 aiguillages (deux panneaux, un bien écrit, un avec une faute) + mot des diamants, 3 voyages = costume Mineur (casque à lampe) ; partie 2 : ligne 2 avec pont, grand saut au ralenti **au-dessus de la rivière** (à la place du ravin), 2 aiguillages, pépites à toucher, mot de la grotte de cristal, 3 voyages = wagonnet doré ; bouton 📯)
   - Session 1 : trajet en wagonnet depuis la mine abandonnée (rails, tunnels) ; à chaque aiguillage, choisir le
     mot bien écrit entre deux ; la bonne voie mène aux diamants.
   - Session 2 : une deuxième ligne s'ouvre vers la **grotte de cristal**, avec un grand saut au-dessus d'un
@@ -235,9 +245,9 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Devinette : « Qu'est-ce qui a des dents mais ne mord jamais ? » — « Un peigne ! »
 
 - [ ] **J9 · sam. 28 nov. · v1.27.0 — Chronos et records.**
-  - Session 1 : parcours de lave et wagonnet chronométrés ; départ « 3, 2, 1… » puis un mot de départ (personne
-    ne bouge pendant le mot) ; médailles bronze / argent / or selon le temps ; un **fantôme** transparent rejoue
-    ton meilleur parcours.
+  - Session 1 : parcours de lave chronométré (le wagonnet de la mine roule tout seul : pas de chrono dessus) ;
+    départ « 3, 2, 1… » puis un mot de départ (personne ne bouge pendant le mot) ; médailles bronze / argent / or
+    selon le temps ; un **fantôme** transparent rejoue ton meilleur parcours.
   - Session 2 : **course à cheval** à travers des anneaux ; panneau des records (3 meilleurs temps par parcours) ;
     défi « bats le fantôme d'Alaric » (temps fixé). **Retour du parent (24 nov.) : le pouvoir voler** — nouveau
     pouvoir de la pierre (J5) : on monte et on descend librement (bouton sauter = monter) pendant 20 s ; une
@@ -246,14 +256,15 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Plus fun : Alaric commente comme à la télé (« Et c'est le saut ! Incroyable ! ») ; Fer tient le drapeau
     d'arrivée et applaudit.
   - Cocotte : perchée sur le panneau des records.
-  - Réduite : lave + wagonnet en session 1, cheval **ou vol** en session 2, sans fantôme (garder le vol en priorité).
+  - Réduite : lave en session 1, cheval **ou vol** en session 2, sans fantôme (garder le vol en priorité).
   - S'appuie sur : J8, parcours de lave, chevaux.
-  - Texte lu : « Attention, prêts, partez ! Le parcours de lave, le wagonnet et la course à cheval ont un chrono. Bats ton record… et ton fantôme ! »
+  - Texte lu : « Attention, prêts, partez ! Le parcours de lave, la course à cheval et la course en vol ont un chrono. Bats ton record… et ton fantôme ! »
   - Devinette : « Qu'est-ce qui a des aiguilles mais ne coud jamais ? » — « Une montre ! »
 
 - [ ] **J10 · dim. 29 nov. · v1.28.0 — Chasse au trésor du pirate.**
-  - Session 1 : dans l'épave, la carte du pirate ; indices 1 à 3 (devinettes courtes à lire, niveau adapté à l'âge)
-    qui mènent de lieu en lieu ; à chaque lieu, épeler le mot de l'indice pour trouver le morceau de carte suivant.
+  - Session 1 : dans l'épave, la carte du pirate ; indices 1 à 3 **dits à voix haute par le perroquet**, avec
+    l'image du lieu (orthographe seulement : rien à lire pour avancer), qui mènent de lieu en lieu ; à chaque lieu,
+    épeler le mot de l'indice pour trouver le morceau de carte suivant.
   - Session 2 : indices 4 à 6 jusqu'à la grande croix ; on creuse en épelant CREUSE ; dans le grand coffre, de l'or
     et un **bandeau de pirate pour le chien**. L'ordre des lieux change chaque jour : la chasse se rejoue.
   - Plus fun : un **perroquet pirate** se pose sur ton épaule et répète en criant le dernier mot épelé
@@ -261,7 +272,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Cocotte : sur l'épave, avec un chapeau de pirate.
   - Réduite : 3 indices par session, sans perroquet.
   - S'appuie sur : épave, lieux, chien.
-  - Texte lu : « Le pirate a laissé une carte au trésor ! Lis bien chaque indice : il te dira où aller ensuite. Au bout, un coffre plein d'or… et un perroquet bavard ! »
+  - Texte lu : « Le pirate a laissé une carte au trésor ! Écoute bien chaque indice du perroquet : il te dira où aller ensuite. Au bout, un coffre plein d'or… et un perroquet bavard ! »
   - Devinette : « Pourquoi les pirates ont-ils du mal à finir l'alphabet ? » — « Parce qu'ils restent bloqués sur le R : Arrr ! »
 
 - [ ] **J11 · lun. 30 nov. · v1.29.0 — Mini-phrases défi.**
@@ -448,7 +459,8 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   - Devinette : « Qu'est-ce qui devient de plus en plus mouillé quand il sèche ? » — « Une serviette ! »
 
 - [ ] **J23 · sam. 12 déc. · v1.41.0 — Le Monde de feu.**
-  - Session 1 : le portail mène à une petite zone séparée (chargée à l'entrée) : sol rouge, rivières de lave,
+  - Session 1 : le portail mène à un **monde séparé, chargé avec le système de mondes** (`worlds.js`, comme la
+    mine en v1.26.1) : sol rouge, rivières de lave,
     pierre lumineuse, champignons géants ; ramasser 5 pierres lumineuses (un mot chacune).
   - Session 2 : la **forteresse** et son coffre ; traverser des rivières de lave en les transformant en obsidienne ;
     portail de retour ; la pierre lumineuse devient une lampe dans la chaumière.
