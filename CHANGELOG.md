@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.26.2 — Un vrai deltaplane 🪂
+
+- 🪂 **Le deltaplane est 2,4 fois plus grand** (« trop petit », dit le parent) : une aile arc-en-ciel d’environ 4,5 m d’envergure, bien au-dessus du héros, un peu transparente pour qu’on le voie encore dessous.
+- 🙌 **Le héros tient la barre à deux mains**, bras levés, les jambes qui se balancent doucement derrière lui pendant le vol.
+
 ## v1.26.1 — Le monde de la mine ⛏️ (orthographe seulement)
 
 - 🌍 **Des mondes qui se chargent** (demande du parent) : un lieu de l’île peut ouvrir un monde à part. Le premier, c’est **la mine** : on touche le wagonnet, il roule jusque dans l’entrée de la mine (« Tut-tut ! En voiture, on descend dans la mine ! »), puis un écran **« On descend dans la mine… »** (écrit et lu) pendant le chargement. L’île est mise de côté (rien n’y bouge, pas de zombies), et elle revient telle quelle au retour.

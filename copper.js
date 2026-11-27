@@ -208,7 +208,7 @@ export function buildHangGlider() {
   const frame = 0x3a3a46;
   const bar = (x0, y0, x1, y1, z) => { const len = Math.hypot(x1 - x0, y1 - y0), g = new THREE.BoxGeometry(0.04, len, 0.04).toNonIndexed(); g.rotateZ(-Math.atan2(x1 - x0, y1 - y0)); g.translate((x0 + x1) / 2, (y0 + y1) / 2, z); return colorize(g, frame); };
   const parts = [wing, box(0.05, 0.05, 1.9, frame, 0, 0.08, 0.2), bar(0, 0.05, -0.38, -1.05, 0.15), bar(0, 0.05, 0.38, -1.05, 0.15), box(0.85, 0.05, 0.05, frame, 0, -1.05, 0.15)];
-  const m = new THREE.Mesh(merge(parts), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, side: THREE.DoubleSide, transparent: true, opacity: 0.82, depthWrite: false }));
+  const m = new THREE.Mesh(merge(parts), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, side: THREE.DoubleSide, transparent: true, opacity: 0.7, depthWrite: false }));
   m.userData.dynamic = true;
   m.visible = false;
   return m;
@@ -612,16 +612,20 @@ export class CopperWorkshop {
     const want = s.power === 'glide' && !s.onGround && p.y - s.terrain.heightAt(p.x, p.z) > 0.6 ? 1 : 0;
     this.gliderOpen += (want - this.gliderOpen) * Math.min(1, dt * (want ? 6 : 9));
     gl.visible = this.gliderOpen > 0.03;
+    // The hero holds the bar with both hands up while the wing is open.
+    s.player.userData.hangGlide = this.gliderOpen > 0.5;
     if (!gl.visible) { this.lastYaw = s.player.rotation.y; return; }
     const ry = s.player.rotation.y;
     let dy = ry - this.lastYaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
     this.lastYaw = ry;
     const rollWant = Math.max(-0.5, Math.min(0.5, -(dy / Math.max(dt, 0.001)) * 0.18));
     this.gliderRoll += (rollWant - this.gliderRoll) * Math.min(1, dt * 4);
+    // A real wing (v1.26.2, "too small"): about 4.5 m across (2.4 times the old one), over the hero; the bar of the
+    // A-frame is where his raised hands are (about 2 m up).
     const sc = s.player.scale.y;
-    gl.position.set(p.x, p.y + 1.8 * sc, p.z);
+    gl.position.set(p.x, p.y + 2.85 * sc, p.z);
     gl.rotation.set(-0.12, ry, this.gliderRoll, 'YXZ');
-    const k = 0.5 * sc;
-    gl.scale.set(this.gliderOpen * k, (0.4 + this.gliderOpen * 0.6) * k, k);
+    const k = 1.2 * sc, ky = 0.8 * sc;
+    gl.scale.set(this.gliderOpen * k, (0.4 + this.gliderOpen * 0.6) * ky, k);
   }
 }

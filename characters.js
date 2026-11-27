@@ -306,6 +306,16 @@ export function animateCharacter(ch, dt, elapsed) {
   const ease = Math.min(1, dt * 12);
   const lerpTo = (obj, target) => { obj.rotation.x += (target - obj.rotation.x) * ease; };
 
+  // Under the hang-glider: both hands up on the bar, legs trailing a little behind, swinging gently.
+  if (u.hangGlide) {
+    lerpTo(p.leftArm, -2.75); lerpTo(p.rightArm, -2.75);
+    p.rightArm.rotation.z += (0 - p.rightArm.rotation.z) * ease;
+    lerpTo(p.leftLeg, 0.35 + Math.sin(elapsed * 3) * 0.12); lerpTo(p.rightLeg, 0.35 - Math.sin(elapsed * 3) * 0.12);
+    p.rig.position.y = 0;
+    p.head.rotation.y *= 0.9;
+    return;
+  }
+
   lerpTo(p.leftLeg, swing);
   lerpTo(p.rightLeg, -swing);
   lerpTo(p.leftArm, -swing * 0.8);
