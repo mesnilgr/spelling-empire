@@ -103,6 +103,7 @@
               <button class="attack-btn dismount-btn" id="dismount-btn" type="button" hidden aria-label="Get off the horse"><span>🐴⬇️</span></button>
               <button class="attack-btn" id="attack-btn" type="button" hidden aria-label="Attack"><span>⚔️</span></button>
               <button class="attack-btn snow-btn" id="snow-btn" type="button" hidden aria-label="Snowball"><span>❄️</span><b class="snow-count" id="snow-count">0</b></button>
+              <button class="attack-btn horn-btn" id="horn-btn" type="button" hidden aria-label="Horn"><span>📯</span></button>
               <button class="use-btn" id="use-btn" type="button" hidden aria-label="Use">
                 <span class="use-icon">⚔️</span>
               </button>
@@ -151,6 +152,17 @@
                 <button class="btn btn-primary" id="quest-give-btn" type="button" data-i18n="give">Give</button>
                 <button class="btn btn-ghost" id="quest-close-btn" type="button" data-i18n="ok">OK</button>
               </div>
+            </div>
+          </div>
+
+          <!-- The mine cart (J8): the points (pick the word spelled right) and the choice of line. -->
+          <div class="modal-overlay mine-choice-overlay" id="mine-choice" hidden>
+            <div class="modal card mine-choice-card">
+              <h2 id="mine-choice-title">🔀</h2>
+              <p class="mine-choice-instr" id="mine-choice-instr"></p>
+              <p class="mine-choice-pic" id="mine-choice-pic" hidden></p>
+              <div class="mine-choice-opts" id="mine-choice-opts"></div>
+              <button class="btn btn-ghost btn-small" id="mine-choice-listen" type="button" aria-label="Listen">🔊</button>
             </div>
           </div>
 

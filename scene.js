@@ -7,6 +7,7 @@ import { BossManager } from './bosses.js';
 import { CopperWorkshop } from './copper.js';
 import { SurpriseChest } from './surprise.js';
 import { SnowWorld } from './snow.js';
+import { MineCart } from './mine.js';
 import { PetManager } from './pet.js';
 import { DECOR } from './decor.js';
 import { PLACES, buildPlace, buildExtras, buildTrails, buildGroves, buildRegionFillers } from './landmarks.js';
@@ -246,6 +247,8 @@ export class GameScene {
     this.surprise = new SurpriseChest(this);
     // The snow golem (J7): the snowball arena on the mountain, the snowman in front of the cottage.
     this.snow = new SnowWorld(this);
+    // The mine cart (J8): the station by the old mine, line 1 to the diamonds, line 2 to the crystal cave.
+    this.mine = new MineCart(this);
     const hen = cocotteToday(Math.max(...NEWS.filter((n) => !n.from).map((n) => n.day)));
     if (hen && !hen.album) this.cocotte = new Cocotte(this, hen);
   }
@@ -946,6 +949,7 @@ export class GameScene {
     }
   }
   teleport(x, z, ry = 0, up = undefined) {
+    if (this.mine?.riding) this.mine.stop(); // (finish() leaves the cart before teleporting)
     if (this.horses?.riding) { this.horses.dismount(); this.onDismount?.(); }
     this.autoWalk = null;
     this.playerVY = 0;
@@ -2513,7 +2517,7 @@ export class GameScene {
     this._tickMagic(dt, elapsed);
     this._tickStory(dt, elapsed);
     this._tickRegions();
-    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); }
+    this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); this.mine?.update(dt); }
     // Whatever can hurt the hero is not run at all during the pause: with dt = 0 nothing moves, but a
     // zombie, a boss or a snowball already touching the hero would still hit him.
     if (!frozen) { if (this.mode === 'play') { this.snow?.update(dt); this.zombies?.update(dt, elapsed); } this.bosses?.update(dt, elapsed); }
@@ -2525,7 +2529,8 @@ export class GameScene {
       bb.mesh.position.y = 0.08 + Math.sin(elapsed * 3) * 0.02 - bb.dip * 0.12;
     }
     if (this.mode === 'play') {
-      this._updatePlayer(dt);
+      // In the mine cart (J8) the cart carries the hero (nobody moves while a word is open: dt = 0).
+      if (this.mine?.riding) this.mine.rideStep(dt); else this._updatePlayer(dt);
       this._updateCamera(dt);
     } else {
       // Title screen: slow orbit around the village at dusk.

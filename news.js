@@ -165,4 +165,16 @@ export const NEWS = [
       a: { fr: 'Les frites… bien glacées !', en: 'Chilli… very, very chilly!' },
     },
   },
+  {
+    id: '1.26.0-wagonnet', day: 8, date: '2026-11-27', emoji: '🛒', show: 'minecart',
+    title: { fr: 'Le wagonnet de la mine', en: 'The mine cart' },
+    text: {
+      fr: 'Monte dans le wagonnet de la mine ! À chaque aiguillage, choisis le mot bien écrit : la bonne voie mène au trésor de diamants. Attention aux chauves-souris… et accroche-toi bien !',
+      en: 'Get in the mine cart! At each set of points, choose the word that is spelled right: the right track leads to the diamond treasure. Watch out for the bats… and hold on tight!',
+    },
+    riddle: {
+      q: { fr: 'Qu’est-ce qui a des dents mais ne mord jamais ?', en: 'What has teeth but never bites?' },
+      a: { fr: 'Un peigne !', en: 'A comb!' },
+    },
+  },
 ];

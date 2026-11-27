@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.26.0 — J8 : Le wagonnet de la mine 🛒
+
+- 🛒 **À côté de la mine abandonnée**, une petite gare et un wagonnet (la flèche de « Montre-moi ! » y mène). On le touche : « Tut-tut ! Le wagonnet de la mine se réveille ! En voiture, accroche-toi bien ! » (dit à voix haute), confettis, et c’est parti sur des rails en bois qui montent et descendent autour du campement. **Le chien saute dans le wagon**, devant le héros, les oreilles au vent. Le bouton **📯** fait « tut-tut » pendant le trajet (et le chien aboie).
+- 🔀 **Partie 1 — Les aiguillages** : à chaque aiguillage (3 par voyage), le wagonnet s’arrête et **deux panneaux** s’affichent en bas de l’écran : le même mot, bien écrit et avec une petite faute (« radeau » ou « rado » ?). Le mot est lu à voix haute (bouton 🔊 pour le réentendre), et le monde est en pause pendant le choix. Le bon mot : « Bonne voie ! », une étoile, le wagonnet repart.
+- 🦇 **Le gag** : le mauvais mot n’est jamais une punition, c’est un détour par **la grotte des chauves-souris** ! Elles s’envolent autour du wagon en criant « Hiii ! Hiii ! », le wagon tremble, puis il revient en marche arrière à l’aiguillage, où le mauvais panneau est barré 🦇.
+- 💎 **Au bout de la ligne, la grotte aux diamants** : un mot à épeler remplit le wagon de diamants (un diamant dans l’inventaire), puis retour à la gare. **Trois voyages = le casque de mineur** avec sa lampe allumée (nouveau costume « Mineur », mis tout de suite : à montrer !).
+- 🔮 **Partie 2** (au retour suivant, au moins 30 minutes plus tard, ou après 15 minutes de jeu) : **la ligne 2** s’ouvre (on choisit la ligne en touchant le wagonnet). Elle passe sur un pont au-dessus de la ligne 1, puis **grand saut au-dessus de la rivière, au ralenti** (« Waouh ! Le grand saut ! »), deux aiguillages au pied des collines, et **la grotte de cristal** : un mot pour un cristal. En chemin, **des pépites d’or** flottent le long des rails (même en plein saut) : on les touche pour les attraper (une étoile chacune). **Trois voyages = le wagonnet devient tout doré**.
+- 🗣️ Rien de muet : devant le panneau « 🔮 Ligne 2 » avant la partie 2, Alaric explique (écrit et lu) qu’elle ouvre au prochain retour, après trois voyages jusqu’aux diamants, et la flèche montre le wagonnet. Chaque voyage, c’est 4 mots (3 aiguillages + le mot du trésor) en partie 1, 3 mots en partie 2.
+- 🐔 Cocotte s’est cachée **dans un vieux wagonnet abandonné**, couché sur le côté juste à côté de l’entrée de la mine (sa crête dépasse).
+- 📜 Le journal montre les deux parties, les voyages et les pépites, écrit et lu. Devinette d’Alaric : « Qu’est-ce qui a des dents mais ne mord jamais ? »
+
 ## v1.25.2 — La pause pendant un mot, sans trou
 
 - 🧟 **Un zombie collé au héros au moment où le mot s'ouvre ne peut plus le toucher** : pendant la pause, les zombies, les boss et les boules de neige ne sont plus du tout calculés (avant, ils ne bougeaient plus mais un zombie déjà au contact pouvait encore frapper).

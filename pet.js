@@ -199,6 +199,8 @@ export class PetManager {
   }
   update(dt, t) {
     const m = this.mesh, parts = m.userData.parts, s = this.s, p = s.player.position;
+    // In the mine cart (J8): the dog sits at the front, ears in the wind.
+    if (this.tamed && s.mine?.riding) { s.mine.seatDog(this, t); return; }
     let moving = false;
     this.trotting = false;
     const onCourse = this.tamed && this._course(dt);

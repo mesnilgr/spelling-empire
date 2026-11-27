@@ -925,7 +925,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 2,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0)) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.0-wagonnet', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0)) }, { quality: 0 });
       await g.click('#continue-btn');
       // Alaric presents the release, written and spoken; the newest note comes first.
       const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
@@ -941,7 +941,7 @@ export const SCENARIOS = [
       await g.click('#news-btn');
       await g.page.waitForTimeout(300);
       const journal = await g.page.evaluate(() => [...document.querySelectorAll('#journal-list .journal-item h3')].map((e) => e.textContent));
-      check(journal.length >= 3 && /boules de neige/i.test(journal[0]) && journal.some((j) => /golem de cuivre/i.test(j)) && journal.some((j) => /pouvoirs/i.test(j)) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
+      check(journal.length >= 3 && /wagonnet/i.test(journal[0]) && journal.some((j) => /boules de neige/i.test(j)) && journal.some((j) => /golem de cuivre/i.test(j)) && journal.some((j) => /pouvoirs/i.test(j)) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
       await g.click('#journal-close');
       // Iron walks round the square, says hello and offers a flower once a day.
       const walk = await g.page.evaluate(() => { const gl = window.__se.scene.golem, a = gl.mesh.position.clone(); gl.pause = 0; for (let k = 0; k < 150; k++) gl.update(1 / 30, k / 30); return { points: gl.points.length, moved: a.distanceTo(gl.mesh.position) }; });
@@ -974,7 +974,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0)) }, { quality: 0, defis: true });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.0-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0)) }, { quality: 0, defis: true });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       let words = 0;
       const spellOne = async () => { const r = await g.spell(); words++; return r; };
@@ -1115,7 +1115,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.0-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
       const flame = () => g.page.evaluate(() => { const f = window.__se.flame() ?? {}, fl = window.__se.scene.flame; return { ...f, state: { ...fl.state }, out: fl.starsOut(), part: window.__se.releasePart(3) }; });
@@ -1237,7 +1237,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.0-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1409,7 +1409,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.0-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.24.0-golem-cuivre', '1.25.0-golem-neige'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       await g.page.evaluate(() => window.__se.henDayUse(5)); // J5's Cocotte (on the highest cloud)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1601,7 +1601,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', 'prog-pronoms', 'prog-articles', '1.25.0-golem-neige'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 }, powers: { awake: true, clouds: [0, 1, 2, 3, 4], rings: [], animals: 0, bounced: [], petCloud: true, cape: false, uses: 3 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', 'prog-pronoms', 'prog-articles', '1.25.0-golem-neige', '1.26.0-wagonnet'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 }, powers: { awake: true, clouds: [0, 1, 2, 3, 4], rings: [], animals: 0, bounced: [], petCloud: true, cape: false, uses: 3 } }) }, { quality: 0 });
       await g.page.evaluate(() => window.__se.henDayUse(6)); // J6's Cocotte (on the moss golem's head)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1780,7 +1780,8 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', 'prog-pronoms', 'prog-articles'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.0-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', 'prog-pronoms', 'prog-articles'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      await g.page.evaluate(() => window.__se.henDayUse(7)); // J7's Cocotte (disguised as a snowman)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
@@ -1946,6 +1947,185 @@ export const SCENARIOS = [
       await g.page.waitForTimeout(300);
       const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
       check(/Le golem de neige — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /Bonhomme de neige : 3\/3 boules · revanche : 2\/2/.test(j2), 'journal : les deux parties faites, bonhomme 3/3, revanche 2/2', j2);
+      await g.click('#journal-close');
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Wagonnet de la mine : aiguillages, chauves-souris, diamants, grand saut (J8)',
+    quick: true,
+    weight: 4,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', 'prog-pronoms', 'prog-articles'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
+      const nSaid = () => g.page.evaluate(() => window.__spoken.length);
+      const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
+      const saidLater = (re, timeout = 20000, from = 0) => g.page.waitForFunction(([r, k]) => new RegExp(r).test(window.__spoken.slice(k).join(' | ')), [re.source, from], { timeout }).then(() => true, () => false);
+      const mn = () => g.page.evaluate(() => JSON.parse(JSON.stringify(window.__se.mine() ?? null)));
+      const choiceOpen = (timeout = 15000) => g.page.waitForFunction(() => !document.querySelector('#mine-choice').hidden, null, { timeout }).then(() => true, () => false);
+      const spellOpen = (timeout = 15000) => g.page.waitForFunction(() => !document.querySelector('#spell-modal').hidden && !!window.__se.spell(), null, { timeout }).then(() => true, () => false);
+      const riding = () => g.page.evaluate(() => window.__se.scene.mine.riding);
+      const rideOver = (timeout = 20000) => g.page.waitForFunction(() => !window.__se.scene.mine.riding, null, { timeout }).then(() => true, () => false);
+      // Pick a sign at the points: the right word, or the wrong one.
+      const pick = (right) => g.page.evaluate((ok) => {
+        const c = window.__se.mineChoice(), w = c.word.word;
+        const b = [...document.querySelectorAll('#mine-choice-opts [data-word]')].find((e) => (e.dataset.word === w) === ok && !e.disabled);
+        const r = { word: w, opts: c.opts.slice(), chose: b?.dataset.word };
+        b?.click();
+        return r;
+      }, right);
+      // One whole ride: the points (all right unless told), then the word at the end.
+      const ride = async (forks, { wrongFirst = false } = {}) => {
+        let words = 0;
+        for (let k = 0; k < forks; k++) {
+          if (!(await choiceOpen())) { check(false, `aiguillage ${k + 1} : le choix s’ouvre`); return { words }; }
+          if (wrongFirst && k === 0) {
+            const n0 = await nSaid();
+            const w = await pick(false);
+            check(w.chose && w.chose !== w.word, `aiguillage : on choisit le mauvais mot (« ${w.chose} » au lieu de « ${w.word} »)`);
+            const bats = await saidLater(/Hiii ! Hiii ! Oups, la grotte des chauves-souris/, 15000, n0);
+            const flying = await g.page.evaluate(() => window.__se.scene.mine.batT >= 0);
+            check(bats && flying, 'gag : détour par la grotte des chauves-souris (« Hiii ! », lu), les chauves-souris s’envolent', await saidSince(n0));
+            check(await choiceOpen(), 'retour à l’aiguillage : on choisit encore');
+            const st = await g.page.evaluate(() => ({ bat: document.querySelector('#mine-choice-opts .is-bat')?.dataset.word, n: document.querySelectorAll('#mine-choice-opts [data-word]').length }));
+            check(st.bat === w.chose && st.n === 2 && /Regarde bien les deux panneaux/.test(await saidSince(n0)), 'le mauvais panneau est barré 🦇, Alaric dit « Regarde bien les deux panneaux… »', JSON.stringify(st));
+          }
+          const n1 = await nSaid();
+          const r = await pick(true);
+          words++;
+          check(r.chose === r.word && r.opts.length === 2 && r.opts[0] !== r.opts[1], `aiguillage ${k + 1} : « ${r.opts.join(' » ou « ')} » → le bon mot`, JSON.stringify(r));
+          if (k === 0) check(/Aiguillage ! Quel mot est bien écrit/.test(await said()), 'l’aiguillage est lu : « Aiguillage ! Quel mot est bien écrit ? »');
+          await g.page.waitForTimeout(250);
+          if (k === 0) check(/Bonne voie|Bien vu|bonne voie|Bravo/.test(await saidSince(n1)), 'bonne voie : le wagonnet repart (lu)');
+        }
+        if (!(await spellOpen())) { check(false, 'un mot au bout de la ligne'); return { words }; }
+        const res = await g.spell(); words++;
+        return { words, res };
+      };
+      await g.click('#continue-btn');
+      // Alaric presents J8, written and spoken, with his riddle.
+      const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
+      const card = await g.page.evaluate(() => ({ title: document.querySelector('#news-title').textContent, riddle: document.querySelector('#news-riddle').innerText, said: window.__spoken.join(' | ') }));
+      check(shown && /wagonnet/i.test(card.title) && /Monte dans le wagonnet de la mine/.test(card.said) && /choisis le mot bien écrit/.test(card.said), 'Alaric présente le wagonnet de la mine (écrit et lu)', JSON.stringify(card));
+      check(/des dents mais ne mord jamais/.test(card.riddle) && /des dents/.test(card.said), 'la devinette d’Alaric est écrite et lue', card.riddle);
+      await g.page.evaluate(() => document.querySelector('#news-riddle .news-answer').click());
+      await g.page.waitForTimeout(200);
+      check(/Un peigne/.test(await g.page.evaluate(() => window.__spoken.slice(-1)[0])), '« La réponse ? » lit « Un peigne ! »');
+      await g.click('#news-show');
+      await g.page.waitForTimeout(900);
+      const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.mine.obj.worldPos; return { d: q ? Math.hypot(q.x - w.x, q.z - w.z) : 99, x: w.x }; });
+      check(arrow.d < 1 && arrow.x < -40, '« Montre-moi ! » pointe la flèche vers le wagonnet, à côté de la mine', JSON.stringify(arrow));
+      // Line 2 is closed: its sign explains itself (rien de muet).
+      const G = await g.page.evaluate(async () => { const m = await import('/mine.js'); return m.GATE; });
+      let n0 = await nSaid();
+      await g.page.evaluate(([x, z]) => window.__se.scene.teleport(x + 0.4, z - 0.3), [G.x, G.z]);
+      check(await saidLater(/Ici, c’est la ligne 2, vers la grotte de cristal\. Elle ouvre à ton prochain retour/, 6000, n0), 'devant le panneau de la ligne 2 : « Elle ouvre à ton prochain retour ! » (lu)', await saidSince(n0));
+      // The wow: the cart wakes up (tut-tut!) and sets off with the hero and the dog.
+      const t0 = Date.now();
+      await g.page.evaluate(() => { window.__se.scene.mine.speedK = 2.5; });
+      n0 = await nSaid();
+      check(await g.use("i.kind === 'minecart'") === 'ok', 'on touche le wagonnet');
+      check(await saidLater(/Tut-tut ! Le wagonnet de la mine se réveille/, 5000, n0) && Date.now() - t0 < 30000 && await riding(), 'waouh : « Tut-tut ! Le wagonnet se réveille ! », on part dans le wagonnet, moins de 30 s après « Montre-moi ! »', await saidSince(n0));
+      check(await g.page.evaluate(() => !document.querySelector('#horn-btn').hidden), 'le bouton 📯 apparaît pendant le trajet');
+      await g.page.evaluate(() => document.querySelector('#horn-btn').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+      check((await mn()).horns === 1, 'tut-tut : on klaxonne');
+      await g.page.waitForTimeout(600);
+      const dog = await g.page.evaluate(() => { const s = window.__se.scene; return +s.pet.mesh.position.distanceTo(s.mine.cart.position).toFixed(2); });
+      check(dog < 1.2, 'le chien est dans le wagon, devant le héros', String(dog));
+      const hero = await g.page.evaluate(() => { const s = window.__se.scene; return +s.player.position.distanceTo(s.mine.cart.position).toFixed(2); });
+      check(hero < 0.8, 'le héros est dans le wagon', String(hero));
+      let words = 0;
+      const r1 = await ride(3, { wrongFirst: true }); words += r1.words;
+      check(/Des diamants plein le wagon ! Voyage 1 sur 3/.test(r1.res?.result ?? ''), 'au bout de la ligne : un mot, des diamants plein le wagon (voyage 1/3)', r1.res?.result);
+      check(/Ouaf ! Ton chien saute dans le wagon/.test(await said()), '« Ouaf ! Ton chien saute dans le wagon, les oreilles au vent ! » (lu)');
+      check(await rideOver(), 'le wagonnet revient à la gare');
+      check(await g.page.evaluate(() => window.__se.game().materials.diamond ?? 0) >= 1, 'un diamant dans l’inventaire');
+      for (let k = 2; k <= 3; k++) {
+        await g.page.waitForTimeout(400);
+        check(await g.use("i.kind === 'minecart'") === 'ok' && await riding(), `voyage ${k} : on remonte dans le wagonnet`);
+        const r = await ride(3); words += r.words;
+        if (k === 3) check(/casque de mineur/.test(r.res?.result ?? ''), 'trois voyages : le casque de mineur', r.res?.result);
+        await rideOver();
+      }
+      const st1 = await mn();
+      check(st1.rides1 === 3 && st1.helmet && st1.bats === 1, 'trois voyages, un détour par les chauves-souris', JSON.stringify(st1));
+      const cos = await g.page.evaluate(() => ({ cur: window.__se.progress().costumes?.current, owned: window.__se.progress().costumes?.owned }));
+      check(cos.cur === 'miner' && cos.owned.includes('miner'), 'le héros porte le costume de Mineur, avec le casque à lampe (à montrer)', JSON.stringify(cos));
+      check(/À ton prochain retour, la ligne 2 ouvre jusqu’à la grotte de cristal/.test(await said()), '« À ton prochain retour, la ligne 2 ouvre jusqu’à la grotte de cristal ! » (lu)');
+      check(words >= 7, `au moins 7 mots en session 1 (${words})`);
+      // Cocotte in the old cart by the mine (journal hint written and read).
+      await g.page.waitForTimeout(4500);
+      n0 = await nSaid();
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const jh = await g.page.evaluate((n) => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(n).join(' | ') }), n0);
+      check(/vieux wagonnet abandonné/.test(jh.txt) && /vieux wagonnet abandonné/.test(jh.said), 'journal : l’indice de Cocotte (« un vieux wagonnet abandonné ») est écrit et lu', jh.said);
+      check(/Le wagonnet de la mine — Partie 1 ✓ · Partie 2 : à ton prochain retour !/.test(jh.txt) && /Voyages jusqu’aux diamants : 3\/3/.test(jh.txt), 'journal : « Le wagonnet de la mine — Partie 1 ✓ · Partie 2 : à ton prochain retour ! »', jh.txt);
+      check(/Voyages jusqu’aux diamants : 3 sur 3/.test(jh.said), 'les voyages sont lus', jh.said);
+      await g.click('#journal-close');
+      const hen = await g.page.evaluate(() => { const h = window.__se.scene.cocotte; return { day: window.__se.henRow().day, d: +Math.hypot(h.mesh.position.x + 25.6, h.mesh.position.z + 39.4).toFixed(1) }; });
+      check(hen.day === 8 && hen.d < 1, 'Cocotte est dans le vieux wagonnet, à côté de l’entrée de la mine', JSON.stringify(hen));
+      check(await g.page.evaluate(() => window.__se.findCocotte()) === 'ok', 'on touche Cocotte');
+      await g.page.waitForTimeout(300);
+      check((await g.page.evaluate(() => window.__se.progress().feathers)).includes(8) && /Cot cot/.test(await said()), 'Cocotte s’envole : une plume dorée (« Cot cot ! »)');
+      // Session 2: the game is opened again 31 minutes later.
+      await g.page.evaluate(() => { document.body.dataset.screen = 'paused'; });
+      await g.page.waitForTimeout(400);
+      await g.page.evaluate((key) => { const pr = window.__se.progress(); pr.parts.J8.last -= 31 * 60 * 1000; const p = JSON.parse(localStorage.getItem(key)); p.parts.J8.last = pr.parts.J8.last; localStorage.setItem(key, JSON.stringify(p)); }, STORE);
+      await g.page.reload();
+      await g.page.waitForSelector('#loading.is-done', { timeout: 180000 });
+      await g.page.evaluate(() => { window.__se.flashAfter = 1e9; window.__se.noDefis = true; });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      check(await g.page.evaluate(() => window.__se.releasePart(8)) === 2, 'au retour (30 min plus tard), la partie 2 du wagonnet est ouverte');
+      check(await saidLater(/La ligne 2 du wagonnet est ouverte/, 15000), '« La ligne 2 du wagonnet est ouverte ! Elle va jusqu’à la grotte de cristal… » (lu)', await said());
+      await g.page.waitForTimeout(500);
+      const arrow2 = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.mine.obj.worldPos; return q ? Math.hypot(q.x - w.x, q.z - w.z) : 99; });
+      check(arrow2 < 1, 'la flèche dorée montre le wagonnet', String(arrow2));
+      words = 0;
+      let nugs = 0;
+      for (let k = 1; k <= 3; k++) {
+        await g.page.evaluate(() => { window.__se.scene.mine.speedK = 2.5; });
+        n0 = await nSaid();
+        check(await g.use("i.kind === 'minecart'") === 'ok' && await choiceOpen(4000), `voyage ${k} : on touche le wagonnet, « Quelle ligne ? »`);
+        if (k === 1) check(/Quelle ligne \? La ligne 1 va aux diamants, la ligne 2 va à la grotte de cristal/.test(await saidSince(n0)), 'le choix de la ligne est lu');
+        await g.page.evaluate(() => document.querySelector('#mine-choice-opts [data-line="1"]').click());
+        await g.page.waitForTimeout(200);
+        check(await riding() && await g.page.evaluate(() => window.__se.scene.mine.ride.line === 1), `voyage ${k} : en route sur la ligne 2`);
+        // Gold nuggets to touch on the way (all of them on the first trip).
+        const grab = async () => g.page.evaluate(() => { const s = window.__se.scene; let n = 0; for (const o of s.interactables.filter((i) => i.kind === 'nugget' && i.active)) { const p = s.player.position; if (Math.hypot(o.worldPos.x - p.x, o.worldPos.z - p.z) < o.reach) { s.onInteractObject(o); n++; } } return n; });
+        if (k === 1) {
+          const jump = await g.page.waitForFunction(() => window.__se.scene.mine.ride?.jumped, null, { timeout: 15000 }).then(() => true, () => false);
+          const air = await g.page.evaluate(() => { const s = window.__se.scene, m = s.mine; return +(m.cart.position.y - s.groundAt(m.cart.position.x, m.cart.position.z)).toFixed(1); });
+          check(jump && air > 3 && /Waouh ! Le grand saut/.test(await said()), 'waouh : le grand saut au-dessus de la rivière, au ralenti (« Le grand saut ! », lu)', `${air} m`);
+          nugs += await grab();
+        }
+        let r = { words: 0 };
+        // Two points, the crystal cave at the end (with nuggets on the way).
+        for (let f = 0; f < 2; f++) {
+          if (!(await choiceOpen())) { check(false, `ligne 2 : aiguillage ${f + 1}`); break; }
+          nugs += await grab();
+          const p = await pick(true); r.words++;
+          if (p.chose !== p.word) check(false, 'ligne 2 : le bon mot', JSON.stringify(p));
+        }
+        nugs += await grab();
+        if (await spellOpen()) { r.res = await g.spell(); r.words++; } else check(false, 'ligne 2 : un mot à la grotte de cristal');
+        words += r.words;
+        if (k === 1) check(/Un cristal ! Voyage 1 sur 3/.test(r.res?.result ?? ''), 'à la grotte de cristal : un mot, un cristal (voyage 1/3)', r.res?.result);
+        if (k === 3) check(/Ton wagonnet devient tout doré/.test(r.res?.result ?? ''), 'trois voyages : le wagonnet devient tout doré', r.res?.result);
+        check(await rideOver(), `voyage ${k} : retour à la gare`);
+        await g.page.waitForTimeout(300);
+      }
+      const st2 = await mn();
+      check(nugs >= 3 && st2.nuggets >= 3 && /Une pépite/.test(await said()), `on attrape des pépites d’or pendant le trajet (${st2.nuggets}, « Une pépite ! », lu)`);
+      check(st2.gold && await g.page.evaluate(() => window.__se.scene.mine.gold), 'le wagonnet est doré (à montrer)', JSON.stringify(st2));
+      check(words >= 7, `au moins 7 mots en session 2 (${words})`);
+      await g.page.waitForTimeout(4200);
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
+      check(/Le wagonnet de la mine — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /Ligne 2 : 3\/3 voyages · pépites : \d+/.test(j2), 'journal : les deux parties faites, ligne 2 : 3/3 voyages et les pépites', j2);
       await g.click('#journal-close');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();

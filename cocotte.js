@@ -55,6 +55,14 @@ export const COCOTTE = [
       en: 'Cocotte is dressed up as a little snowman, on the mountain, at the edge of the snowball fight! Look closely: her red comb sticks out.',
     },
   },
+  {
+    // `lift`: inside the old cart tipped on its side next to the mine entrance (J8), by the cart station.
+    day: 8, pos: { x: -25.4, z: -39.3 }, lift: 0.3, ry: 2.2, pose: 'sit',
+    hint: {
+      fr: 'Cocotte s’est cachée dans un vieux wagonnet abandonné, juste à côté de l’entrée de la mine ! Regarde bien : sa crête rouge dépasse.',
+      en: 'Cocotte is hiding in an old abandoned mine cart, right next to the entrance of the mine! Look closely: her red comb sticks out.',
+    },
+  },
 ];
 
 // The row for the current release (the highest day not after `maxDay`).
@@ -117,7 +125,7 @@ export class Cocotte {
     this.row = row;
     this.mesh = buildCocotte();
     const { x, z } = row.pos;
-    const y = row.pos.y ?? scene3D.groundAt(x, z);
+    const y = row.pos.y ?? scene3D.groundAt(x, z) + (row.lift ?? 0);
     this.base = new THREE.Vector3(x, y, z);
     this.mesh.position.copy(this.base);
     this.mesh.rotation.y = row.ry ?? 0;

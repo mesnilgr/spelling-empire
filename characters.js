@@ -249,6 +249,11 @@ export function createBlockyCharacter(specOrName) {
     if (kind === 'cap') {
       part(headPivot, 0.56, 0.16, 0.56, hm, 0, 0.56, 0);
       part(headPivot, 0.6, 0.05, 0.3, hm, 0, 0.5, 0.36);
+    } else if (kind === 'miner') {
+      // The miner's hard hat (J8): yellow, with a brim and a glowing lamp in front.
+      part(headPivot, 0.6, 0.2, 0.6, hm, 0, 0.58, 0);
+      part(headPivot, 0.68, 0.05, 0.68, hm, 0, 0.48, 0);
+      part(headPivot, 0.16, 0.16, 0.08, lambert({ color: 0xfff2a0, emissive: 0xffd040, emissiveIntensity: 1.2 }), 0, 0.57, 0.32);
     } else if (kind === 'crown') {
       const gold = lambert({ color: 0xf2c84b, metalness: 0.6, roughness: 0.3, emissive: 0x6a4a10, emissiveIntensity: 0.3 });
       part(headPivot, 0.54, 0.1, 0.54, gold, 0, 0.55, 0);
@@ -360,5 +365,6 @@ export const COSTUMES = [
   { id: 'wizard', price: 60, emoji: '🧙', name: { fr: 'Sorcier', en: 'Wizard' }, spec: { ...HERO, shirt: 0x5a3aa8, trim: 0xf2c84b, pants: 0x5a3aa8, robe: true, cape: null, wizardHat: 0x4a2c98 } },
   { id: 'cloudhero', price: 70, emoji: '🦸', name: { fr: 'Héros des nuages', en: 'Cloud Hero' }, spec: { ...HERO, shirt: 0x4aa8f0, trim: 0xffffff, pants: 0x2a4f9a, shoes: 0xf2f2f2, cape: 0xf2c84b } },
   { id: 'copper', price: 75, emoji: '🤖', name: { fr: 'Chevalier de cuivre', en: 'Copper Knight' }, spec: { ...HERO, shirt: 0xd27a3c, trim: 0x3ab89a, pants: 0x8a4a22, shoes: 0x5a3a20, cape: 0x3ab89a, helmet: 0xe08a4a } },
+  { id: 'miner', price: 65, emoji: '⛏️', name: { fr: 'Mineur', en: 'Miner' }, spec: { ...HERO, shirt: 0xe8862a, trim: 0xf2d24a, pants: 0x3a4a6a, shoes: 0x4a3020, cape: null, hat: { type: 'miner', color: 0xf2c84b } } },
   { id: 'king', price: 80, emoji: '👑', name: { fr: 'Roi', en: 'Royal' }, spec: { ...HERO, shirt: 0xa8302a, trim: 0xf2c84b, pants: 0x3a2a5a, cape: 0x6a2a9a, hat: { type: 'crown' } } },
 ];

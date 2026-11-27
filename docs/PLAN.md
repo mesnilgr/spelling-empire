@@ -220,7 +220,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
 
 ### Semaine 2 — Aventures, phrases et hiver
 
-- [ ] **J8 · ven. 27 nov. · v1.26.0 — Wagonnet de la mine.**
+- [x] **J8 · ven. 27 nov. · v1.26.0 — Wagonnet de la mine.** (complète : la gare est à côté de la mine, côté campement (x −45, z −41) ; ligne 1 en boucle autour du campement, 3 aiguillages (deux panneaux, un bien écrit, un avec une faute) + mot des diamants, 3 voyages = costume Mineur (casque à lampe) ; partie 2 : ligne 2 avec pont, grand saut au ralenti **au-dessus de la rivière** (à la place du ravin), 2 aiguillages, pépites à toucher, mot de la grotte de cristal, 3 voyages = wagonnet doré ; bouton 📯)
   - Session 1 : trajet en wagonnet depuis la mine abandonnée (rails, tunnels) ; à chaque aiguillage, choisir le
     mot bien écrit entre deux ; la bonne voie mène aux diamants.
   - Session 2 : une deuxième ligne s'ouvre vers la **grotte de cristal**, avec un grand saut au-dessus d'un
