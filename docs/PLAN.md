@@ -54,8 +54,8 @@ Doc partagé (lecture) : https://claude.ai/artifact/PnaoyWSEkRoXXHy4r5sTeb
   `news.js`) ; bouton « La réponse ? » qui l'affiche et la lit. Ajouté en J2.
 - **Le journal 📜** garde les cartes, les deux parties du jour et l'indice de Cocotte.
 - **Les mondes** (v1.26.1, `worlds.js`) : un lieu peut ouvrir un monde à part, chargé derrière un écran
-  « Chargement… » (lu à voix haute) : l'île est cachée et figée, le monde a sa lumière, son brouillard et sa
-  musique d'ambiance… sans musique (bruitages seulement), et il est libéré en sortant (mémoire de l'iPad).
+  « Chargement… » (lu à voix haute) : l'île est cachée et figée, le monde a sa lumière, son brouillard et ses
+  bruitages (jamais de musique), et il est libéré en sortant (mémoire de l'iPad).
   Premier monde : la mine (wagonnet). Prochains : le Monde de feu (J23). Un monde garde le budget iPad
   (≤ 860 appels de dessin) et la pause pendant un mot.
 
