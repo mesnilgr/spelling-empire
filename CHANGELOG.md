@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.27.0 — J9 : Chronos et records ⏱️
+
+- ⏱️ **Au départ du parcours de lave, une grande arche à damier avec un énorme chrono** (la flèche de « Montre-moi ! » y mène). On le touche : « Le grand chrono dort. Épelle le mot pour le réveiller ! ». Le mot juste et c’est le **moment waouh** : le chrono sonne (« Driiing ! »), il tremble, feu d’artifice au-dessus de l’arche, et Alaric commence : « Mesdames et messieurs, bienvenue au grand parcours de lave chronométré ! ».
+- 🏁 **Chaque course** : le héros se place sous l’arche, « Trois… deux… un… » (grands chiffres et bips, dit à voix haute, personne ne bouge), puis **le mot de départ**, et « Partez ! » (coup de sifflet). Le temps s’affiche en haut de l’écran ; **il s’arrête pendant chaque mot**. Alaric commente comme à la télé à chaque drapeau (« Et c’est le saut ! Incroyable ! », « Le public est debout ! »). Une chute dans la lave ramène au dernier drapeau de cette course (« Oh ! Plouf dans la lave… Fer se cache les yeux ! »).
+- 🤖 **Le gag** : à l’arrivée, **Fer tient le drapeau à damier**. Il l’agite si fort qu’il tourne sur lui-même… et tombe sur les fesses : « Bong ! » (le chien aboie). Puis il se relève et applaudit.
+- 🥇 **Les médailles** : un mot pour gagner la médaille, **bronze, argent ou or** selon le temps (or : moins de 20 secondes ; le jeu dit combien il faut pour la suivante). **La plus belle médaille pend au cou du héros** (à montrer !). Puis retour au départ pour une autre course.
+- 👻 **Le fantôme** : un héros transparent bleu rejoue ta meilleure course, en même temps que toi. Battre son record : « Nouveau record ! Tu as battu ton fantôme ! ».
+- 🏆 **Le panneau des records**, à côté de l’arche : les 3 meilleurs temps de chaque course (lave et vol), avec la couleur de la médaille ; on le touche, il lit les records à voix haute.
+- 🕊️ **Partie 2** (au retour suivant, au moins 30 minutes plus tard, ou après 15 minutes de jeu, une fois les 3 médailles gagnées) : **le pouvoir voler**, demandé par le parent. Sur **la piste d’envol** à côté de la pierre des pouvoirs (avec sa manche à air), « Trois… deux… un… », le mot de départ, et le héros s’envole avec **des ailes blanches** dans le dos : **le bouton sauter fait monter**, même en l’air ; sans rien toucher, on redescend doucement. **Course en vol chronométrée à travers 8 anneaux** autour du village (dans l’ordre ; la flèche dorée montre le suivant, et l’anneau attire un peu le héros quand il est tout près). À l’atterrissage, **un mot par anneau** pour le garder (comme les anneaux de J5), puis le mot de la médaille. Le pouvoir voler arrive aussi dans la pierre des pouvoirs.
+- 👻 **Le fantôme d’Alaric** (violet, chapeau pointu, barbe blanche) fait la course en vol en un temps fixé. Le battre : **la tenue de champion** (rouge et blanche, cape dorée, mise tout de suite). S’il gagne : « Il a mangé trop de gâteau : la prochaine fois, il sera plus lent ! » (et il l’est vraiment, à chaque fois).
+- 🗣️ Rien de muet : devant la piste d’envol avant la partie 2, Alaric explique (écrit et lu) qu’elle ouvre au prochain retour, après trois médailles, et la flèche montre le grand chrono.
+- 🐔 Cocotte est **perchée sur le panneau des records**, à côté de la coupe dorée.
+- 📜 Le journal montre les deux parties, les médailles, les records, les anneaux gardés et le fantôme d’Alaric, écrit et lu. Devinette d’Alaric : « Qu’est-ce qui a des aiguilles mais ne coud jamais ? ».
+- 📏 Partie 1 : 7 mots au moins (le réveil du chrono, puis 2 mots par course : le départ et la médaille). Partie 2 : 10 mots à la première course en vol (le départ, 8 anneaux, la médaille). Pas encore fait : la course à cheval à travers des anneaux (le vol était prioritaire dans le plan).
+
 ## v1.26.3 — La Lune 🌙
 
 - 🚀 **À côté de la tour d’Alaric, une fusée** sur son pas de tir (la flèche de « Montre-moi ! » y mène). On la touche : « Pour décoller vers la Lune, épelle le mot ! ». Le mot juste allume les moteurs, puis le compte à rebours « Trois… deux… un… Décollage ! » (grands chiffres, bips, grondement, dit à voix haute) ; la fusée part avec le héros et le chien dedans, puis l’écran « Direction la Lune… ».

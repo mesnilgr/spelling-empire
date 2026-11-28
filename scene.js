@@ -36,6 +36,7 @@ import { mergeStatic, LightPool, QualityManager } from './perf.js';
 import { Terrain, STEP_UP } from './terrain.js';
 import { buildMaterialIcon, buildChest, buildMushroomPatch } from './icons.js';
 import { WordPowers } from './powers.js';
+import { ChronoCourse } from './chrono.js';
 
 // Each building has its own blocks, roof and trim so the village has variety.
 const HOUSE_STYLES = {
@@ -255,6 +256,9 @@ export class GameScene {
     this.worlds = new WorldManager(this);
     // The rocket to the Moon (v1.26.3), on its launch pad next to the mage's tower.
     this.rocket = new MoonRocket(this);
+    // Chronos et records (J9): the stopwatch arch of the lava course, the records board, Fer at the finish,
+    // the take-off pad and the 8 rings of the flight race.
+    this.chrono = new ChronoCourse(this);
     const hen = cocotteToday(Math.max(...NEWS.filter((n) => !n.from).map((n) => n.day)));
     if (hen && !hen.album) this.cocotte = new Cocotte(this, hen);
   }
@@ -1998,7 +2002,7 @@ export class GameScene {
       }
     }
     if (len > 0) {
-      const pw = this.power, speed = PLAYER_SPEED * (this.speedBoostUntil > this.clock.elapsedTime ? 1.6 : 1) * (this.horses?.riding ? RIDE.speed : 1) * (pw === 'speed' ? 1.8 : pw === 'giant' ? 1.5 : pw === 'glide' && !this.onGround ? 1.5 : 1);
+      const pw = this.power, speed = PLAYER_SPEED * (this.speedBoostUntil > this.clock.elapsedTime ? 1.6 : 1) * (this.horses?.riding ? RIDE.speed : 1) * (pw === 'speed' ? 1.8 : pw === 'giant' ? 1.5 : pw === 'glide' && !this.onGround ? 1.5 : pw === 'fly' && !this.onGround ? 1.8 : 1);
       const p = this.player.position;
       const nx = p.x + mx * speed * dt;
       const nz = p.z + mz * speed * dt;
@@ -2038,7 +2042,10 @@ export class GameScene {
       const p = this.player.position;
       this.playerVY = (this.playerVY ?? 0) - (this.worlds?.current?.gravity ?? 24) * dt; // (the Moon: much less)
       if (this.power === 'glide' && this.playerVY < -2.4) this.playerVY = -2.4; // gliding (J5)
+      // Flying (J9): much less gravity, a slow descent, each jump climbs; never higher than 18 m.
+      if (this.power === 'fly') { this.playerVY += ((this.worlds?.current?.gravity ?? 24) - 7) * dt; this.playerVY = Math.max(-1.6, Math.min(7, this.playerVY)); }
       p.y += this.playerVY * dt;
+      if (this.power === 'fly' && p.y > this.terrain.heightAt(p.x, p.z) + 18) { p.y = this.terrain.heightAt(p.x, p.z) + 18; this.playerVY = Math.min(0, this.playerVY); }
       // The clouds (J5) carry the hero only from above (groundAt with the hero's height).
       const ground = this.groundAt(p.x, p.z, p.y);
       if (p.y <= ground) {
@@ -2128,6 +2135,13 @@ export class GameScene {
   }
 
   jump() {
+    // Flying (J9): the jump button climbs, even in the air.
+    if (this.power === 'fly' && !this.horses?.riding && !this.worlds?.current) {
+      this.playerVY = 6.5; this.onGround = false;
+      if (this.chrono) this.chrono.flap = 1;
+      this.onJump?.();
+      return true;
+    }
     // A little forgiveness: a jump still works just after walking off an edge.
     if (!this.onGround && this.clock.elapsedTime - (this.lastGroundAt ?? -9) > 0.18) return false;
     this.playerVY = (this.horses?.riding ? RIDE.jump : this.power === 'jump' || this.power === 'glide' ? 15 : this.power === 'giant' ? 10.5 : 8.2) * (this.worlds?.current?.jumpK ?? 1);
@@ -2563,7 +2577,7 @@ export class GameScene {
       this._tickMagic(dt, elapsed);
       this._tickStory(dt, elapsed);
       this._tickRegions();
-      this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); this.mine?.update(dt); this.rocket?.update(dt); }
+      this._tickEruptions(dt); this._tickPlaces(dt, elapsed); this._tickFireflies(elapsed); if (this.mode === 'play') { this.fauna?.update(dt, elapsed); this.horses?.update(dt, elapsed); this.golem?.update(dt, elapsed); this.jumpChest?.update(dt); this.cocotte?.update(dt); this.flame?.update(dt); this.albumStand?.update(dt); this.powers?.update(dt); this.copper?.update(dt); this.surprise?.update(dt); this.mine?.update(dt); this.rocket?.update(dt); this.chrono?.update(dt); }
       // Whatever can hurt the hero is not run at all during the pause: with dt = 0 nothing moves, but a
       // zombie, a boss or a snowball already touching the hero would still hit him.
       if (!frozen) { if (this.mode === 'play') { this.snow?.update(dt); this.zombies?.update(dt, elapsed); } this.bosses?.update(dt, elapsed); }

@@ -63,6 +63,14 @@ export const COCOTTE = [
       en: 'Cocotte is hiding in an old abandoned mine cart, right next to the entrance of the mine! Look closely: her red comb sticks out.',
     },
   },
+  {
+    // On the records board at the start of the lava course (J9), next to the golden cup.
+    day: 9, pos: { x: 23.75, y: 2.72, z: -36.67 }, ry: 0.35, pose: 'perch',
+    hint: {
+      fr: 'Cocotte veut voir les records : elle est perchée sur le panneau des records, au départ du parcours de lave !',
+      en: 'Cocotte wants to see the records: she is perched on the records board, at the start of the lava course!',
+    },
+  },
 ];
 
 // The row for the current release (the highest day not after `maxDay`).

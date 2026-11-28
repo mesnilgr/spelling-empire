@@ -191,4 +191,16 @@ export const NEWS = [
       a: { fr: 'La Lune !', en: 'The Moon!' },
     },
   },
+  {
+    id: '1.27.0-chronos', day: 9, date: '2026-11-28', emoji: '⏱️', show: 'chrono',
+    title: { fr: 'Chronos et records', en: 'Stopwatches and records' },
+    text: {
+      fr: 'Attention, prêts, partez ! Au départ du parcours de lave, un grand chrono t’attend, et Fer tient le drapeau d’arrivée. Gagne des médailles, bats ton record… et ton fantôme ! Bientôt : une course en vol autour du village !',
+      en: 'Ready, steady, go! At the start of the lava course, a big stopwatch is waiting for you, and Iron holds the finish flag. Win medals, beat your record… and your ghost! Coming soon: a flying race round the village!',
+    },
+    riddle: {
+      q: { fr: 'Qu’est-ce qui a des aiguilles mais ne coud jamais ?', en: 'What has hands but can never clap?' },
+      a: { fr: 'Une montre !', en: 'A clock!' },
+    },
+  },
 ];

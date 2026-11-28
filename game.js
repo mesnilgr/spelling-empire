@@ -26,6 +26,7 @@ import { SX, PILES, PATCH, SNOWMAN, HITS_PER_WORD, HITS_PER_ROUND, ROUNDS, REV_R
 import { MX, RIDES1, RIDES2, GATE as MINE_GATE } from './mine.js';
 import { MineWorld } from './mineworld.js';
 import { LX, MoonWorld, PARTS, STARS } from './moon.js';
+import { CHX, START, PAD, FLY_RINGS, MEDALS, MEDALS1, ALARIC_TIME, ALARIC_SLOWER, FLY_RACE_TIME, medalFor, addTop, fmtTime } from './chrono.js';
 import { PROGRAMME, PROGRAMME_SHARE, SENTENCES_READY, themesFor, themeWords, themeDay, upcomingThemes } from './programme.js';
 
 const STORAGE_KEY = 'spelling-empires-v2';
@@ -787,7 +788,7 @@ function init3DScene() {
   scene3D.onDance = () => { [523, 659, 784, 659, 523, 784].forEach((f, i) => playTone(f, 0.12, 'triangle', 0.05, i * 0.16)); const sp = scene3D.getPlayerScreenPosition(); if (sp) showFloatingText(sp.x, sp.y - 50, '♪ ♫ ♪', '#ffe08a'); };
   // ?test exposes the game to the automated playthrough tests (tests/e2e).
   if (/[?&]test\b/.test(location.search)) {
-    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, streak: () => streak, copper: () => game?.copper, snow: () => game?.snow, mine: () => game?.mine, mineWorld: () => mineWorld(), mineBoard: (l) => mineBoard(l), moon: () => game?.moon, moonWorld: () => moonWorld(), henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), worldPaused: () => worldPaused(), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
+    window.__se = Object.assign(window.__se ?? {}, { releasePart, partState, defiEvent, defis: () => progress.defis, scene: scene3D, game: () => game, spell: () => spellContext, progress: () => progress, flame: () => game?.flame, album: () => game?.album, powers: () => game?.powers, streak: () => streak, copper: () => game?.copper, snow: () => game?.snow, chrono: () => game?.chrono, chronoHold: () => chronoHold, mine: () => game?.mine, mineWorld: () => mineWorld(), mineBoard: (l) => mineBoard(l), moon: () => game?.moon, moonWorld: () => moonWorld(), henDayUse: (d) => { window.__se.henDay = d; scene3D.placeCocotte(cocotteToday(d)); if (scene3D.cocotte) scene3D.setSpotMaterial(scene3D.cocotte.obj, 'talk', '🐔 Cocotte'); }, powerNow: () => scene3D?.powers?.power ?? null, givePower: (k) => givePower(k, { word: 'abc' }), openCollect, findCocotte, henRow: () => henRow(), levelAt: (tier) => levelAt(tier), pickWord: (lvl, o) => pickWord(lvl, o), newsLive: (n) => newsLive(n), worldPaused: () => worldPaused(), albumQueue: () => ({ msgs: albumMsgs.map((m) => m.say), meetAt: albumMeetSaidAt, msgAt: albumMsgAt, defiAt: defiMsgAt, now: performance.now() }) });
   }
   scene3D.onInteract = () => tryInteract();
   scene3D.onInteractObject = (obj) => interactWith(obj);
@@ -812,7 +813,7 @@ function refreshSpots() {
     if (obj.kind === 'npc') id = questFor(obj.npcId) ? 'talk' : 'done';
     else if (obj.kind === 'bed') { refreshBed(obj); continue; }
     else if (obj.kind === 'circle') { refreshCircle(obj); continue; }
-    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand', 'powerstone', 'anvil', 'copper', 'secretchest', 'secretbutton', 'surprisechest', 'snowgolem', 'snowpile', 'snowpatch', 'snowman', 'minecart', 'minegate', 'nugget', 'rocket', 'moonrocket', 'bip', 'moonpart', 'moonstar', 'moonflag'].includes(obj.kind)) continue;
+    else if (['sign', 'mimot', 'page', 'travel', 'book', 'boss', 'pet', 'portal', 'horse', 'golem', 'jumpchest', 'cocotte', 'flame', 'albumstand', 'powerstone', 'anvil', 'copper', 'secretchest', 'secretbutton', 'surprisechest', 'snowgolem', 'snowpile', 'snowpatch', 'snowman', 'chrono', 'records', 'flypad', 'minecart', 'minegate', 'nugget', 'rocket', 'moonrocket', 'bip', 'moonpart', 'moonstar', 'moonflag'].includes(obj.kind)) continue;
     else if (obj.kind === 'house') {
       // Spots in the same house show different materials.
       taken[obj.name] ??= [];
@@ -861,6 +862,7 @@ function saveGame() {
     powers: game.powers ?? null,
     copper: game.copper ?? null,
     snow: game.snow ?? null,
+    chrono: game.chrono ?? null,
     mine: game.mine ?? null,
     moon: game.moon ?? null,
     album: game.album ?? null,
@@ -898,6 +900,7 @@ function continueGame() {
     powers: s.powers ? JSON.parse(JSON.stringify(s.powers)) : null,
     copper: s.copper ? JSON.parse(JSON.stringify(s.copper)) : null,
     snow: s.snow ? JSON.parse(JSON.stringify(s.snow)) : null,
+    chrono: s.chrono ? JSON.parse(JSON.stringify(s.chrono)) : null,
     mine: s.mine ? JSON.parse(JSON.stringify(s.mine)) : null,
     moon: s.moon ? JSON.parse(JSON.stringify(s.moon)) : null,
     album: s.album ? JSON.parse(JSON.stringify(s.album)) : null,
@@ -1013,6 +1016,9 @@ function interactWith(obj) {
   if (obj.kind === 'snowpile') { snowPileTouch(); return; }
   if (obj.kind === 'snowpatch') { snowPatchTouch(); return; }
   if (obj.kind === 'snowman') { snowmanTouch(); return; }
+  if (obj.kind === 'chrono') { chronoGateTouch(); return; }
+  if (obj.kind === 'records') { recordsTouch(); return; }
+  if (obj.kind === 'flypad') { flyPadTouch(); return; }
   if (obj.kind === 'minecart') { mineCartTouch(); return; }
   if (obj.kind === 'minegate') { mineGateTouch(); return; }
   if (obj.kind === 'nugget') { nuggetTouch(obj); return; }
@@ -1277,8 +1283,8 @@ function worldPaused() {
 setInterval(() => {
   updateMapPins(); checkFountain(); updateAttackButton(); renderHearts(); checkPlaces(); tickFlash(); tickParts(0.3); tickDefis(); tickFlame(); tickAlbum();
   // The game-side timers (power, copper golem, snowball fight, surprise) wait during the pause too.
-  if (!worldPaused()) { tickPowers(0.3); tickCopper(0.3); tickSnow(0.3); tickSurprise(0.3); tickMine(0.3); tickMoon(); }
-  if (scene3D) scene3D.inputLocked = worldPaused();
+  if (!worldPaused()) { tickPowers(0.3); tickCopper(0.3); tickSnow(0.3); tickSurprise(0.3); tickMine(0.3); tickMoon(); tickChrono(0.3); }
+  if (scene3D) scene3D.inputLocked = worldPaused() || chronoHold;
   tickNews();
 }, 300);
 
@@ -1498,6 +1504,7 @@ function onPartTwo(key) {
   if (key === 'J6') onCopperPartTwo();
   if (key === 'J7') onSnowPartTwo();
   if (key === 'J8') onMinePartTwo();
+  if (key === 'J9') onChronoPartTwo();
 }
 
 /* ===== DAILY CHALLENGES, THE JUMPING CHEST AND COCOTTE (J2) ===== */
@@ -1697,7 +1704,7 @@ function henHint() {
   if (!r) return '';
   return henFound() ? dtx().cocotteFound : r.hint[lang] ?? r.hint.fr;
 }
-function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), albumSpeech(), powersSpeech(), copperSpeech(), snowSpeech(), mineSpeech(), funLines().join(' ').replace(/^\S+ /, '').replace('·', '.'), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
+function todaySpeech() { return [dtx().partSay(partsLine()), flameSpeech(), albumSpeech(), powersSpeech(), copperSpeech(), snowSpeech(), mineSpeech(), chronoSpeech(), funLines().join(' ').replace(/^\S+ /, '').replace('·', '.'), `${dtx().cocotteTitle} ${henHint()}`].filter((s) => s.trim()).join(' '); }
 function renderToday() {
   const box = $('#journal-today');
   if (!box) return;
@@ -1723,6 +1730,7 @@ function renderToday() {
   for (const line of copperLines()) kids.push(el('p', 'journal-copper', line));
   for (const line of snowLines()) kids.push(el('p', 'journal-copper', line));
   for (const line of mineLines()) kids.push(el('p', 'journal-copper', line));
+  for (const line of chronoLines()) kids.push(el('p', 'journal-copper', line));
   for (const line of funLines()) kids.push(el('p', 'journal-fun', line));
   if (henRow()) kids.push(el('p', 'journal-hen', `🐔 ${x.cocotteTitle} ${henHint()}`), el('p', 'journal-feathers', x.feathers((progress.feathers ?? []).length)));
   const listen = el('button', 'btn btn-ghost btn-small', '🔊');
@@ -2327,7 +2335,8 @@ function stonePower() {
   if (!powersPartTwo()) return 'jump';
   if (w.animals < ANIMALS_GOAL) return 'giant';
   if (w.rings.length < RINGS.length) return 'glide';
-  return ['jump', 'giant', 'glide', 'speed'][w.uses % 4];
+  const kinds = ['jump', 'giant', 'glide', 'speed', ...(chronoFlyOpen() ? ['fly'] : [])]; // (J9: flying)
+  return kinds[w.uses % kinds.length];
 }
 function setupPowers() {
   const pw = scene3D?.powers;
@@ -2445,7 +2454,7 @@ function powersHardWord(word, wasDifficult, type) {
   const w = game?.powers;
   if (!w?.awake || !scene3D?.powers || type === 'powers' || bossFight || scene3D.powers.power) return;
   if (!isHardWord(word, wasDifficult)) return;
-  const kinds = powersPartTwo() ? ['speed', 'jump', 'giant', 'glide'] : ['speed', 'jump'];
+  const kinds = powersPartTwo() ? ['speed', 'jump', 'giant', 'glide', ...(chronoFlyOpen() ? ['fly'] : [])] : ['speed', 'jump'];
   const kind = kinds[(w.uses + 1) % kinds.length];
   const r = givePower(kind, word, { bonus: true });
   if (r) setTimeout(() => queuePowerMsg(r.text, r.say, 'pop'), 400);
@@ -2480,7 +2489,8 @@ function tickPowers(dt) {
     cur.left -= dt;
     const sec = Math.ceil(cur.left);
     if (sec <= 3 && sec > 0 && sec !== powerLastSec) { powerLastSec = sec; playTone(660, 0.06, 'square', 0.05); }
-    if (cur.left <= 0 && (cur.kind !== 'glide' || scene3D.onGround)) { pw.stop(); queuePowerMsg(x.over(powerName(cur.kind))); }
+    if (cur.left <= 0 && cur.kind === 'fly' && !scene3D.onGround) { cur.kind = 'glide'; scene3D.power = 'glide'; } // (flying ends: glide down)
+    else if (cur.left <= 0 && (cur.kind !== 'glide' || scene3D.onGround)) { pw.stop(); queuePowerMsg(x.over(powerName(cur.kind))); }
   }
   updatePowerHud();
   // Landing on a cloud: boing! A new cloud asks for its word.
@@ -3758,6 +3768,397 @@ function tickMoon() {
   }
 }
 
+/* ===== CHRONOS ET RECORDS (J9) ===== */
+// Session 1: at the start of the lava course, the big stopwatch on its chequered arch. A word wakes it
+// up (wow: it rings, fireworks, Fer raises the flag at the finish), then each run: "3, 2, 1…", a starting
+// word (the world is paused while it is spelled), "Partez !" and the clock runs (paused during any word)
+// until the finish pillar, where Fer waves the chequered flag so hard he spins and falls on his bottom
+// (Bong!). Alaric comments like on TV. A word wins the medal (bronze, silver, gold, from the time); the
+// best one hangs on the hero's chest. A see-through ghost replays the best run. Three medals end part 1.
+// Session 2 (part 2 of J9): the "voler" power (the jump button climbs), and the flight race from the
+// take-off pad through 8 rings round the village, against your ghost and Alaric's (slower each time he
+// wins). A word per ring kept on landing (as in J5), then the medal word; beating Alaric = champion outfit.
+const chx = () => CHX[lang] ?? CHX.fr;
+function chronoState() {
+  if (!game) return null;
+  const e = () => ({ runs: 0, medals: { gold: 0, silver: 0, bronze: 0 }, best: null, top: [], ghost: null });
+  return (game.chrono ??= { woke: false, lava: e(), fly: { ...e(), kept: [] }, alaric: { beaten: false, losses: 0 }, falls: 0, bongs: 0 });
+}
+const chronoPartTwo = () => releasePart(9) === 2;
+const medalCount = (c) => (c ? c.medals.gold + c.medals.silver + c.medals.bronze : 0);
+const chronoDone1 = (w = game?.chrono) => medalCount(w?.lava) >= MEDALS1;
+const chronoDone2 = (w = game?.chrono) => medalCount(w?.fly) >= 1 && !!w?.alaric?.beaten;
+const chronoFlyOpen = () => chronoPartTwo() && chronoDone1();
+let chronoMsgs = [], chronoP2Said = false, chronoHold = false, chronoSeq = null, chronoSaidAt = {}, chronoGame = null, chronoFlyPending = null, chronoHudUntil = 0, chronoPadDwell = 0, chronoPadCool = 0, chronoFinishing = false;
+function queueChronoMsg(text, say = text.replace(/^\S+ /, ''), sfx = null, show = null) { chronoMsgs.push({ text, say, sfx, show }); }
+function chronoOnce(key, ms) { const n = performance.now(); if (n - (chronoSaidAt[key] ?? -1e9) < ms) return false; chronoSaidAt[key] = n; return true; }
+function sfxAlarmBell() { for (let i = 0; i < 10; i++) playTone(i % 2 ? 1760 : 1568, 0.05, 'square', 0.05, i * 0.06); }
+function sfxWhistle() { playTone(2300, 0.18, 'sine', 0.09, 0, 2600); playTone(2300, 0.32, 'sine', 0.09, 0.22, 2500); }
+function sfxCountTick(hi) { playTone(hi ? 1175 : 784, hi ? 0.3 : 0.14, 'square', 0.05); }
+function chronoFloat(pos, text, color = '#ffd34a', dy = 2.4) { const sp = scene3D?.worldToScreen(pos.clone().setY(pos.y + dy)); if (sp) showFloatingText(sp.x, sp.y, text, color); }
+function chronoBusy(spellOnly = false) {
+  if (!$('#spell-modal').hidden || spellContext) return true;
+  if (spellOnly) return false;
+  return worldPaused() || knocking || bossFight || !!scene3D?.worlds?.current;
+}
+const BEST_ORDER = ['bronze', 'silver', 'gold'];
+function bestMedal(w = game?.chrono) {
+  let best = null;
+  for (const c of [w?.lava, w?.fly]) for (const m of BEST_ORDER) if ((c?.medals[m] ?? 0) > 0 && BEST_ORDER.indexOf(m) > BEST_ORDER.indexOf(best)) best = m;
+  return best;
+}
+function applyChronoLook() {
+  const c = scene3D?.chrono, w = game?.chrono, x = chx();
+  if (!c) return;
+  for (const [o, label] of [[c.gobj, x.gate], [c.bobj, x.board], [c.pobj, x.pad]]) if (o.labelText !== label) { o.labelText = label; scene3D.setSpotMaterial(o, 'talk', label); }
+  c.setRings(chronoFlyOpen(), w?.fly?.kept ?? []);
+  const m = bestMedal(w);
+  if (c.medalKind !== m) c.setMedal(m);
+  const key = JSON.stringify([w?.lava?.top ?? [], w?.fly?.top ?? []]);
+  if (c.boardKey !== key) { c.boardKey = key; c.drawBoard({ lava: w?.lava?.top ?? [], fly: w?.fly?.top ?? [] }); }
+}
+function setupChrono() {
+  const c = scene3D?.chrono;
+  if (!c || c.wired) return;
+  c.wired = true;
+  c.onTime = (tt) => { const h = $('#chrono-hud'); if (h) { h.hidden = false; h.textContent = `⏱️ ${fmtTime(tt, lang)}`; } };
+  c.onBong = () => { const w = chronoState(); w.bongs++; sfxBong(); setTimeout(sfxBong, 180); chronoFloat(c.fer.position, 'Bong !', '#ffd6a0', 1.6); if (game.pet?.tamed) setTimeout(sfxBark, 400); };
+  c.onRing = (i) => chronoRing(i);
+  c.onAlaricIn = () => { if (!chronoFinishing) { toast(`👻 ${lang === 'en' ? 'Alaric’s ghost is in!' : 'Le fantôme d’Alaric est arrivé !'}`, 2500); playTone(392, 0.3, 'sine', 0.05, 0, 330); } };
+}
+function chronoSync() {
+  const c = scene3D?.chrono;
+  if (!c || chronoGame === game) return;
+  chronoGame = game; chronoMsgs = []; chronoP2Said = false; chronoHold = false; chronoSeq = null; chronoFlyPending = null; chronoFinishing = false;
+  if (c.race) c.stopRace();
+  const h = $('#chrono-hud'); if (h) h.hidden = true;
+  c.boardKey = null;
+  applyChronoLook();
+}
+// Touch the big stopwatch: the first time, a word wakes it up; then a run starts.
+function chronoGateTouch() {
+  setupChrono(); chronoSync();
+  const w = chronoState(), c = scene3D.chrono, x = chx();
+  if (c.race?.course === 'lava') { if (chronoOnce('running', 4000)) { toast(`⏱️ ${x.running}`, 2500); speak(x.running, 1.05); } return; }
+  if (c.race || chronoSeq || chronoFinishing || chronoBusy()) return;
+  if (scene3D.horses?.riding) { scene3D.horses.dismount(); scene3D.onDismount?.(); }
+  if (!w.woke) {
+    spellContext = { type: 'chrono', mode: 'wake', word: pickWord(levelAt(0)), tries: 0, lead: x.wakeLead };
+    openSpellModal(`⏱️ ${x.wakeTitle}`, x.wakeInstr, '⏱️');
+    return;
+  }
+  beginChronoCountdown('lava');
+}
+function chronoWake() {
+  const c = scene3D.chrono, x = chx(), w = chronoState();
+  w.woke = true;
+  c.wake();
+  sfxAlarmBell(); setTimeout(sfxVictory, 700); launchConfetti();
+  toast(`⏱️ ${x.wake}`, 7000); speak(x.wake, 0.95);
+  newsTarget = null; updateMapPins();
+  saveGame();
+  chronoSeq = 'wake';
+  setTimeout(() => { if (chronoSeq === 'wake') { chronoSeq = null; beginChronoCountdown('lava'); } }, window.__se?.chronoFast ? 1500 : 8500);
+}
+// "Trois… deux… un…" (big numbers, beeps, said aloud), then the starting word.
+function beginChronoCountdown(course) {
+  const c = scene3D.chrono, x = chx(), g0 = game;
+  chronoSeq = course; chronoHold = true; scene3D.inputLocked = true;
+  newsTarget = null; updateMapPins();
+  if (course === 'lava') {
+    scene3D.teleport(START.x, START.z, Math.PI);
+    scene3D.lavaIndex = -1; scene3D.lavaLastRole = null;
+  } else scene3D.teleport(PAD.x, PAD.z, Math.atan2(FLY_RINGS[0].x - PAD.x, FLY_RINGS[0].z - PAD.z));
+  scene3D.pet?.catchUp();
+  speak(x.count, 0.85);
+  ['3', '2', '1'].forEach((n, i) => setTimeout(() => {
+    if (game !== g0) return;
+    sfxCountTick(false);
+    const p = scene3D?.getPlayerScreenPosition?.();
+    if (p) showFloatingText(p.x, p.y - 140, n, '#ffd34a');
+  }, 300 + i * 900));
+  setTimeout(() => {
+    if (game !== g0 || chronoSeq !== course) return;
+    const open = () => {
+      if (game !== g0 || chronoSeq !== course) return;
+      if (chronoBusy(true)) { setTimeout(open, 600); return; }
+      spellContext = { type: 'chrono', mode: 'start', course, word: pickWord(levelAt(0)), tries: 0, lead: x.startLead };
+      openSpellModal(`🏁 ${x.startTitle}`, x.startInstr, course === 'fly' ? '🕊️' : '🏁');
+    };
+    open();
+  }, window.__se?.chronoFast ? 900 : 3000);
+}
+function chronoStartRun(course, ctx) {
+  const c = scene3D.chrono, x = chx(), w = chronoState();
+  chronoSeq = null; chronoHold = false; chronoFinishing = false;
+  sfxWhistle();
+  const p = scene3D.getPlayerScreenPosition?.();
+  if (p) showFloatingText(p.x, p.y - 140, `🏁 ${x.go}`, '#ffffff');
+  const cw = w[course];
+  cw.runs++;
+  if (course === 'lava') {
+    scene3D.lavaIndex = -1; scene3D.lavaLastRole = null;
+    c.startRace('lava', { ghost: cw.ghost });
+    speak(`${x.goSay}${cw.ghost?.length ? ` ${x.ghostToo}` : ''}`, 1.0);
+  } else {
+    const alaricTime = ALARIC_TIME + ALARIC_SLOWER * Math.min(4, w.alaric.losses);
+    scene3D.powers.give('fly', ctx.word?.word ?? '', FLY_RACE_TIME);
+    powerLastSec = -1; sfxPowerUp(); updatePowerHud();
+    c.startRace('fly', { ghost: cw.ghost, alaricTime });
+    chronoFlyPending = null;
+    scene3D.jump();
+    newsTarget = { show: { x: FLY_RINGS[0].x, z: FLY_RINGS[0].z }, until: performance.now() + 4 * 60 * 1000 }; updateMapPins();
+    speak(`${x.goFly}${cw.ghost?.length ? ` ${x.ghostToo}` : ''} ${x.alaricToo}`, 1.0);
+  }
+  saveGame();
+}
+const chronoLavaRace = () => (scene3D?.chrono?.race?.course === 'lava' && !scene3D.chrono.race.done ? scene3D.chrono.race : null);
+// A flag (or the finish) of the lava course during a run: Alaric comments like on TV.
+function chronoLavaPillar(role) {
+  const r = chronoLavaRace();
+  if (!r) return;
+  const i = LAVA_FLAGS.indexOf(role);
+  if (i >= 0 && (r.cp == null || i > LAVA_FLAGS.indexOf(r.cp))) {
+    r.cp = role;
+    const line = chx().tv[i] ?? chx().tv[0];
+    speak(line, 1.1);
+    chronoFloat(scene3D.player.position, `📣 ${line}`, '#ffffff', 2.6);
+  }
+  if (role === 'finish') chronoFinishLava();
+}
+// A fall in the lava during a run: Fer hides his eyes; back to the last flag of this run.
+function chronoFall() {
+  const w = chronoState(), x = chx();
+  w.falls++;
+  scene3D.chrono.coverEyes();
+  toast(`🙈 ${x.fall}`, 3500); speak(x.fall, 1.05);
+}
+function chronoFinishLava() {
+  const c = scene3D.chrono, x = chx();
+  const r = c.race;
+  r.done = true;
+  const t = r.t;
+  const res = c.stopRace();
+  chronoFinishing = true;
+  chronoHudUntil = performance.now() + 9000;
+  c.onTime(t);
+  c.spinFall();
+  sfxVictory(); launchConfetti();
+  const p = scene3D.player.position;
+  for (let k = 0; k < 3; k++) setTimeout(() => scene3D.particleBurst(p.clone().setY(p.y + 2), ['#ffd36a', '#ffffff', '#ff7a1e'][k], 26), k * 250);
+  toast(`🏁 ${x.finish(Math.round(t))}`, 6500);
+  speak(x.finish(Math.round(t)), 1.0);
+  setTimeout(() => openChronoMedal('lava', t, res.rec), window.__se?.chronoFast ? 3800 : 6500);
+}
+function openChronoMedal(course, t, rec, extra = {}) {
+  const x = chx();
+  if (chronoBusy(true)) { setTimeout(() => openChronoMedal(course, t, rec, extra), 700); return; }
+  const medal = medalFor(course, t);
+  spellContext = { type: 'chrono', mode: 'medal', course, medal, t, rec, ...extra, word: pickWord(levelAt(0)), tries: 0, lead: x.medalLead(medal) };
+  openSpellModal(`${x.medalEmoji[medal]} ${x.medalTitle(medal)}`, x.medalInstr(medal), x.medalEmoji[medal]);
+}
+// A ring of the flight race (in order): a word keeps it on landing (if not kept yet).
+function chronoRing(i) {
+  const c = scene3D.chrono, x = chx(), w = chronoState();
+  sfxRing();
+  const k = i + 1;
+  floatAbove(x.ring(k).replace(/^\S+ /, '⭕ '), '#ffe08a');
+  speak(x.ringTv[k] ?? x.ring(k).replace(/^\S+ /, ''), 1.1);
+  scene3D.powers.refill(Math.min(FLY_RACE_TIME, (scene3D.powers.power?.left ?? 0) + 8));
+  const r = c.race;
+  if (r) { r.rings ??= []; if (!w.fly.kept.includes(i)) r.rings.push(i); }
+  if (k < FLY_RINGS.length) { newsTarget = { show: { x: FLY_RINGS[k].x, z: FLY_RINGS[k].z }, until: performance.now() + 4 * 60 * 1000 }; updateMapPins(); return; }
+  // The last ring: the time stops; land, then the words.
+  r.done = true;
+  const t = r.t, alaricTime = r.alaricTime, alaricIn = !!r.alaricIn;
+  const res = c.stopRace();
+  chronoFinishing = true;
+  chronoHudUntil = performance.now() + 9000;
+  c.onTime(t);
+  newsTarget = null; updateMapPins();
+  chronoFlyPending = { finished: true, t, rec: res.rec, alaricTime, alaricIn, rings: res.rings ?? [] };
+  const pw = scene3D.powers.power;
+  if (pw) pw.left = Math.min(pw.left, 3);
+  sfxVictory(); launchConfetti();
+  toast(`🏁 ${x.flyFinish(Math.round(t))}`, 5000);
+  setTimeout(() => speak(x.flyFinish(Math.round(t)), 1.0), 900);
+}
+// Landed after a flight race (finished or not): a word per ring to keep, then the medal word.
+function chronoLanded() {
+  const fp = chronoFlyPending;
+  chronoFlyPending = null;
+  const rings = [...new Set(fp.rings)].filter((i) => !chronoState().fly.kept.includes(i));
+  if (rings.length) { openChronoRingWord(rings, fp); return; }
+  if (fp.finished) openChronoMedal('fly', fp.t, fp.rec, { alaricTime: fp.alaricTime });
+  else chronoFinishing = false;
+}
+function openChronoRingWord(queue, fp) {
+  const x = chx();
+  if (chronoBusy(true)) { setTimeout(() => openChronoRingWord(queue, fp), 700); return; }
+  spellContext = { type: 'chrono', mode: 'ring', ring: queue[0], queue: queue.slice(1), fp, word: pickWord(levelAt(0)), tries: 0 };
+  openSpellModal(`⭕ ${x.pad.replace(/^\S+ /, '')}`, x.landInstr(queue[0] + 1), '⭕');
+}
+// After a word of the stopwatch: the result shown in the spelling window.
+function chronoSpelled(ctx) {
+  const w = chronoState(), x = chx(), c = scene3D.chrono;
+  if (ctx.mode === 'wake') return { text: `⏱️ ${lang === 'en' ? 'Ring-ring!' : 'Driiing !'}`, say: lang === 'en' ? 'Ring-ring!' : 'Driiing !', after: () => chronoWake() };
+  if (ctx.mode === 'start') return { text: `🏁 ${x.go}`, say: x.go, after: () => chronoStartRun(ctx.course, ctx) };
+  if (ctx.mode === 'ring') {
+    if (!w.fly.kept.includes(ctx.ring)) w.fly.kept.push(ctx.ring);
+    progress.stars += 2; game.starsEarned += 2;
+    applyChronoLook(); saveGame(); updateGameUI();
+    const text = x.ringKept(w.fly.kept.length);
+    const after = ctx.queue.length ? () => openChronoRingWord(ctx.queue, ctx.fp) : ctx.fp.finished ? () => openChronoMedal('fly', ctx.fp.t, ctx.fp.rec, { alaricTime: ctx.fp.alaricTime }) : () => { chronoFinishing = false; queueChronoMsg(`🕊️ ${x.flyBack}`, undefined, null, 'flypad'); };
+    return { text, say: text.replace(/^\S+ /, ''), after };
+  }
+  // The medal.
+  const cw = w[ctx.course], m = ctx.medal, t = Math.round(ctx.t * 10) / 10;
+  const wasDone1 = chronoDone1(w);
+  cw.medals[m]++;
+  const prev = cw.best, record = prev == null || t < prev;
+  if (record) { cw.best = t; cw.ghost = ctx.rec?.length ? ctx.rec : cw.ghost; }
+  cw.top = addTop(cw.top, t, m);
+  const stars = { gold: 8, silver: 5, bronze: 3 }[m];
+  progress.stars += stars; game.starsEarned += stars;
+  const name = x.medalName[m];
+  let text = x.medalGot(x.medalEmoji[m], name, fmtTime(t, lang)), say = x.medalSay(name, Math.round(t));
+  if (record) { text += ` ${x.record}`; say += ` ${x.record}`; }
+  if (record && prev != null) { text += ` ${x.ghostBeat}`; say += ` ${x.ghostBeat}`; }
+  const tip = m !== 'gold' ? x.next[m](MEDALS[ctx.course][m === 'bronze' ? 'silver' : 'gold']) : '';
+  if (tip) { text += ` ${tip}`; say += ` ${tip}`; }
+  let afterExtra = null;
+  if (ctx.course === 'fly') {
+    if (t < ctx.alaricTime) {
+      if (!w.alaric.beaten) {
+        w.alaric.beaten = true;
+        unlockCostume('racer');
+        costumeState().current = 'racer'; applyCostume(); saveProgress();
+        text += ` 👻 ${x.alaricWin}`; say += ` ${x.alaricWin}`;
+      } else { text += ` 👻 ${x.alaricAgain}`; say += ` ${x.alaricAgain}`; }
+    } else {
+      w.alaric.losses++;
+      afterExtra = () => queueChronoMsg(`👻 ${x.alaricLose}`, undefined, 'pouet');
+    }
+  }
+  applyChronoLook(); saveGame(); updateGameUI();
+  const after = () => {
+    chronoFinishing = false;
+    sfxVictory(); launchConfetti();
+    c.cheer(2.5);
+    afterExtra?.();
+    if (ctx.course === 'lava') {
+      // Back to the start, for another run.
+      const fade = $('#sleep-fade');
+      setTimeout(() => {
+        if (c.race || chronoSeq) return;
+        fade.hidden = false; fade.classList.remove('is-out');
+        setTimeout(() => {
+          scene3D.teleport(START.x, START.z + 1.2, Math.PI);
+          scene3D.lavaIndex = -1; scene3D.lavaLastRole = null;
+          scene3D.pet?.catchUp();
+          fade.classList.add('is-out');
+          setTimeout(() => { fade.hidden = true; }, 700);
+        }, 600);
+      }, 1400);
+      if (!wasDone1 && chronoDone1(w)) { queueChronoMsg(`🏆 ${x.done1}`, undefined, 'victory'); if (chronoPartTwo()) onChronoPartTwo(true); }
+      else queueChronoMsg(`⏱️ ${x.back}`);
+    } else if (!afterExtra) queueChronoMsg(`🕊️ ${x.flyBack}`, undefined, null, 'flypad');
+    else queueChronoMsg(`🕊️ ${x.flyBack}`, undefined, null, 'flypad');
+  };
+  return { text, say, emoji: x.medalEmoji[m], after };
+}
+function recordsTouch() {
+  const w = chronoState(), x = chx();
+  const list = (c) => (c.top.length ? c.top.map((e) => x.secs(Math.round(e.t))).join(', ') : x.none);
+  sfxPop();
+  const say = x.boardSay(list(w.lava), list(w.fly));
+  toast(`🏆 ${say}`, 6000); speak(say, 0.95);
+}
+function flyPadTouch() {
+  setupChrono(); chronoSync();
+  const c = scene3D.chrono;
+  if (!chronoFlyOpen()) { explainFlyPad(); return; }
+  if (c.race || chronoSeq || chronoFlyPending || chronoFinishing || chronoBusy()) return;
+  if (scene3D.horses?.riding) { scene3D.horses.dismount(); scene3D.onDismount?.(); }
+  beginChronoCountdown('fly');
+}
+function explainFlyPad() {
+  const x = chx(), done1 = chronoDone1();
+  const msg = done1 ? x.padSoon : x.padLater;
+  playTone(520, 0.1, 'triangle', 0.06); playTone(660, 0.12, 'triangle', 0.06, 0.1);
+  toast(`🕊️ ${msg}`, 6000); speak(msg, 0.95);
+  if (!done1) { newsTarget = { show: 'chrono', until: performance.now() + 4 * 60 * 1000 }; updateMapPins(); }
+}
+function onChronoPartTwo(force = false) {
+  const w = game?.chrono;
+  if (!chronoDone1(w) || chronoP2Said || (chronoDone2(w) && !force)) return;
+  chronoP2Said = true;
+  applyChronoLook();
+  if (chronoDone2(w)) return;
+  queueChronoMsg(`🕊️ ${chx().partTwo}`, undefined, 'pop', 'flypad');
+}
+function tickChrono(dt) {
+  if (!game || !scene3D?.chrono || scene3D.mode !== 'play' || document.body.dataset.screen !== 'game') return;
+  if (game.story?.intro) partState('J9');
+  setupChrono(); chronoSync();
+  const c = scene3D.chrono, w = chronoState(), x = chx();
+  applyChronoLook();
+  if (chronoPartTwo()) onChronoPartTwo();
+  const busy = chronoBusy();
+  // The clock on screen: during a run, and a few seconds after the finish.
+  const hud = $('#chrono-hud');
+  if (hud && !c.race && performance.now() > chronoHudUntil) hud.hidden = true;
+  // The flight race: the power ran out before the last ring (the race is over), or the landing.
+  if (c.race?.course === 'fly' && scene3D.power !== 'fly') {
+    const res = c.stopRace();
+    chronoFlyPending = { finished: false, rings: res.rings ?? [] };
+    chronoFinishing = true;
+    newsTarget = null; updateMapPins();
+    queueChronoMsg(`🕊️ ${x.flyOver(res.next)}`, undefined, null, 'flypad');
+  }
+  // A lava run left halfway (the hero went somewhere else, or it is really long): it stops.
+  const lr = chronoLavaRace();
+  if (lr && (Math.hypot(scene3D.player.position.x - (LAVA.x0 + LAVA.x1) / 2, scene3D.player.position.z - (LAVA.z0 + LAVA.z1) / 2) > 32 || lr.t > 300)) {
+    c.stopRace();
+    toast(`⏱️ ${x.abandon}`, 4000); speak(x.abandon, 1.0);
+  }
+  if (chronoFlyPending && scene3D.onGround && scene3D.power !== 'fly' && !busy && !spellContext) chronoLanded();
+  // Rien de muet: standing on the take-off pad before it opens says what it is for.
+  chronoPadCool -= dt;
+  const p = scene3D.player.position;
+  const onPad = Math.hypot(p.x - PAD.x, p.z - PAD.z) < 2.2;
+  chronoPadDwell = onPad && !busy ? chronoPadDwell + dt : 0;
+  if (chronoPadDwell > 0.8 && chronoPadCool <= 0 && !chronoFlyOpen()) { chronoPadCool = 25; chronoPadDwell = 0; explainFlyPad(); }
+  if (chronoMsgs.length && !busy && !c.race && !chronoSeq && performance.now() - defiMsgAt > 3800) {
+    defiMsgAt = performance.now();
+    const m = chronoMsgs.shift();
+    toast(m.text, 5000);
+    speak(m.say, 0.95);
+    if (m.show) { newsTarget = { show: m.show, until: performance.now() + 4 * 60 * 1000 }; updateMapPins(); }
+    if (m.sfx === 'victory') { sfxVictory(); launchConfetti(); } else if (m.sfx === 'pop') sfxPop(); else if (m.sfx === 'pouet') sfxPouet();
+  }
+}
+// The journal: the two parts, the medals and records, the rings kept and Alaric's ghost, written and read.
+function chronoLines() {
+  const w = game?.chrono, x = chx(), dx = dtx();
+  if (!game || !scene3D?.chrono) return [];
+  if (!w?.woke) return [`⏱️ ${x.name} : ${x.notYet}`];
+  const two = chronoPartTwo();
+  const p1 = chronoDone1(w) ? dx.partDone : `: ${dx.partPlay}`;
+  const p2 = !two ? `: ${dx.partLater}` : chronoDone2(w) ? dx.partDone : `: ${dx.partOpen}`;
+  const best = (c) => (c.best != null ? fmtTime(c.best, lang) : x.none);
+  const l = [`⏱️ ${x.name} — ${dx.part(p1, p2)}`, x.lines1(medalCount(w.lava), best(w.lava))];
+  if (two && chronoDone1(w)) l.push(x.lines2(w.fly.kept.length, best(w.fly), w.alaric.beaten));
+  return l;
+}
+function chronoSpeech() {
+  const l = chronoLines(), dx = dtx();
+  if (!l.length) return '';
+  if (l.length === 1) return l[0].replace(/^\S+ /, '');
+  const rest = l.slice(1).map((s) => s.replace(/^\S+ /, '').replace(/·/g, '.').replace(/(\d)\/(\d)/g, (lang === 'en' ? '$1 of $2' : '$1 sur $2')).replace(/(\d+)[,.](\d) s\b/g, (m, a) => (lang === 'en' ? `${a} seconds` : `${a} secondes`))).join('. ');
+  return `${dx.partSay(l[0].replace(/^\S+ /, '').replace('—', '.'))} ${rest}.`;
+}
+
 /* ===== HORSES ===== */
 const horseArmorKind = () => (game?.crafted?.includes('horse_armor_diamond') ? 'diamond' : game?.crafted?.includes('horse_armor_iron') ? 'iron' : null);
 function applyHorses() {
@@ -4158,9 +4559,13 @@ function knockOut(reason) {
       const at = scene3D.lavaFailAt ?? -1;
       lavaFallsAt[at] = (lavaFallsAt[at] ?? 0) + 1;
       if (lavaFallsAt[at] >= 3 && scene3D.addLavaHelp(at)) setTimeout(() => toast(t.lavaHelp, 4000), 1600);
-      const cp = game.parkour?.cp && scene3D.lavaPillar(game.parkour.cp);
+      // During a timed run (J9): back to the last flag of this run, not of the quest.
+      const run = chronoLavaRace();
+      const role = run ? run.cp : game.parkour?.cp;
+      const cp = role && scene3D.lavaPillar(role);
       to = cp ?? { x: LAVA.start.x, z: LAVA.start.z };
-      scene3D.lavaIndex = cp ? LAVA.pillars.findIndex((pp) => pp[4] === game.parkour.cp) : -1;
+      scene3D.lavaIndex = cp ? LAVA.pillars.findIndex((pp) => pp[4] === role) : -1;
+      if (run) { scene3D.lavaLastRole = role ?? null; chronoFall(); }
     } else {
       const bed = scene3D.interactables.find((i) => i.kind === 'bed');
       to = bed ? { x: bed.worldPos.x + 1.0, z: bed.worldPos.z + 0.6 } : { x: 0, z: 6 };
@@ -4204,6 +4609,7 @@ function restoreLava() {
   if (game.fountainRaised) scene3D.raiseFountain(true);
 }
 function onLavaPillar(role) {
+  chronoLavaPillar(role);
   game.parkour ??= { cp: null, done: false, falls: 0 };
   const pk = game.parkour;
   const i = LAVA_FLAGS.indexOf(role), cur = LAVA_FLAGS.indexOf(pk.cp);
@@ -4655,6 +5061,13 @@ function handleSpellSuccess() {
   } else if (type === 'snow') {
     const r = snowSpelled(spellContext);
     spellResultEl.replaceChildren(el('p', 'spell-success', r.text), ...(r.hats ? [hatPicker()] : []), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
+    spellResultEl.hidden = false;
+    speak(r.say, 0.95);
+    if (r.emoji) flyItem(r.emoji);
+    spellContext.after = r.after;
+  } else if (type === 'chrono') {
+    const r = chronoSpelled(spellContext);
+    spellResultEl.replaceChildren(el('p', 'spell-success', praise(firstTry)), el('p', 'spell-success', r.text), el('p', 'spell-stars', copied ? t.copyNoStars : `+${earned} ${earned === 1 ? t.star : t.stars}`));
     spellResultEl.hidden = false;
     speak(r.say, 0.95);
     if (r.emoji) flyItem(r.emoji);
@@ -5177,7 +5590,7 @@ function updateInteractHint() {
   const obj = scene3D.getNearbyInteractable();
   btn.hidden = !obj;
   if (obj) {
-    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : obj.kind === 'powerstone' ? '⚡' : obj.kind === 'anvil' ? '🔨' : obj.kind === 'copper' ? '🤖' : obj.kind === 'secretchest' || obj.kind === 'surprisechest' ? '🎁' : obj.kind === 'secretbutton' ? '🔴' : obj.kind === 'snowgolem' || obj.kind === 'snowman' || obj.kind === 'snowpatch' ? '⛄' : obj.kind === 'snowpile' ? '❄️' : obj.kind === 'minecart' ? '🛒' : obj.kind === 'minegate' ? '🔮' : obj.kind === 'nugget' ? '✨' : obj.kind === 'rocket' || obj.kind === 'moonrocket' ? '🚀' : obj.kind === 'bip' ? '🤖' : obj.kind === 'moonpart' ? '🔧' : obj.kind === 'moonstar' ? '⭐' : obj.kind === 'moonflag' ? '🚩' : '⛏️';
+    const icon = obj.kind === 'npc' ? '💬' : obj.kind === 'bed' ? '🛏️' : obj.kind === 'circle' ? '🔮' : obj.kind === 'sign' || obj.kind === 'travel' ? '🪧' : obj.kind === 'mimot' ? '🐣' : obj.kind === 'book' ? '📖' : obj.kind === 'boss' ? '⚔️' : obj.kind === 'pet' ? '🐶' : obj.kind === 'portal' ? '🌀' : obj.kind === 'horse' ? '🐴' : obj.kind === 'golem' ? '👋' : obj.kind === 'jumpchest' ? '🎁' : obj.kind === 'cocotte' ? '🐔' : obj.kind === 'flame' ? '🔥' : obj.kind === 'albumstand' ? '📖' : obj.kind === 'powerstone' ? '⚡' : obj.kind === 'anvil' ? '🔨' : obj.kind === 'copper' ? '🤖' : obj.kind === 'secretchest' || obj.kind === 'surprisechest' ? '🎁' : obj.kind === 'secretbutton' ? '🔴' : obj.kind === 'snowgolem' || obj.kind === 'snowman' || obj.kind === 'snowpatch' ? '⛄' : obj.kind === 'snowpile' ? '❄️' : obj.kind === 'minecart' ? '🛒' : obj.kind === 'minegate' ? '🔮' : obj.kind === 'nugget' ? '✨' : obj.kind === 'rocket' || obj.kind === 'moonrocket' ? '🚀' : obj.kind === 'bip' ? '🤖' : obj.kind === 'moonpart' ? '🔧' : obj.kind === 'moonstar' ? '⭐' : obj.kind === 'moonflag' ? '🚩' : obj.kind === 'chrono' ? '⏱️' : obj.kind === 'records' ? '🏆' : obj.kind === 'flypad' ? '🕊️' : '⛏️';
     const ic = btn.querySelector('.interact-icon');
     if (ic && ic.textContent !== icon) ic.textContent = icon;
     btn.classList.add('is-active');

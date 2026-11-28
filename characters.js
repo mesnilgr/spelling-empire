@@ -383,5 +383,6 @@ export const COSTUMES = [
   { id: 'copper', price: 75, emoji: '🤖', name: { fr: 'Chevalier de cuivre', en: 'Copper Knight' }, spec: { ...HERO, shirt: 0xd27a3c, trim: 0x3ab89a, pants: 0x8a4a22, shoes: 0x5a3a20, cape: 0x3ab89a, helmet: 0xe08a4a } },
   { id: 'miner', price: 65, emoji: '⛏️', name: { fr: 'Mineur', en: 'Miner' }, spec: { ...HERO, shirt: 0xe8862a, trim: 0xf2d24a, pants: 0x3a4a6a, shoes: 0x4a3020, cape: null, hat: { type: 'miner', color: 0xf2c84b } } },
   { id: 'astronaut', price: 85, emoji: '🧑‍🚀', name: { fr: 'Astronaute', en: 'Astronaut' }, spec: { ...HERO, shirt: 0xf2f2f4, trim: 0x4a8af0, pants: 0xe2e2e8, shoes: 0x8a909a, cape: null, hat: { type: 'astro' } } },
+  { id: 'racer', price: 90, emoji: '🏁', name: { fr: 'Champion', en: 'Champion' }, spec: { ...HERO, shirt: 0xd8302a, trim: 0xffffff, pants: 0xf2f2f4, shoes: 0x2a2a2e, cape: 0xf2c84b, hat: { type: 'cap', color: 0xd8302a } } },
   { id: 'king', price: 80, emoji: '👑', name: { fr: 'Roi', en: 'Royal' }, spec: { ...HERO, shirt: 0xa8302a, trim: 0xf2c84b, pants: 0x3a2a5a, cape: 0x6a2a9a, hat: { type: 'crown' } } },
 ];

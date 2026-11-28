@@ -1743,6 +1743,7 @@ body[data-screen="menu"] #new-game-btn.btn-primary, body[data-screen="menu"] #co
 .hud-btn.defis-btn.is-done { background: linear-gradient(180deg, #ffe08a, #f2b33a); }
 .hud-btn.power-hud { width: auto; padding: 0 10px; font-weight: 800; font-size: 0.95rem; white-space: nowrap; display: inline-flex; align-items: center; background: linear-gradient(180deg, #b8e8ff, #6ab8f0); }
 .hud-btn.power-hud[hidden] { display: none; }
+.hud-btn.chrono-hud { background: linear-gradient(180deg, #fff2b0, #f2c84b); font-variant-numeric: tabular-nums; min-width: 4.6em; justify-content: center; }
 .hud-btn.power-hud.is-low { animation: power-blink 0.5s steps(2) infinite; }
 @keyframes power-blink { 50% { opacity: 0.45; } }
 .news-riddle { margin: 0 0 14px; padding: 10px 12px; border-radius: 12px; background: rgba(120, 90, 200, 0.08); border: 2px dashed #b9a2e8; }

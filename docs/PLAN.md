@@ -266,7 +266,7 @@ Les dates sont celles de la publication (la tâche tourne chaque matin à 6 h 17
   bord du grand cratère (un mot, tenue d'astronaute) ; retour en fusée, atterrissage en douceur. 10 mots au
   premier voyage, 6 aux suivants.)
 
-- [ ] **J9 · sam. 28 nov. · v1.27.0 — Chronos et records.**
+- [x] **J9 · sam. 28 nov. · v1.27.0 — Chronos et records.** (sans la course à cheval : le grand chrono est sur une arche au départ du parcours de lave (x 29, z −37,9), le panneau des records à côté (x 24,4, z −36,9), Fer tient le drapeau à l'arrivée (x 41,4, z −56,6) ; un mot réveille le chrono, puis 2 mots par course (départ, médaille) ; or < 20 s, argent < 32 s ; 3 médailles en partie 1 ; partie 2 : piste d'envol à côté de la pierre des pouvoirs (x 8,5, z 31), pouvoir voler (le saut fait monter), 8 anneaux autour du village, un mot par anneau gardé, fantôme d'Alaric en 48 s (+7 s à chaque défaite), le battre = tenue de champion ; la course à cheval reste à placer si une release a de la marge)
   - Session 1 : parcours de lave chronométré (le wagonnet de la mine roule tout seul : pas de chrono dessus) ;
     départ « 3, 2, 1… » puis un mot de départ (personne ne bouge pendant le mot) ; médailles bronze / argent / or
     selon le temps ; un **fantôme** transparent rejoue ton meilleur parcours.

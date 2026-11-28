@@ -925,7 +925,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 2,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune'], save: save(story(2, 0)) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune', '1.27.0-chronos'], save: save(story(2, 0)) }, { quality: 0 });
       await g.click('#continue-btn');
       // Alaric presents the release, written and spoken; the newest note comes first.
       const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
@@ -941,7 +941,7 @@ export const SCENARIOS = [
       await g.click('#news-btn');
       await g.page.waitForTimeout(300);
       const journal = await g.page.evaluate(() => [...document.querySelectorAll('#journal-list .journal-item h3')].map((e) => e.textContent));
-      check(journal.length >= 3 && /fusée pour la Lune/i.test(journal[0]) && journal.some((j) => /wagonnet/i.test(j)) && journal.some((j) => /boules de neige/i.test(j)) && journal.some((j) => /golem de cuivre/i.test(j)) && journal.some((j) => /pouvoirs/i.test(j)) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
+      check(journal.length >= 3 && /Chronos et records/i.test(journal[0]) && journal.some((j) => /fusée pour la Lune/i.test(j)) && journal.some((j) => /wagonnet/i.test(j)) && journal.some((j) => /boules de neige/i.test(j)) && journal.some((j) => /golem de cuivre/i.test(j)) && journal.some((j) => /pouvoirs/i.test(j)) && journal.some((j) => /Flammèche/i.test(j)) && journal.some((j) => /défis/i.test(j)) && journal.some((j) => /golem/i.test(j)), 'le journal 📜 garde toutes les présentations, la plus récente en haut', journal.join(' / '));
       await g.click('#journal-close');
       // Iron walks round the square, says hello and offers a flower once a day.
       const walk = await g.page.evaluate(() => { const gl = window.__se.scene.golem, a = gl.mesh.position.clone(); gl.pause = 0; for (let k = 0; k < 150; k++) gl.update(1 / 30, k / 30); return { points: gl.points.length, moved: a.distanceTo(gl.mesh.position) }; });
@@ -974,7 +974,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune'], save: save(story(2, 0)) }, { quality: 0, defis: true });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune', '1.27.0-chronos'], save: save(story(2, 0)) }, { quality: 0, defis: true });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       let words = 0;
       const spellOne = async () => { const r = await g.spell(); words++; return r; };
@@ -1115,7 +1115,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.22.0-album', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune', '1.27.0-chronos'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidLater = (re, timeout = 20000) => g.page.waitForFunction((r) => new RegExp(r).test(window.__spoken.join(' | ')), re.source, { timeout }).then(() => true, () => false);
       const flame = () => g.page.evaluate(() => { const f = window.__se.flame() ?? {}, fl = window.__se.scene.flame; return { ...f, state: { ...fl.state }, out: fl.starsOut(), part: window.__se.releasePart(3) }; });
@@ -1237,7 +1237,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', 'prog-pronoms', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune', '1.27.0-chronos'], save: save(story(2, 0), { places: ['farm'], pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1409,7 +1409,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', 'prog-pronoms', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.3-lune', '1.27.0-chronos'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       await g.page.evaluate(() => window.__se.henDayUse(5)); // J5's Cocotte (on the highest cloud)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1601,7 +1601,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', 'prog-pronoms', 'prog-articles', '1.25.0-golem-neige', '1.26.1-wagonnet', '1.26.3-lune'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 }, powers: { awake: true, clouds: [0, 1, 2, 3, 4], rings: [], animals: 0, bounced: [], petCloud: true, cape: false, uses: 3 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', 'prog-pronoms', 'prog-articles', '1.25.0-golem-neige', '1.26.1-wagonnet', '1.26.3-lune', '1.27.0-chronos'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 }, powers: { awake: true, clouds: [0, 1, 2, 3, 4], rings: [], animals: 0, bounced: [], petCloud: true, cape: false, uses: 3 } }) }, { quality: 0 });
       await g.page.evaluate(() => window.__se.henDayUse(6)); // J6's Cocotte (on the moss golem's head)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1780,7 +1780,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', 'prog-pronoms', 'prog-articles', '1.26.3-lune'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.26.1-wagonnet', '1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', 'prog-pronoms', 'prog-articles', '1.26.3-lune', '1.27.0-chronos'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       await g.page.evaluate(() => window.__se.henDayUse(7)); // J7's Cocotte (disguised as a snowman)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
@@ -1957,7 +1957,8 @@ export const SCENARIOS = [
     quick: true,
     weight: 4,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', 'prog-pronoms', 'prog-articles', '1.26.3-lune'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', 'prog-pronoms', 'prog-articles', '1.26.3-lune', '1.27.0-chronos'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      await g.page.evaluate(() => window.__se.henDayUse(8)); // J8's Cocotte (in the old cart by the mine)
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
@@ -2160,7 +2161,7 @@ export const SCENARIOS = [
     quick: true,
     weight: 3,
     async run(browser, base, check) {
-      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.1-wagonnet', 'prog-pronoms', 'prog-articles'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.1-wagonnet', 'prog-pronoms', 'prog-articles', '1.27.0-chronos'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
       const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
       const nSaid = () => g.page.evaluate(() => window.__spoken.length);
       const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
@@ -2289,6 +2290,205 @@ export const SCENARIOS = [
       await g.page.evaluate(() => window.__se.scene.resetPosition());
       await g.page.waitForTimeout(500);
       check(await g.page.evaluate(() => window.__se.scene.worldId === 'island' && !window.__se.scene.rider), 'quitter la Lune autrement (retour au village) rend l’île proprement');
+      check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
+      await g.page.close();
+    },
+  },
+  {
+    name: 'Chronos et records : parcours de lave chronométré, médailles, fantôme, course en vol, fantôme d’Alaric (J9)',
+    quick: true,
+    weight: 4,
+    async run(browser, base, check) {
+      const g = await openGame(browser, base, { lang: 'fr', age: 7, newsSeen: ['1.19.0-alaric', '1.19.0-golem', '1.20.0-defis', '1.21.0-flamme', '1.22.0-album', '1.23.0-pouvoirs', '1.24.0-golem-cuivre', '1.25.0-golem-neige', '1.26.1-wagonnet', '1.26.3-lune', 'prog-pronoms', 'prog-articles'], save: save(story(2, 0), { pet: { tamed: true, name: 'Caramel', meals: 0 } }) }, { quality: 0 });
+      const said = () => g.page.evaluate(() => window.__spoken.join(' | '));
+      const nSaid = () => g.page.evaluate(() => window.__spoken.length);
+      const saidSince = (n) => g.page.evaluate((k) => window.__spoken.slice(k).join(' | '), n);
+      const saidLater = (re, timeout = 20000, from = 0) => g.page.waitForFunction(([r, k]) => new RegExp(r).test(window.__spoken.slice(k).join(' | ')), [re.source, from], { timeout }).then(() => true, () => false);
+      const ch = () => g.page.evaluate(() => JSON.parse(JSON.stringify(window.__se.chrono() ?? null, (k, v) => (k === 'ghost' ? (v ? v.length : 0) : v))));
+      const race = () => g.page.evaluate(() => { const r = window.__se.scene.chrono.race; return r ? { course: r.course, t: r.t, next: r.next, cp: r.cp } : null; });
+      const spellOpen = (mode, timeout = 20000) => g.page.waitForFunction((m) => !document.querySelector('#spell-modal').hidden && window.__se.spell()?.type === 'chrono' && window.__se.spell()?.mode === m, mode, { timeout }).then(() => true, () => false);
+      const fast = () => g.page.evaluate(() => { window.__se.chronoFast = true; });
+      const P = await g.page.evaluate(async () => { const m = await import('/chrono.js'), r = await import('/regions.js'); return { START: m.START, PAD: m.PAD, RINGS: m.FLY_RINGS, BOARD: m.BOARD, pillars: r.LAVA.pillars }; });
+      const onPillar = async (i, wait = 450) => { await g.page.evaluate(([x, z]) => window.__se.scene.teleport(x, z, Math.PI), [P.pillars[i][0], P.pillars[i][1]]); await g.page.waitForTimeout(wait); };
+      // One timed run of the lava course: countdown, the starting word, the pillars, the finish, the medal word.
+      const run = async (k, { fall = false } = {}) => {
+        let words = 0;
+        const n0 = await nSaid();
+        check(await g.use("i.kind === 'chrono'") === 'ok', `course ${k} : on touche le grand chrono`);
+        if (k === 1) {
+          check(await saidLater(/Trois… deux… un…/, 6000, n0) && await g.page.evaluate(() => window.__se.chronoHold()), '« Trois… deux… un… » (lu, grands chiffres) : le héros attend au départ, sans bouger');
+          const at = await g.page.evaluate(() => { const p = window.__se.scene.player.position; return [p.x, p.z]; });
+          check(Math.hypot(at[0] - P.START.x, at[1] - P.START.z) < 0.6, 'le héros est sous l’arche du départ', JSON.stringify(at));
+        }
+        if (!(await spellOpen('start'))) { check(false, `course ${k} : le mot de départ`); return words; }
+        if (k === 1) {
+          check(/^Le mot de départ ! /.test(await g.page.evaluate(() => window.__spoken.slice(-1)[0])) && !(await race()), 'puis le mot de départ (lu) ; le chrono ne tourne pas encore pendant le mot');
+        }
+        const r0 = await g.spell(); words++;
+        if (k === 1) check(/Partez/.test(r0.result), 'mot juste : « Partez ! »', r0.result);
+        await g.page.waitForTimeout(400);
+        const st = await race();
+        check(st?.course === 'lava' && !(await g.page.evaluate(() => window.__se.chronoHold())), `course ${k} : le chrono tourne, le héros peut courir`, JSON.stringify(st));
+        if (k === 1) {
+          check(await saidLater(/Partez ! Et c’est parti ! Saute de pilier en pilier/, 3000, n0), '« Partez ! Et c’est parti ! Saute de pilier en pilier… » (lu)');
+          check(await g.page.evaluate(() => !document.querySelector('#chrono-hud').hidden && /⏱️ \d+,\d s/.test(document.querySelector('#chrono-hud').textContent)), 'le temps s’affiche en haut de l’écran (⏱️ 0,4 s…)');
+        }
+        if (k === 2) check(await g.page.evaluate(() => window.__se.scene.chrono.ghost.visible) && /ton fantôme court avec toi/.test(await saidSince(n0)), 'course 2 : ton fantôme transparent rejoue ta meilleure course (lu)');
+        await onPillar(0); await onPillar(1);
+        if (k === 1) check(/Et c’est le saut ! Incroyable/.test(await saidSince(n0)), 'Alaric commente comme à la télé : « Et c’est le saut ! Incroyable ! »');
+        if (fall) {
+          // A fall in the lava during a run: back to this run's flag (not the end of the course).
+          await g.page.evaluate(() => { window.__se.reviveAlways = true; window.__se.scene.teleport(33, -41.5); });
+          const rev = await g.page.waitForFunction(() => !document.querySelector('#spell-modal').hidden && window.__se.spell()?.type === 'revive', null, { timeout: 8000 }).then(() => true, () => false);
+          const back = await g.page.evaluate(() => { const p = window.__se.scene.player.position; return [+p.x.toFixed(1), +p.z.toFixed(1)]; });
+          check(Math.hypot(back[0] - P.pillars[1][0], back[1] - P.pillars[1][1]) < 1, 'chute dans la lave pendant la course : retour au drapeau de cette course', JSON.stringify(back));
+          check((await ch()).falls === 1 && /Oh ! Plouf dans la lave… Fer se cache les yeux ! Mais on repart/.test(await said()) && await g.page.evaluate(() => window.__se.scene.chrono.ferMode === 'cover'), 'gag : « Oh ! Plouf dans la lave… Fer se cache les yeux ! Mais on repart ! » (écrit et lu)');
+          if (rev) {
+            const a = (await race()).t;
+            await g.page.waitForTimeout(1000);
+            const b = (await race()).t;
+            check(Math.abs(b - a) < 1e-6, 'le chrono s’arrête pendant un mot (pause)', JSON.stringify([a, b]));
+            await g.spell(); words++;
+          } else check(false, 'un mot après la chute');
+          await g.page.evaluate(() => { window.__se.reviveAlways = false; });
+          await g.page.waitForTimeout(600);
+        }
+        for (const i of [2, 3, 4, 5]) await onPillar(i, 350);
+        const n1 = await nSaid();
+        await onPillar(6, 300);
+        if (k === 1) {
+          check(await saidLater(/Et c’est l’arrivée ! \d+ secondes ! Fer agite le drapeau… oh là là, il tourne… Bong/, 3000, n1), 'à l’arrivée : « Et c’est l’arrivée ! … Fer agite le drapeau… il tourne… Bong ! Il est tombé sur les fesses ! » (lu)');
+          check(await g.page.waitForFunction(() => window.__se.chrono().bongs >= 1, null, { timeout: 5000 }).then(() => true, () => false), 'gag : Fer tourne sur lui-même et tombe sur les fesses (« Bong ! »)');
+        }
+        if (!(await spellOpen('medal'))) { check(false, `course ${k} : le mot de la médaille`); return words; }
+        const r = await g.spell(); words++;
+        check(/Médaille d’(or|argent|bronze) ! \d+,\d s/.test(r.result), `course ${k} : un mot, la médaille (« ${r.result.replace(/^\S+ \S+ /, '').slice(0, 60)}… »)`, r.result);
+        if (k === 1) check(/Nouveau record/.test(r.result), 'la première course est un nouveau record', r.result);
+        await g.page.waitForTimeout(3200);
+        return words;
+      };
+      await g.click('#continue-btn');
+      await fast();
+      // Alaric presents J9, written and spoken, with his riddle.
+      const shown = await g.page.waitForFunction(() => !document.querySelector('#news-modal').hidden, null, { timeout: 10000 }).then(() => true, () => false);
+      const card = await g.page.evaluate(() => ({ title: document.querySelector('#news-title').textContent, riddle: document.querySelector('#news-riddle').innerText, said: window.__spoken.join(' | ') }));
+      check(shown && /Chronos et records/.test(card.title) && /Attention, prêts, partez/.test(card.said) && /bats ton record… et ton fantôme/.test(card.said), 'Alaric présente les chronos et les records (écrit et lu)', JSON.stringify(card));
+      check(/des aiguilles mais ne coud jamais/.test(card.riddle), 'la devinette d’Alaric est écrite', card.riddle);
+      await g.page.evaluate(() => document.querySelector('#news-riddle .news-answer').click());
+      await g.page.waitForTimeout(200);
+      check(/Une montre/.test(await g.page.evaluate(() => window.__spoken.slice(-1)[0])), '« La réponse ? » lit « Une montre ! »');
+      await g.click('#news-show');
+      const tShow = Date.now();
+      await g.page.waitForTimeout(900);
+      const arrow = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.chrono.gobj.worldPos; return q ? Math.hypot(q.x - w.x, q.z - w.z) : 99; });
+      check(arrow < 1, '« Montre-moi ! » pointe la flèche vers le grand chrono, au départ du parcours de lave', String(arrow));
+      // The take-off pad explains itself before part 2 (rien de muet).
+      let n0 = await nSaid();
+      await g.page.evaluate(([x, z]) => window.__se.scene.teleport(x + 0.5, z), [P.PAD.x, P.PAD.z]);
+      check(await saidLater(/Ici, c’est la piste d’envol de la course en vol ! Elle ouvre à ton prochain retour\. D’abord, gagne trois médailles/, 6000, n0), 'devant la piste d’envol : « Elle ouvre à ton prochain retour ! D’abord, gagne trois médailles… » (lu)', await saidSince(n0));
+      const arrowBack = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.chrono.gobj.worldPos; return q ? Math.hypot(q.x - w.x, q.z - w.z) : 99; });
+      check(arrowBack < 1, 'et la flèche montre le grand chrono', String(arrowBack));
+      // The wow: a word wakes the big stopwatch up.
+      n0 = await nSaid();
+      check(await g.use("i.kind === 'chrono'") === 'ok' && await spellOpen('wake'), 'on touche le grand chrono : un mot pour le réveiller');
+      check(/^Le grand chrono dort\. Épelle le mot pour le réveiller ! /.test(await g.page.evaluate(() => window.__spoken.slice(-1)[0])), '« Le grand chrono dort. Épelle le mot pour le réveiller ! » (lu avec le mot)');
+      await g.spell();
+      let words = 1;
+      check(await saidLater(/Driiing ! Mesdames et messieurs, bienvenue au grand parcours de lave chronométré/, 5000, n0) && Date.now() - tShow < 30000, `waouh : le chrono sonne, feu d’artifice, Fer lève le drapeau (« Mesdames et messieurs… », lu, ${Math.round((Date.now() - tShow) / 1000)} s après « Montre-moi ! »)`);
+      check(await g.page.evaluate(() => window.__se.scene.chrono.ferMode === 'cheer' || window.__se.scene.chrono.wakeT >= 0), 'le grand chrono tremble et sonne, Fer agite le drapeau');
+      words += await run(1, { fall: true });
+      const med1 = await g.page.evaluate(() => ({ vis: window.__se.scene.chrono.medal.visible, kind: window.__se.scene.chrono.medalKind }));
+      check(med1.vis && !!med1.kind, `la médaille pend au cou du héros (à montrer : ${med1.kind})`);
+      check(await g.page.waitForFunction(([x, z]) => { const p = window.__se.scene.player.position; return Math.hypot(p.x - x, p.z - z) < 2; }, [P.START.x, P.START.z], { timeout: 6000 }).then(() => true, () => false), 'retour au départ pour une autre course');
+      words += await run(2);
+      words += await run(3);
+      const st1 = await ch();
+      const nMed = st1.lava.medals.gold + st1.lava.medals.silver + st1.lava.medals.bronze;
+      check(nMed === 3 && st1.lava.top.length === 3 && st1.lava.ghost > 3, `trois médailles, trois records sur le panneau, un fantôme enregistré (${st1.lava.ghost} positions)`, JSON.stringify(st1.lava));
+      check(await saidLater(/Trois médailles ! Tu es un champion du parcours de lave ! À ton prochain retour, une course en vol/, 12000), '« Trois médailles ! … À ton prochain retour, une course en vol autour du village ! » (lu)', await said());
+      check(words >= 7, `au moins 7 mots en session 1 (${words})`);
+      n0 = await nSaid();
+      check(await g.use("i.kind === 'records'") === 'ok' && await saidLater(/Les records ! Parcours de lave : \d+ secondes, \d+ secondes, \d+ secondes\. Course en vol : pas encore de record/, 3000, n0), 'le panneau des records : les 3 meilleurs temps (lus)', await saidSince(n0));
+      // Cocotte on the records board (journal hint written and read).
+      await g.page.waitForTimeout(4200);
+      n0 = await nSaid();
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const jh = await g.page.evaluate((n) => ({ txt: document.querySelector('#journal-today').innerText, said: window.__spoken.slice(n).join(' | ') }), n0);
+      check(/panneau des records/.test(jh.txt) && /panneau des records/.test(jh.said), 'journal : l’indice de Cocotte (« le panneau des records ») est écrit et lu', jh.said);
+      check(/Chronos et records — Partie 1 ✓ · Partie 2 : à ton prochain retour !/.test(jh.txt) && /Parcours de lave : 3\/3 médailles · record : \d+,\d s/.test(jh.txt), 'journal : « Chronos et records — Partie 1 ✓ · Partie 2 : à ton prochain retour ! », médailles et record', jh.txt);
+      check(/3 sur 3 médailles/.test(jh.said) && /record : \d+ secondes/.test(jh.said), 'les médailles et le record sont lus', jh.said);
+      await g.click('#journal-close');
+      const hen = await g.page.evaluate(([x, z]) => { const h = window.__se.scene.cocotte; return { day: window.__se.henRow().day, d: +Math.hypot(h.mesh.position.x - x, h.mesh.position.z - z).toFixed(1), y: +h.mesh.position.y.toFixed(1) }; }, [P.BOARD.x, P.BOARD.z]);
+      check(hen.day === 9 && hen.d < 1.2 && hen.y > 2.3, 'Cocotte est perchée sur le panneau des records', JSON.stringify(hen));
+      check(await g.page.evaluate(() => window.__se.findCocotte()) === 'ok', 'on touche Cocotte');
+      await g.page.waitForTimeout(300);
+      check((await g.page.evaluate(() => window.__se.progress().feathers)).includes(9) && /Cot cot/.test(await said()), 'Cocotte s’envole : une plume dorée (« Cot cot ! »)');
+      // Session 2: the game is opened again 31 minutes later.
+      await g.page.evaluate(() => { document.body.dataset.screen = 'paused'; });
+      await g.page.waitForTimeout(400);
+      await g.page.evaluate((key) => { const pr = window.__se.progress(); pr.parts.J9.last -= 31 * 60 * 1000; const p = JSON.parse(localStorage.getItem(key)); p.parts.J9.last = pr.parts.J9.last; localStorage.setItem(key, JSON.stringify(p)); }, STORE);
+      await g.page.reload();
+      await g.page.waitForSelector('#loading.is-done', { timeout: 180000 });
+      await g.page.evaluate(() => { window.__se.flashAfter = 1e9; window.__se.noDefis = true; window.__se.chronoFast = true; });
+      await g.click('#continue-btn');
+      await g.page.waitForTimeout(1200);
+      check(await g.page.evaluate(() => window.__se.releasePart(9)) === 2, 'au retour (30 min plus tard), la partie 2 des chronos est ouverte');
+      check(await saidLater(/Nouveau pouvoir : voler ! La course en vol est ouverte/, 15000), '« Nouveau pouvoir : voler ! La course en vol est ouverte… Bats le fantôme d’Alaric ! » (lu)', await said());
+      await g.page.waitForTimeout(500);
+      const arrow2 = await g.page.evaluate(() => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest), w = s.chrono.pobj.worldPos; return q ? Math.hypot(q.x - w.x, q.z - w.z) : 99; });
+      check(arrow2 < 1, 'la flèche dorée montre la piste d’envol', String(arrow2));
+      check(await g.page.evaluate(() => window.__se.scene.chrono.rings.visible), 'les 8 anneaux de la course en vol brillent autour du village');
+      words = 0;
+      n0 = await nSaid();
+      check(await g.use("i.kind === 'flypad'") === 'ok' && await saidLater(/Trois… deux… un…/, 6000, n0), 'on touche la piste d’envol : « Trois… deux… un… »');
+      if (await spellOpen('start')) { await g.spell(); words++; } else check(false, 'le mot de départ de la course en vol');
+      await g.page.waitForTimeout(500);
+      const fl = await g.page.evaluate(() => ({ power: window.__se.scene.power, race: window.__se.scene.chrono.race?.course, wings: window.__se.scene.chrono.wings.visible, alaric: window.__se.scene.chrono.alaric.visible }));
+      check(fl.power === 'fly' && fl.race === 'fly' && fl.wings && fl.alaric, 'Partez ! Le pouvoir voler : des ailes sur le dos (à montrer), le fantôme d’Alaric fait la course', JSON.stringify(fl));
+      check(await saidLater(/Appuie sur sauter pour monter ! Passe dans les huit anneaux dorés ! .*Et le fantôme d’Alaric fait la course aussi/, 3000, n0), '« Appuie sur sauter pour monter ! Passe dans les huit anneaux dorés ! » (lu)');
+      // Flying: each jump climbs, even in the air.
+      const up = await g.page.evaluate(async () => {
+        const s = window.__se.scene, h0 = s.player.position.y;
+        for (let i = 0; i < 5; i++) { s.jump(); await new Promise((r) => setTimeout(r, 250)); }
+        return +(s.player.position.y - h0).toFixed(1);
+      });
+      check(up > 3, `voler : chaque saut fait monter, même en l’air (+${up} m)`);
+      const ringArrow = await g.page.evaluate(([x, z]) => { const s = window.__se.scene, q = s.mapPins.find((p) => p.quest); return q ? Math.hypot(q.x - x, q.z - z) : 99; }, [P.RINGS[0].x, P.RINGS[0].z]);
+      check(ringArrow < 1, 'la flèche montre le prochain anneau', String(ringArrow));
+      for (let i = 0; i < 8; i++) {
+        await g.page.evaluate((r) => { const s = window.__se.scene; s.player.position.set(r.x + 0.3, r.y - 0.8, r.z); s.playerVY = 0; }, P.RINGS[i]);
+        await g.page.waitForTimeout(260);
+      }
+      const after8 = await g.page.evaluate(() => ({ race: !!window.__se.scene.chrono.race }));
+      check(!after8.race && /Anneau 1 sur 8/.test(await said()) && /La moitié ! Quel pilote/.test(await said()), 'les 8 anneaux dans l’ordre (« Anneau 1 sur 8 ! », « La moitié ! Quel pilote ! », lus)');
+      check(await saidLater(/Et c’est l’arrivée en vol ! \d+ secondes ! Maintenant, atterris/, 4000, n0), '« Et c’est l’arrivée en vol ! … Maintenant, atterris ! » (lu)');
+      // Landing: a word per ring, then the medal.
+      await g.page.evaluate(([x, z]) => { const s = window.__se.scene; s.player.position.set(x + 3, s.groundAt(x + 3, z) + 0.5, z); }, [P.PAD.x, P.PAD.z]);
+      let rings = 0;
+      for (let k = 0; k < 8; k++) {
+        if (!(await spellOpen('ring', 15000))) break;
+        if (k === 0) check(/Bel atterrissage ! Épelle ce mot pour garder l’anneau 1/.test(await g.page.evaluate(() => document.querySelector('#spell-instruction').textContent)), 'à l’atterrissage : « Bel atterrissage ! Épelle ce mot pour garder l’anneau 1. »');
+        const r = await g.spell(); words++; rings++;
+        if (k === 7) check(/8 anneaux gardés sur 8/.test(r.result), 'un mot par anneau : « 8 anneaux gardés sur 8 ! »', r.result);
+      }
+      check(rings === 8, `un mot par anneau gardé (${rings})`);
+      if (await spellOpen('medal')) {
+        const r = await g.spell(); words++;
+        check(/Médaille d’(or|argent|bronze)/.test(r.result) && /Tu as battu le fantôme d’Alaric ! Tu gagnes la tenue de champion/.test(r.result), 'la médaille de la course en vol, et « Tu as battu le fantôme d’Alaric ! Tu gagnes la tenue de champion ! »', r.result);
+      } else check(false, 'le mot de la médaille en vol');
+      await g.page.waitForTimeout(1500);
+      const cos = await g.page.evaluate(() => window.__se.progress().costumes?.current);
+      check(cos === 'racer', 'le héros porte la tenue de champion (à montrer)', cos);
+      check(words >= 7, `au moins 7 mots en session 2 (${words})`);
+      const st2 = await ch();
+      check(st2.fly.top.length === 1 && st2.fly.kept.length === 8 && st2.alaric.beaten && st2.fly.ghost > 3, 'record de la course en vol, 8 anneaux gardés, fantôme d’Alaric battu', JSON.stringify({ ...st2.fly, alaric: st2.alaric }));
+      await g.page.waitForTimeout(4200);
+      await g.click('#news-btn');
+      await g.page.waitForTimeout(300);
+      const j2 = await g.page.evaluate(() => document.querySelector('#journal-today').innerText);
+      check(/Chronos et records — Partie 1 ✓ · Partie 2 ✓/.test(j2) && /Course en vol : 8\/8 anneaux gardés · record : \d+,\d s · fantôme d’Alaric : battu ✓/.test(j2), 'journal : les deux parties faites, 8 anneaux, record, fantôme d’Alaric battu', j2);
+      await g.click('#journal-close');
       check(g.errors.length === 0, 'aucune erreur JavaScript', g.errors.join(' | '));
       await g.page.close();
     },

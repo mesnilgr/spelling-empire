@@ -30,19 +30,19 @@ export const POWER_TIME = 20; // seconds
 export const GLIDE_TIME = 45; // long enough to climb the clouds, then glide down
 export const ANIMALS_GOAL = 5;
 export const POWER_KINDS = {
-  speed: { emoji: '💨' }, jump: { emoji: '🦘' }, giant: { emoji: '🦖' }, glide: { emoji: '🪂' },
+  speed: { emoji: '💨' }, jump: { emoji: '🦘' }, giant: { emoji: '🦖' }, glide: { emoji: '🪂' }, fly: { emoji: '🕊️' },
 };
 
 export const PTX = {
   fr: {
     name: 'Pouvoirs des mots', stone: 'Pierre des pouvoirs',
-    names: { speed: 'vitesse', jump: 'super saut', giant: 'géant', glide: 'planer' },
+    names: { speed: 'vitesse', jump: 'super saut', giant: 'géant', glide: 'planer', fly: 'voler' },
     wake: 'Les mots ont des pouvoirs ! Regarde les nuages… Épelle un mot difficile : tu pourras sauter jusqu’à eux !',
     stoneInstr: (p) => `Un mot difficile… Réussis-le et gagne le pouvoir : ${p} !`,
     cloudInstr: 'Tu es sur un nuage ! Épelle ce mot pour gagner l’étoile du nuage.',
     landInstr: (k) => `Bel atterrissage ! Épelle ce mot pour garder l’anneau ${k}.`,
-    got: { speed: '💨 Pouvoir : vitesse ! Cours comme le vent !', jump: '🦘 Pouvoir : super saut ! Saute jusqu’aux nuages !', giant: '🦖 Pouvoir : géant ! Chaque pas fait rebondir les animaux !', glide: '🪂 Pouvoir : planer ! Saute de nuage en nuage, puis plane depuis le plus haut à travers les anneaux !' },
-    gotSay: { speed: 'Pouvoir vitesse ! Cours comme le vent !', jump: 'Pouvoir super saut ! Appuie sur sauter : tu vas jusqu’aux nuages !', giant: 'Pouvoir géant ! Boum, boum ! Chaque pas fait rebondir les animaux !', glide: 'Pouvoir planer ! Monte sur le plus haut nuage, puis saute et plane à travers les anneaux dorés !' },
+    got: { speed: '💨 Pouvoir : vitesse ! Cours comme le vent !', jump: '🦘 Pouvoir : super saut ! Saute jusqu’aux nuages !', giant: '🦖 Pouvoir : géant ! Chaque pas fait rebondir les animaux !', glide: '🪂 Pouvoir : planer ! Saute de nuage en nuage, puis plane depuis le plus haut à travers les anneaux !', fly: '🕊️ Pouvoir : voler ! Appuie sur sauter pour monter, lâche pour redescendre !' },
+    gotSay: { speed: 'Pouvoir vitesse ! Cours comme le vent !', jump: 'Pouvoir super saut ! Appuie sur sauter : tu vas jusqu’aux nuages !', giant: 'Pouvoir géant ! Boum, boum ! Chaque pas fait rebondir les animaux !', glide: 'Pouvoir planer ! Monte sur le plus haut nuage, puis saute et plane à travers les anneaux dorés !', fly: 'Pouvoir voler ! Appuie sur sauter pour monter dans le ciel, et regarde : tu as des ailes !' },
     hardBonus: (p) => `⚡ Mot difficile réussi du premier coup ! Pouvoir : ${p} !`,
     dogToo: 'Et ton chien aussi !',
     over: (p) => `⏳ Fini, le pouvoir ${p}. Un mot difficile à la pierre et ça recommence !`,
@@ -69,13 +69,13 @@ export const PTX = {
   },
   en: {
     name: 'Word powers', stone: 'Power stone',
-    names: { speed: 'speed', jump: 'super jump', giant: 'giant', glide: 'glide' },
+    names: { speed: 'speed', jump: 'super jump', giant: 'giant', glide: 'glide', fly: 'fly' },
     wake: 'Words have powers! Look at the clouds… Spell a hard word and you can jump up to them!',
     stoneInstr: (p) => `A hard word… Get it right and win the power: ${p}!`,
     cloudInstr: 'You are on a cloud! Spell this word to win the cloud’s star.',
     landInstr: (k) => `Nice landing! Spell this word to keep ring ${k}.`,
-    got: { speed: '💨 Power: speed! Run like the wind!', jump: '🦘 Power: super jump! Jump up to the clouds!', giant: '🦖 Power: giant! Every step makes the animals bounce!', glide: '🪂 Power: glide! Jump from cloud to cloud, then glide from the highest one through the rings!' },
-    gotSay: { speed: 'Speed power! Run like the wind!', jump: 'Super jump power! Press jump: you can reach the clouds!', giant: 'Giant power! Boom, boom! Every step makes the animals bounce!', glide: 'Glide power! Climb to the highest cloud, then jump and glide through the golden rings!' },
+    got: { speed: '💨 Power: speed! Run like the wind!', jump: '🦘 Power: super jump! Jump up to the clouds!', giant: '🦖 Power: giant! Every step makes the animals bounce!', glide: '🪂 Power: glide! Jump from cloud to cloud, then glide from the highest one through the rings!', fly: '🕊️ Power: fly! Press jump to fly up, let go to come down!' },
+    gotSay: { speed: 'Speed power! Run like the wind!', jump: 'Super jump power! Press jump: you can reach the clouds!', giant: 'Giant power! Boom, boom! Every step makes the animals bounce!', glide: 'Glide power! Climb to the highest cloud, then jump and glide through the golden rings!', fly: 'Flying power! Press jump to fly up into the sky, and look: you have wings!' },
     hardBonus: (p) => `⚡ Hard word, first try! Power: ${p}!`,
     dogToo: 'And your dog too!',
     over: (p) => `⏳ The ${p} power is over. A hard word at the stone and off you go again!`,
